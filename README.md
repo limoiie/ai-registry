@@ -1,49 +1,117 @@
 # AI Registry
 
-Framework-independent core for registering and resolving AI providers,
-models, profiles, and deployments.
+A framework-independent core for registering and resolving AI providers,
+models, profiles, and deployments. Resolve a **stable alias** to a **concrete,
+healthy deployment** — then build any framework-native client from the result.
 
-## Development
+```python
+from ai_registry import Registry
 
-Install uv, then create the project environment and install the locked
-development dependencies:
+registry = Registry.from_files(
+    provider_files=["catalog.yaml"],
+    profile_files=["profiles.yaml"],
+    alias_files=["aliases.yaml"],
+)
+
+resolution = registry.resolve("sol")          # stable logical name
+
+resolution.profile_id          # which profile/key was selected
+resolution.model_id            # canonical model id (for requests/logging)
+resolution.endpoint            # base URL
+resolution.resolve_credential()  # resolved lazily, only at the adapter boundary
+```
+
+The underlying model, provider, or endpoint behind `"sol"` can change in
+configuration without any application code changes.
+
+## Features
+
+- **Alias-first resolution** with an explicit `profile-id/model-id` fallback.
+- **Health-aware routing**: priority, weight, disabled deployments, and a
+  runtime health store with recovery.
+- **Multiple profiles and keys** for the same or different providers.
+- **OpenAI-compatible endpoints** out of the box (UniAPI, vLLM, gateways),
+  plus support for other SDK families.
+- **Secret references, not secrets**: `env:` / `secret_ref:` credentials,
+  lazy resolution, and pluggable `SecretResolver` for Vault/AWS/Kubernetes.
+- **Secret-safe by construction**: literal keys are rejected; `repr`, dumps,
+  and errors are redacted.
+- **Compatibility loaders** for the existing `data/ai/providers/*.yml`
+  catalog and profile formats.
+- **Framework-independent**: only depends on Pydantic and PyYAML; adapters for
+  the OpenAI SDK, Pydantic AI, LangGraph, and LlamaIndex are planned as
+  optional extras.
+
+## Install
 
 ```bash
+pip install ai-registry
+# or, from a checkout with uv:
 uv sync
 ```
 
-Run the project checks with:
+Requires Python 3.11+.
 
-```bash
-uv run pytest -q
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy src tests
+## Quick start
+
+```python
+import os
+from ai_registry import Registry
+from ai_registry.schemas import Alias, Deployment, ModelCard, Profile, Provider
+
+os.environ["DEEPSEEK_API_KEY"] = "sk-example"
+
+registry = Registry.from_data(
+    providers=[
+        Provider(
+            id="deepseek",
+            name="DeepSeek",
+            default_base_url="https://api.deepseek.com/v1",
+            model_cards=[ModelCard(id="deepseek-chat", type="chat")],
+        ),
+    ],
+    profiles=[
+        Profile(
+            id="primary",
+            provider_id="deepseek",
+            credential={"env": "DEEPSEEK_API_KEY"},
+            enabled_models=["deepseek-chat"],
+        ),
+    ],
+    aliases=[
+        Alias(
+            id="chat-default",
+            deployments=[Deployment(profile_id="primary", model_id="deepseek-chat")],
+        ),
+    ],
+)
+
+resolution = registry.resolve("chat-default")
+print(resolution.endpoint)
+print(resolution.resolve_credential())
 ```
 
-## Configuration
+For file-based configuration, see [Getting started](docs/getting-started.md).
 
-The core uses normalized provider, profile, and alias objects. Providers have
-model cards and SDK-neutral settings; profiles select enabled models and hold
-only credential references. Credentials can refer to an environment variable
-with `api_key_env` in the current catalog format or the normalized
-`credential: {env: NAME}` form. Values are resolved only when an adapter asks
-for them; missing or empty environment variables raise a safe configuration
-error rather than producing an empty credential.
+## Documentation
 
-`load_provider_file`, `load_profile_file`, and `Registry.from_files` load the
-current provider and profile files under `data/ai/providers/`, including legacy
-fields such as top-level or nested `sdk_type: uniapi`, `abilities`, `max_dimension`, and
-`api_key_env`. New configuration should prefer the normalized shape.
-
-Aliases resolve to deployments such as `chat-default`; callers may also use a
-direct `profile-id/model-id` reference. Profile endpoint URLs and other custom
-OpenAI-compatible metadata remain available to an adapter without requiring an
-OpenAI or other provider SDK.
+| Guide | Audience | Contents |
+| --- | --- | --- |
+| [Overview](docs/overview.md) | Everyone | The idea, concepts, architecture, goals and non-goals. |
+| [Getting started](docs/getting-started.md) | New users | Install, first resolution, loading files, built-in data. |
+| [Configuration](docs/configuration.md) | Everyone | Complete data file format: normalized + legacy shapes, field references, validation. |
+| [Use cases](docs/use-cases.md) | All users | 12 detailed scenarios: failover, weighted routing, embeddings, custom endpoints, secret resolvers, and more. |
+| [API reference](docs/api-reference.md) | Experienced users | Every public class, function, field, and behavior. |
+| [Security](docs/security.md) | Everyone | Secret-handling guarantees, redaction rules, endpoint validation, limitations. |
+| [Development](docs/development.md) | Contributors | Environment, checks, conventions, testing. |
 
 ## Non-goals
 
-This package does not make network requests, resolve provider SDK behavior, or
-provide framework integrations. Health-aware routing is limited to the core
-deployment state and selection APIs; adapters remain responsible for clients,
-request translation, retries, and observability.
+This package does not make network requests, define a unified AI response
+interface, resolve framework SDK behavior, or ship a gateway. Health-aware
+routing applies to deployment selection in the core; request-time failover and
+framework adapters are outside the current release.
+
+## License
+
+TBD.
