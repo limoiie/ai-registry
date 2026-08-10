@@ -1,4 +1,6 @@
+from collections import UserDict
 from datetime import date
+from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
@@ -337,6 +339,31 @@ def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> 
     assert config.model_dump()["profiles"][0]["metadata"]["nested"]["password"] == (
         "<redacted>"
     )
+
+
+def test_userdict_metadata_is_recursively_redacted() -> None:
+    config = RegistryConfig(
+        profiles=[
+            Profile(
+                id="primary",
+                provider_id="provider",
+                metadata=cast(
+                    Any,
+                    UserDict(
+                        {
+                            "nested": UserDict(
+                                {"password": "userdict-secret", "safe": "value"}
+                            )
+                        }
+                    ),
+                ),
+            )
+        ]
+    )
+
+    for rendered in (repr(config), str(config.model_dump()), config.model_dump_json()):
+        assert "userdict-secret" not in rendered
+    assert "value" in str(config.model_dump())
 
 
 def test_errors_have_stable_base_type() -> None:

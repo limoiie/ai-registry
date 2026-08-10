@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from datetime import date
 from enum import StrEnum
 from typing import Any, ClassVar, Self, cast
@@ -45,6 +46,8 @@ class SafeModel(BaseModel):
 
     def _raw_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Return the unredacted representation for internal resolution only."""
+        if kwargs.get("mode") == "json":
+            kwargs.setdefault("fallback", _json_fallback)
         return super().model_dump(**kwargs)
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
@@ -53,6 +56,7 @@ class SafeModel(BaseModel):
         )
 
     def model_dump_json(self, **kwargs: Any) -> str:
+        kwargs.setdefault("fallback", _json_fallback)
         value = json.loads(super().model_dump_json(**kwargs))
         return json.dumps(_redact(value, self._secret_fields), ensure_ascii=False)
 
@@ -97,8 +101,14 @@ class SafeModel(BaseModel):
             raise _safe_validation_error(error) from None
 
 
+def _json_fallback(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return dict(value)
+    raise TypeError(f"unsupported serialization type: {type(value).__name__}")
+
+
 def _redact(value: Any, secret_fields: set[str]) -> Any:
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return {
             key: "<redacted>"
             if key in secret_fields
