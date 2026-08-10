@@ -8,6 +8,8 @@ from ai_registry.config import (
     _provider_from_text,
     discover_builtin_providers,
     discover_project_providers,
+    load_alias_file,
+    load_deployments_file,
     load_document,
     load_profile_file,
     load_provider_file,
@@ -480,3 +482,90 @@ def test_rejects_conflicting_profile_credentials(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigurationError, match="api_key_env.*credential"):
         load_profile_file(path)
+
+
+def test_loads_merged_deployments_file(tmp_path: Path) -> None:
+    path = tmp_path / "deployments.yaml"
+    path.write_text(
+        "profiles:\n"
+        "  - id: primary\n"
+        "    provider_id: deepseek\n"
+        "    api_key_env: DEEPSEEK_API_KEY\n"
+        "    enabled_models: [deepseek-chat]\n"
+        "    remark: legacy\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - profile_id: primary\n"
+        "        model_id: deepseek-chat\n",
+        encoding="utf-8",
+    )
+
+    deployments = load_deployments_file(path)
+
+    assert deployments.profiles[0].id == "primary"
+    assert deployments.profiles[0].credential is not None
+    assert deployments.profiles[0].credential.env == "DEEPSEEK_API_KEY"
+    assert deployments.profiles[0].metadata["remark"] == "legacy"
+    assert deployments.aliases == [
+        {
+            "id": "chat-default",
+            "deployments": [{"profile_id": "primary", "model_id": "deepseek-chat"}],
+        }
+    ]
+
+
+def test_deployments_file_requires_profiles_and_optional_aliases(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "deployments.yaml"
+    path.write_text("aliases: []\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="profiles"):
+        load_deployments_file(path)
+
+    path.write_text("profiles: []\n", encoding="utf-8")
+    deployments = load_deployments_file(path)
+    assert deployments.profiles == [] and deployments.aliases == []
+
+
+def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "deployments.yaml"
+    path.write_text("profiles: []\naliases: not-a-list\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="'aliases' list"):
+        load_deployments_file(path)
+
+
+def test_load_alias_file_requires_aliases_list(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text("version: 1\n", encoding="utf-8")
+
+    with pytest.raises(
+        ConfigurationError, match="Alias configuration .*must contain a 'aliases' list"
+    ):
+        load_alias_file(path)
+
+
+def test_load_alias_file_rejects_non_list_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text("aliases: not-a-list\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="'aliases' list"):
+        load_alias_file(path)
+
+
+def test_load_alias_file_rejects_non_mapping_alias(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text("aliases:\n  - just-a-string\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="invalid alias at index 0"):
+        load_alias_file(path)
+
+
+def test_load_alias_file_returns_mappings(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text(
+        "aliases:\n  - id: chat-default\n    deployments: []\n", encoding="utf-8"
+    )
+
+    assert load_alias_file(path) == [{"id": "chat-default", "deployments": []}]

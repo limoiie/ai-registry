@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from typing import Any, TextIO
@@ -114,7 +115,10 @@ def merge_providers(
 
 def load_profile_file(source: PathSource) -> list[Profile]:
     source_name, _, _ = _source_details(source)
-    document = load_document(source)
+    return _parse_profiles(load_document(source), source_name)
+
+
+def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profile]:
     values = document.get("profiles")
     if not isinstance(values, list):
         raise ConfigurationError(
@@ -155,6 +159,52 @@ def load_profile_file(source: PathSource) -> list[Profile]:
                 f"Invalid profile in '{source_name}' at index {index}: {error}"
             ) from None
     return profiles
+
+
+def load_alias_file(source: PathSource) -> list[dict[str, Any]]:
+    source_name, _, _ = _source_details(source)
+    document = load_document(source)
+    return _parse_aliases(document, source_name, required=True)
+
+
+def _parse_aliases(
+    document: Mapping[str, Any], source_name: str, *, required: bool
+) -> list[dict[str, Any]]:
+    if "aliases" not in document:
+        if required:
+            raise ConfigurationError(
+                f"Alias configuration '{source_name}' must contain a 'aliases' list"
+            )
+        return []
+    values = document["aliases"]
+    if not isinstance(values, list):
+        raise ConfigurationError(
+            f"Alias configuration '{source_name}' must contain a 'aliases' list"
+        )
+    aliases: list[dict[str, Any]] = []
+    for index, value in enumerate(values):
+        if not isinstance(value, dict):
+            raise ConfigurationError(
+                f"Alias configuration '{source_name}' has an invalid alias "
+                f"at index {index}"
+            )
+        aliases.append(dict(value))
+    return aliases
+
+
+@dataclass(frozen=True)
+class Deployments:
+    profiles: list[Profile]
+    aliases: list[dict[str, Any]]
+
+
+def load_deployments_file(source: PathSource) -> Deployments:
+    source_name, _, _ = _source_details(source)
+    document = load_document(source)
+    return Deployments(
+        profiles=_parse_profiles(document, source_name),
+        aliases=_parse_aliases(document, source_name, required=False),
+    )
 
 
 def normalize_provider(

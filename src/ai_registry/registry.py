@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from ai_registry.config import (
     PathSource,
-    load_document,
+    load_alias_file,
     load_profile_file,
     load_provider_files,
 )
@@ -121,22 +121,7 @@ class Registry:
         """Load provider, profile, and optional alias documents without secrets."""
         aliases: list[dict[str, Any]] = []
         for source in alias_files:
-            document = load_document(source)
-            if "aliases" not in document:
-                raise ConfigurationError(
-                    "Alias configuration must contain a 'aliases' list"
-                )
-            values = document["aliases"]
-            if not isinstance(values, list):
-                raise ConfigurationError(
-                    "Alias configuration must contain an 'aliases' list"
-                )
-            for value in values:
-                if not isinstance(value, dict):
-                    raise ConfigurationError(
-                        "Alias configuration contains an invalid alias"
-                    )
-                aliases.append(value)
+            aliases.extend(load_alias_file(source))
         return cls.from_data(
             providers=load_provider_files(list(provider_files)),
             profiles=_load_profiles(profile_files),
