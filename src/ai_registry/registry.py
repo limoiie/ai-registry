@@ -246,8 +246,10 @@ def _find_model(provider: Provider, model_id: str) -> ModelCard | None:
 _SENSITIVE_METADATA_WORDS = {
     "authorization",
     "credential",
+    "env",
     "password",
     "secret",
+    "secret_ref",
 }
 _TOKEN_QUALIFIERS = {
     "access",

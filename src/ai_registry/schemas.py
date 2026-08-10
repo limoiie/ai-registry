@@ -112,7 +112,25 @@ def _redact(value: Any, secret_fields: set[str]) -> Any:
             for key, item in value.items()
         }
     if isinstance(value, list):
+        if (
+            len(value) == 2
+            and isinstance(value[0], str)
+            and _is_sensitive_key(value[0])
+        ):
+            return [value[0], "<redacted>"]
         return [_redact(item, secret_fields) for item in value]
+    if isinstance(value, tuple):
+        if (
+            len(value) == 2
+            and isinstance(value[0], str)
+            and _is_sensitive_key(value[0])
+        ):
+            return (value[0], "<redacted>")
+        return tuple(_redact(item, secret_fields) for item in value)
+    if isinstance(value, set):
+        return {_redact(item, secret_fields) for item in value}
+    if isinstance(value, frozenset):
+        return frozenset(_redact(item, secret_fields) for item in value)
     return value
 
 

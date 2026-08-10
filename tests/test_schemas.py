@@ -314,6 +314,11 @@ def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> 
                         "secret": "secret-value",
                         "authorization": "authorization-value",
                         "accessToken": "token-value",
+                        "tuple_data": ({"password": "tuple-secret"},),
+                        "set_data": {
+                            ("accessToken", "set-secret"),
+                            ("ordinary", "value"),
+                        },
                         "model_token_count": 42,
                     }
                 },
@@ -326,6 +331,8 @@ def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> 
         assert "secret-value" not in rendered
         assert "authorization-value" not in rendered
         assert "token-value" not in rendered
+        assert "tuple-secret" not in rendered
+        assert "set-secret" not in rendered
     assert "'model_token_count': 42" in str(config.model_dump())
     assert config.model_dump()["profiles"][0]["metadata"]["nested"]["password"] == (
         "<redacted>"

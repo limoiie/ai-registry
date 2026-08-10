@@ -160,6 +160,7 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
                             "access-token": "access-secret",
                             "authorization-header": "auth-secret",
                             "token": "secret-token",
+                            "env": "environment-secret",
                             "model_token_count": 42,
                             "safe": "value",
                         },
@@ -181,6 +182,7 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "uppercase-key" not in rendered
     assert "access-secret" not in rendered
     assert "auth-secret" not in rendered
+    assert "environment-secret" not in rendered
     assert "_secret_resolver" not in rendered
     assert "'api_key': '<redacted>'" in rendered
     assert "'api-key': '<redacted>'" in rendered
@@ -190,6 +192,7 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "'access-token': '<redacted>'" in rendered
     assert "'authorization-header': '<redacted>'" in rendered
     assert "'token': '<redacted>'" in rendered
+    assert "'env': '<redacted>'" in rendered
     assert "'model_token_count': 42" in rendered
 
 
