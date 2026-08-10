@@ -165,6 +165,33 @@ def test_discover_project_providers_loads_json_files(tmp_path: Path) -> None:
     ]
 
 
+def test_discover_project_providers_malformed_yaml_is_actionable(
+    tmp_path: Path,
+) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "broken.yaml").write_text("id: [broken", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="Unable to parse YAML.*broken.yaml"):
+        discover_project_providers(tmp_path)
+
+
+def test_merge_providers_empty_project_returns_builtins() -> None:
+    builtin = discover_builtin_providers()
+
+    assert merge_providers(builtin, []) == builtin
+
+
+def test_merge_providers_rejects_duplicate_project_ids(tmp_path: Path) -> None:
+    project = [
+        normalize_provider({"id": "dup", "name": "First"}),
+        normalize_provider({"id": "dup", "name": "Second"}),
+    ]
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+        merge_providers([], project)
+
+
 def test_ensure_unique_provider_ids_rejects_duplicates() -> None:
     providers = [
         normalize_provider({"id": "dup", "name": "First"}),
