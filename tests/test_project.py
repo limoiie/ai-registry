@@ -14,9 +14,7 @@ def _write_deployments(
     (deployments_dir / name).write_text(text, encoding="utf-8")
 
 
-def _write_registry(
-    tmp_path: Path, filename: str, model_id: str = "deepseek-chat"
-) -> None:
+def _write_registry(tmp_path: Path, filename: str) -> None:
     _write_deployments(
         tmp_path,
         "profiles:\n"
@@ -57,12 +55,61 @@ def test_from_project_env_var_selects_named_file(
     assert registry.resolve("chat-default").model_id == "deepseek-chat"
 
 
+def test_from_project_whitespace_profile_argument_uses_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AI_REGISTRY_PROFILE", raising=False)
+    _write_registry(tmp_path, "registry.yaml")
+    registry = Registry.from_project(tmp_path, profile="   ")
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_from_project_whitespace_env_profile_uses_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AI_REGISTRY_PROFILE", " ")
+    _write_registry(tmp_path, "registry.yaml")
+    registry = Registry.from_project(tmp_path)
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
 def test_from_project_explicit_profile_overrides_env_var(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("AI_REGISTRY_PROFILE", "dev")
     _write_registry(tmp_path, "registry.prod.yaml")
     registry = Registry.from_project(tmp_path, profile="prod")
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+@pytest.mark.parametrize("name", ["registry.prod.yml", "registry.prod.json"])
+def test_from_project_profile_loads_alternate_deployments_file(
+    tmp_path: Path, name: str
+) -> None:
+    document = (
+        "profiles:\n"
+        "  - id: primary\n"
+        "    provider_id: deepseek\n"
+        "    credential: {env: DEEPSEEK_API_KEY}\n"
+        "    enabled_models: [deepseek-chat]\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - profile_id: primary\n"
+        "        model_id: deepseek-chat\n"
+        if name.endswith(".yml")
+        else (
+            '{"profiles": [{"id": "primary", "provider_id": "deepseek", '
+            '"credential": {"env": "DEEPSEEK_API_KEY"}, '
+            '"enabled_models": ["deepseek-chat"]}], '
+            '"aliases": [{"id": "chat-default", "deployments": '
+            '[{"profile_id": "primary", "model_id": "deepseek-chat"}]}]}'
+        )
+    )
+    _write_deployments(tmp_path, document, name=name)
+
+    registry = Registry.from_project(tmp_path, profile="prod")
+
     assert registry.resolve("chat-default").model_id == "deepseek-chat"
 
 

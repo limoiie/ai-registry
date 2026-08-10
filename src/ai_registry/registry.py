@@ -361,7 +361,7 @@ def _resolve_profile(profile: str | None) -> str | None:
         value = profile
     else:
         value = os.environ.get(_PROFILE_ENV)
-    if value is None or value == "":
+    if value is None or value.strip() == "":
         return None
     if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
         raise ConfigurationError(
