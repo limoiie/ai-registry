@@ -110,7 +110,9 @@ def normalize_provider(
     value["settings"] = settings
     if settings.get("sdk_type") == "uniapi":
         value["sdk_type"] = "openai"
-    raw_model_cards = value.get("model_cards") or []
+    raw_model_cards = value.get("model_cards")
+    if raw_model_cards is None:
+        raw_model_cards = []
     if not isinstance(raw_model_cards, list):
         raise ConfigurationError(
             f"Invalid model cards in '{source_name}': expected a list"

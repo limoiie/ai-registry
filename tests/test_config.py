@@ -66,6 +66,35 @@ def test_loads_multiple_provider_files() -> None:
     assert [provider.id for provider in providers] == ["alpha", "beta"]
 
 
+@pytest.mark.parametrize("model_cards", [0, False, ""])
+def test_rejects_falsy_non_list_model_cards(
+    tmp_path: Path, model_cards: object
+) -> None:
+    path = tmp_path / "invalid-model-cards.yaml"
+    path.write_text(
+        f"id: provider\nname: Provider\nmodel_cards: {model_cards!r}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigurationError, match="Invalid model cards.*expected a list"
+    ):
+        load_provider_file(path)
+
+
+@pytest.mark.parametrize("model_cards", [None, []])
+def test_allows_empty_model_cards_values(tmp_path: Path, model_cards: object) -> None:
+    path = tmp_path / "empty-model-cards.yaml"
+    document = "id: provider\nname: Provider\n"
+    if model_cards is None:
+        document += "model_cards: null\n"
+    else:
+        document += "model_cards: []\n"
+    path.write_text(document, encoding="utf-8")
+
+    assert load_provider_file(path).model_cards == []
+
+
 def test_normalizes_profiles_without_resolving_credentials() -> None:
     profiles = load_profile_file(FIXTURES / "profiles.yaml")
 
