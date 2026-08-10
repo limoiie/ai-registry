@@ -143,7 +143,12 @@ class Registry:
         secret_resolver: SecretResolver | None = None,
         router: DeploymentRouter | None = None,
     ) -> Registry:
-        """Build a registry from built-in and project-scoped configuration."""
+        """Build a registry from built-in and project-scoped configuration.
+
+        Discovery starts at ``root`` or the current working directory when
+        omitted, and requires a ``<root>/.ai-registry/deployments.yaml`` file
+        containing profiles and optional aliases.
+        """
         root_path = Path(root) if root is not None else Path.cwd()
         deployments_file = root_path / ".ai-registry" / "deployments.yaml"
         if not deployments_file.is_file():

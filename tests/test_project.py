@@ -37,6 +37,63 @@ def test_from_project_loads_builtin_providers_and_deployments(
     assert resolution.provider.id == "deepseek"
 
 
+def test_from_project_uses_cwd_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_deployments(
+        tmp_path,
+        "profiles:\n"
+        "  - id: deepseek-primary\n"
+        "    provider_id: deepseek\n"
+        "    credential: {env: DEEPSEEK_API_KEY}\n"
+        "    enabled_models: [deepseek-chat]\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - profile_id: deepseek-primary\n"
+        "        model_id: deepseek-chat\n",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test")
+
+    resolution = Registry.from_project().resolve("chat-default")
+
+    assert resolution.model_id == "deepseek-chat"
+    assert resolution.provider.id == "deepseek"
+
+
+def test_from_project_adds_new_project_provider(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "local-vllm.yml").write_text(
+        "id: local-vllm\n"
+        "name: Local vLLM\n"
+        "model_cards:\n"
+        "  - id: qwen:32b\n"
+        "    type: chat\n",
+        encoding="utf-8",
+    )
+    _write_deployments(
+        tmp_path,
+        "profiles:\n"
+        "  - id: vllm-primary\n"
+        "    provider_id: local-vllm\n"
+        "    enabled_models: [qwen:32b]\n"
+        "aliases:\n"
+        "  - id: local-chat\n"
+        "    deployments:\n"
+        "      - profile_id: vllm-primary\n"
+        "        model_id: qwen:32b\n",
+    )
+
+    registry = Registry.from_project(tmp_path)
+
+    resolution = registry.resolve("local-chat")
+    assert resolution.provider.id == "local-vllm"
+    assert resolution.provider.name == "Local vLLM"
+    assert resolution.model_id == "qwen:32b"
+
+
 def test_from_project_missing_deployments_file_is_actionable(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="examples/deployments.example.yaml"):
         Registry.from_project(tmp_path)
