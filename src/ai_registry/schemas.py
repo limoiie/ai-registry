@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from enum import StrEnum
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Self, cast
 
 from pydantic import (
     AliasChoices,
@@ -13,6 +14,7 @@ from pydantic import (
     Field,
     StrictInt,
     StrictStr,
+    ValidationError,
     field_validator,
     model_validator,
 )
@@ -39,15 +41,58 @@ class SafeModel(BaseModel):
     )
     _secret_fields: ClassVar[set[str]] = set()
 
+    def _raw_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """Return the unredacted representation for internal resolution only."""
+        return super().model_dump(**kwargs)
+
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        return cast(
+            dict[str, Any], _redact(self._raw_dump(**kwargs), self._secret_fields)
+        )
+
+    def model_dump_json(self, **kwargs: Any) -> str:
+        value = json.loads(super().model_dump_json(**kwargs))
+        return json.dumps(_redact(value, self._secret_fields), ensure_ascii=False)
+
     def safe_dump(self) -> dict[str, Any]:
-        value = self.model_dump(mode="json", exclude_none=True)
-        return cast(dict[str, Any], _redact(value, self._secret_fields))
+        return self.model_dump(mode="json", exclude_none=True)
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.safe_dump()!r})"
 
     def __str__(self) -> str:
         return repr(self)
+
+    def __init__(self, **data: Any) -> None:
+        try:
+            super().__init__(**data)
+        except ValidationError as error:
+            raise _safe_validation_error(error) from None
+
+    @classmethod
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        extra: Any = None,
+        from_attributes: bool | None = None,
+        context: Any = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> Self:
+        try:
+            return super().model_validate(
+                obj,
+                strict=strict,
+                extra=extra,
+                from_attributes=from_attributes,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
+        except ValidationError as error:
+            raise _safe_validation_error(error) from None
 
 
 def _redact(value: Any, secret_fields: set[str]) -> Any:
@@ -61,6 +106,15 @@ def _redact(value: Any, secret_fields: set[str]) -> Any:
     if isinstance(value, list):
         return [_redact(item, secret_fields) for item in value]
     return value
+
+
+def _safe_validation_error(error: ValidationError) -> ValidationError:
+    details = []
+    for detail in error.errors():
+        safe_detail = dict(detail)
+        safe_detail.pop("input", None)
+        details.append(safe_detail)
+    return ValidationError.from_exception_data(error.title, cast(Any, details))
 
 
 Identifier = StrictStr
@@ -115,14 +169,22 @@ class Provider(SafeModel):
     id: Identifier
     name: str
     description: str | None = None
-    sdk_type: SDKType = Field(
-        default=SDKType.OPENAI,
-        validation_alias=AliasChoices("sdk_type", "settings.sdk_type"),
-    )
+    sdk_type: SDKType = SDKType.OPENAI
     default_base_url: str | None = None
+    settings: dict[str, Any] = Field(default_factory=dict)
     model_cards: list[ModelCard] = Field(default_factory=list)
 
     _validate_id = field_validator("id")(_check_identifier)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_nested_settings(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            settings = data.get("settings")
+            if "sdk_type" not in data and isinstance(settings, dict):
+                data = dict(data)
+                data["sdk_type"] = settings.get("sdk_type", SDKType.OPENAI)
+        return data
 
 
 class CredentialRef(SafeModel):
@@ -199,12 +261,11 @@ class RegistryConfig(SafeModel):
             if len(model_ids) != len(set(model_ids)):
                 raise ConfigurationError("duplicate model id")
 
-        for field_name, values, label in (
-            ("providers", self.providers, "provider"),
-            ("profiles", self.profiles, "profile"),
-            ("aliases", self.aliases, "alias"),
+        for values, label in (
+            (self.providers, "provider"),
+            (self.profiles, "profile"),
+            (self.aliases, "alias"),
         ):
-            del field_name
             ids = [item.id for item in values]
             if len(ids) != len(set(ids)):
                 raise ConfigurationError(f"duplicate {label} id")

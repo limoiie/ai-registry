@@ -39,6 +39,23 @@ def test_provider_and_model_card_have_safe_defaults_and_capabilities() -> None:
     assert provider.model_cards[0].capabilities.vision is True
 
 
+def test_provider_accepts_nested_sdk_type_settings() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "anthropic-provider",
+            "name": "Anthropic",
+            "settings": {
+                "sdk_type": "anthropic",
+                "proxy_url": {"placeholder": "https://example.test"},
+                "show_model_fetcher": True,
+            },
+        }
+    )
+
+    assert provider.sdk_type is SDKType.ANTHROPIC
+    assert provider.settings["show_model_fetcher"] is True
+
+
 def test_identifiers_are_constrained() -> None:
     with pytest.raises(ValidationError):
         Provider(id="bad id", name="Invalid")
@@ -123,10 +140,15 @@ def test_invalid_credential_errors_do_not_expose_supplied_values() -> None:
         CredentialRef(env=env_value, secret_ref=secret_ref_value)
     assert env_value not in str(conflicting_error.value)
     assert secret_ref_value not in str(conflicting_error.value)
+    for error in conflicting_error.value.errors():
+        assert env_value not in repr(error.get("input"))
+        assert secret_ref_value not in repr(error.get("input"))
 
     with pytest.raises(ValidationError) as literal_error:
         CredentialRef(api_key=literal_value)
     assert literal_value not in str(literal_error.value)
+    for error in literal_error.value.errors():
+        assert literal_value not in repr(error.get("input"))
 
     with pytest.raises(ValidationError) as nested_error:
         Profile.model_validate(
@@ -138,6 +160,9 @@ def test_invalid_credential_errors_do_not_expose_supplied_values() -> None:
         )
     assert env_value not in str(nested_error.value)
     assert secret_ref_value not in str(nested_error.value)
+    for error in nested_error.value.errors():
+        assert env_value not in repr(error.get("input"))
+        assert secret_ref_value not in repr(error.get("input"))
 
 
 def test_alias_deployments_and_routing_metadata() -> None:
@@ -170,6 +195,25 @@ def test_aggregate_rejects_duplicate_ids() -> None:
         RegistryConfig(providers=[provider, provider])
 
 
+def test_aggregate_rejects_duplicate_profile_and_alias_ids() -> None:
+    with pytest.raises(ConfigurationError, match="duplicate profile id"):
+        RegistryConfig(
+            profiles=[
+                Profile(id="profile", provider_id="provider"),
+                Profile(id="profile", provider_id="provider"),
+            ]
+        )
+
+    deployment = Deployment(profile_id="profile", model_id="model")
+    with pytest.raises(ConfigurationError, match="duplicate alias id"):
+        RegistryConfig(
+            aliases=[
+                Alias(id="alias", deployments=[deployment]),
+                Alias(id="alias", deployments=[deployment]),
+            ]
+        )
+
+
 def test_aggregate_rejects_duplicate_model_ids_within_provider() -> None:
     provider = Provider(
         id="provider",
@@ -199,8 +243,11 @@ def test_repr_and_safe_serialization_do_not_expose_secret_values() -> None:
     assert secret not in repr(config)
     assert secret not in repr(config.profiles[0])
     assert secret not in str(config)
+    assert secret not in str(config.model_dump())
+    assert secret not in config.model_dump_json()
     assert secret not in str(config.safe_dump())
     assert config.safe_dump()["profiles"][0]["credential"] == {"env": "<redacted>"}
+    assert config._raw_dump()["profiles"][0]["credential"]["env"] == secret
 
 
 def test_errors_have_stable_base_type() -> None:
