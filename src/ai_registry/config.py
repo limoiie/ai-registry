@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from importlib import resources
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -47,6 +48,42 @@ def load_provider_files(sources: list[PathSource]) -> list[Provider]:
             raise ConfigurationError(f"duplicate provider id '{provider.id}'")
         seen.add(provider.id)
     return providers
+
+
+def discover_builtin_providers() -> list[Provider]:
+    base = resources.files("ai_registry") / "data" / "providers"
+    providers = [
+        _provider_from_text(entry.name, entry.read_text(encoding="utf-8"))
+        for entry in base.iterdir()
+        if entry.name.lower().endswith((".yaml", ".yml", ".json"))
+    ]
+    providers.sort(key=lambda provider: provider.id)
+    _ensure_unique_provider_ids(providers)
+    return providers
+
+
+def _provider_from_text(name: str, text: str) -> Provider:
+    suffix = Path(name).suffix.lower()
+    try:
+        value = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
+    except (json.JSONDecodeError, yaml.YAMLError):
+        format_name = "JSON" if suffix == ".json" else "YAML"
+        raise ConfigurationError(
+            f"Unable to parse {format_name} provider '{name}'; "
+            "check syntax and remove malformed values"
+        ) from None
+    if not isinstance(value, dict):
+        raise ConfigurationError(f"Provider '{name}' must contain a top-level mapping")
+    return normalize_provider(value, source_name=name)
+
+
+def _ensure_unique_provider_ids(providers: list[Provider]) -> None:
+    ids = [provider.id for provider in providers]
+    duplicates = sorted(
+        {provider_id for provider_id in ids if ids.count(provider_id) > 1}
+    )
+    if duplicates:
+        raise ConfigurationError(f"duplicate provider id '{duplicates[0]}'")
 
 
 def load_profile_file(source: PathSource) -> list[Profile]:

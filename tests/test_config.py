@@ -4,10 +4,14 @@ from pathlib import Path
 import pytest
 
 from ai_registry.config import (
+    _ensure_unique_provider_ids,
+    _provider_from_text,
+    discover_builtin_providers,
     load_document,
     load_profile_file,
     load_provider_file,
     load_provider_files,
+    normalize_provider,
 )
 from ai_registry.errors import ConfigurationError
 
@@ -26,6 +30,68 @@ def test_builtin_provider_data_is_package_data() -> None:
         "minimax.yml",
         "uniapi-rerankers.yml",
     } <= names
+
+
+def test_discovers_builtin_providers_from_package_data() -> None:
+    providers = discover_builtin_providers()
+
+    assert {provider.id for provider in providers} == {
+        "deepseek",
+        "uniapi",
+        "minimax",
+        "uniapi-rerankers",
+    }
+
+
+def test_discovered_builtin_providers_are_sorted_by_id() -> None:
+    providers = discover_builtin_providers()
+
+    assert [provider.id for provider in providers] == sorted(
+        provider.id for provider in providers
+    )
+
+
+def test_provider_from_text_parses_yaml() -> None:
+    provider = _provider_from_text("custom.yaml", "id: custom\nname: Custom\n")
+
+    assert provider.id == "custom"
+    assert provider.name == "Custom"
+
+
+def test_provider_from_text_parses_json() -> None:
+    provider = _provider_from_text("custom.json", '{"id": "custom", "name": "Custom"}')
+
+    assert provider.id == "custom"
+    assert provider.name == "Custom"
+
+
+@pytest.mark.parametrize(
+    ("name", "text"),
+    [
+        ("broken.yaml", "id: [broken"),
+        ("broken.json", '{"id":'),
+    ],
+)
+def test_provider_from_text_wraps_parse_failures(name: str, text: str) -> None:
+    with pytest.raises(
+        ConfigurationError, match="Unable to parse .* provider 'broken[.a-z]*'"
+    ):
+        _provider_from_text(name, text)
+
+
+def test_provider_from_text_requires_top_level_mapping() -> None:
+    with pytest.raises(ConfigurationError, match="top-level mapping"):
+        _provider_from_text("list.yaml", "- not\n- a\n- mapping\n")
+
+
+def test_ensure_unique_provider_ids_rejects_duplicates() -> None:
+    providers = [
+        normalize_provider({"id": "dup", "name": "First"}),
+        normalize_provider({"id": "dup", "name": "Second"}),
+    ]
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+        _ensure_unique_provider_ids(providers)
 
 
 def test_loads_yaml_and_json_documents() -> None:
