@@ -181,6 +181,11 @@ class RegistryConfig(SafeModel):
 
     @model_validator(mode="after")
     def validate_unique_ids(self) -> RegistryConfig:
+        for provider in self.providers:
+            model_ids = [card.id for card in provider.model_cards]
+            if len(model_ids) != len(set(model_ids)):
+                raise ConfigurationError("duplicate model id")
+
         for field_name, values, label in (
             ("providers", self.providers, "provider"),
             ("profiles", self.profiles, "profile"),

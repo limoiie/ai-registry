@@ -112,6 +112,20 @@ def test_aggregate_rejects_duplicate_ids() -> None:
         RegistryConfig(providers=[provider, provider])
 
 
+def test_aggregate_rejects_duplicate_model_ids_within_provider() -> None:
+    provider = Provider(
+        id="provider",
+        name="Provider",
+        model_cards=[
+            ModelCard(id="chat-model", type=ModelType.CHAT),
+            ModelCard(id="chat-model", type=ModelType.CHAT),
+        ],
+    )
+
+    with pytest.raises(ConfigurationError, match="duplicate model id"):
+        RegistryConfig(providers=[provider])
+
+
 def test_repr_and_safe_serialization_do_not_expose_secret_values() -> None:
     secret = "super-secret-api-key"
     config = RegistryConfig(
