@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from enum import StrEnum
 from typing import Any, ClassVar, Self, cast
+from urllib.parse import parse_qsl, urlsplit
 
 from pydantic import (
     AliasChoices,
@@ -141,6 +143,53 @@ def _check_model_id(value: str) -> str:
     return value
 
 
+_ENDPOINT_SENSITIVE_WORDS = {"authorization", "credential", "password", "secret"}
+_ENDPOINT_TOKEN_QUALIFIERS = {
+    "access",
+    "auth",
+    "authentication",
+    "bearer",
+    "client",
+    "id",
+    "refresh",
+    "session",
+}
+
+
+def _is_sensitive_endpoint_key(key: str) -> bool:
+    words = [word for word in re.split(r"[^A-Za-z0-9]+", key.casefold()) if word]
+    if any(word in _ENDPOINT_SENSITIVE_WORDS for word in words):
+        return True
+    if "apikey" in words or any(
+        left == "api" and right == "key" for left, right in zip(words, words[1:])
+    ):
+        return True
+    return words == ["token"] or (
+        words[-1] == "token" and words[-2] in _ENDPOINT_TOKEN_QUALIFIERS
+    )
+
+
+def _validate_endpoint(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        parsed = urlsplit(value)
+        has_userinfo = parsed.username is not None or parsed.password is not None
+        query = parsed.query
+    except ValueError:
+        has_userinfo = True
+        query = ""
+    if has_userinfo or any(
+        _is_sensitive_endpoint_key(key)
+        for key, _ in parse_qsl(query, keep_blank_values=True)
+    ):
+        raise ValueError(
+            "endpoint contains credential-bearing user info or sensitive query "
+            "parameters; use credential references"
+        )
+    return value
+
+
 class ModelCapabilities(SafeModel):
     tools: bool = False
     structured_output: bool = False
@@ -176,6 +225,7 @@ class Provider(SafeModel):
     model_cards: list[ModelCard] = Field(default_factory=list)
 
     _validate_id = field_validator("id")(_check_identifier)
+    _validate_endpoint = field_validator("default_base_url")(_validate_endpoint)
 
     @model_validator(mode="before")
     @classmethod
@@ -224,6 +274,7 @@ class Profile(SafeModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     _validate_id = field_validator("id", "provider_id")(_check_identifier)
+    _validate_endpoint = field_validator("endpoint")(_validate_endpoint)
 
     @field_validator("enabled_models")
     @classmethod

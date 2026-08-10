@@ -61,6 +61,10 @@ def resolve_credential(
             raise SecretResolutionError("failed to resolve secret reference") from None
         if not isinstance(value, str):
             raise SecretResolutionError("secret resolver returned an invalid value")
+        if value == "":
+            raise SecretResolutionError(
+                "secret resolver returned an empty value; provide a non-empty secret"
+            )
         return value
 
     raise SecretResolutionError("unsupported credential reference")

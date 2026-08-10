@@ -111,6 +111,36 @@ def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> N
     assert profile.credential.env == "AI_API_KEY"
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://user:password@example.test/v1",
+        "https://gateway.example.test/v1?api-key=query-secret",
+        "https://gateway.example.test/v1?access_token=query-secret",
+    ],
+)
+def test_profile_rejects_credential_bearing_endpoints_without_echoing_secrets(
+    endpoint: str,
+) -> None:
+    with pytest.raises(ValidationError) as caught:
+        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+
+    rendered = " ".join(
+        (str(caught.value), repr(caught.value), str(caught.value.errors()))
+    )
+    assert "password" not in rendered
+    assert "query-secret" not in rendered
+
+
+def test_provider_rejects_credential_bearing_default_endpoint() -> None:
+    with pytest.raises(ValidationError, match="credential-bearing"):
+        Provider(
+            id="provider",
+            name="Provider",
+            default_base_url="https://gateway.example.test/v1?token=secret",
+        )
+
+
 def test_secret_ref_credentials_are_supported() -> None:
     credential = CredentialRef(secret_ref="vault://prod/ai/key")
 

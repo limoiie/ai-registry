@@ -193,6 +193,23 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "'model_token_count': 42" in rendered
 
 
+def test_resolution_repr_preserves_valid_custom_endpoint_without_credentials() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        profiles=[
+            profile().model_copy(
+                update={"endpoint": "https://gateway.example.test/v1?api-version=1"}
+            )
+        ],
+    )
+
+    result = registry.resolve("primary/chat")
+
+    assert result.endpoint == "https://gateway.example.test/v1?api-version=1"
+    assert "gateway.example.test" in repr(result)
+    assert "api-version=1" in str(result)
+
+
 def test_alias_wins_over_direct_profile_model_reference() -> None:
     registry = Registry.from_data(
         providers=[provider()],
