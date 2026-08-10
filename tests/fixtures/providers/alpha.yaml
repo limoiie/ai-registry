@@ -1,0 +1,18 @@
+id: alpha
+name: Alpha Provider
+description: A fixture provider.
+url: https://alpha.example.test
+settings:
+  sdk_type: custom
+  proxy_url: https://proxy.example.test
+  show_model_fetcher: true
+model_cards:
+  - id: alpha-chat
+    display_name: Alpha Chat
+    type: chat
+    abilities:
+      reasoning: true
+      function_call: true
+    pricing:
+      input: 1
+    context_window_tokens: 8192

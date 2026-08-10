@@ -1,0 +1,11 @@
+profiles:
+  - id: alpha-main
+    provider_id: alpha
+    api_key_env: ALPHA_API_KEY
+    enabled_models:
+      - alpha-chat
+  - id: beta-main
+    provider_id: beta
+    api_key_env: BETA_API_KEY
+    enabled_models:
+      - beta-embed
