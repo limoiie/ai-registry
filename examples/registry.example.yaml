@@ -1,6 +1,6 @@
 # Project deployments template.
 #
-# Copy this file to .ai-registry/deployments.yaml in your project root and set
+# Copy this file to .ai-registry/registry.yaml in your project root and set
 # the referenced environment variables. The built-in providers (deepseek,
 # uniapi, uniapi-rerankers) ship with the package, so no provider file is
 # needed unless you override or add a provider in .ai-registry/providers/.

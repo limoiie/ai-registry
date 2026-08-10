@@ -7,7 +7,7 @@ from ai_registry.errors import ConfigurationError
 
 
 def _write_deployments(
-    tmp_path: Path, text: str, *, name: str = "deployments.yaml"
+    tmp_path: Path, text: str, *, name: str = "registry.yaml"
 ) -> None:
     deployments_dir = tmp_path / ".ai-registry"
     deployments_dir.mkdir(exist_ok=True)
@@ -97,7 +97,7 @@ def test_from_project_adds_new_project_provider(tmp_path: Path) -> None:
 
 
 def test_from_project_missing_deployments_file_is_actionable(tmp_path: Path) -> None:
-    with pytest.raises(ConfigurationError, match="examples/deployments.example.yaml"):
+    with pytest.raises(ConfigurationError, match="examples/registry.example.yaml"):
         Registry.from_project(tmp_path)
 
 
@@ -194,7 +194,7 @@ def test_from_project_resolves_explicit_profile_model(tmp_path: Path) -> None:
     assert resolution.model_id == "deepseek-reasoner"
 
 
-@pytest.mark.parametrize("name", ["deployments.yml", "deployments.json"])
+@pytest.mark.parametrize("name", ["registry.yml", "registry.json"])
 def test_from_project_loads_alternate_deployments_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
 ) -> None:

@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Ship the built-in provider catalog as package data, add project-scoped discovery (`.ai-registry/`), merge profiles+aliases into one `deployments.yaml`, and expose it through `Registry.from_project`.
+**Goal:** Ship the built-in provider catalog as package data, add project-scoped discovery (`.ai-registry/`), merge profiles+aliases into one `registry.yaml`, and expose it through `Registry.from_project`.
 
-**Architecture:** Move the 4 provider YAMLs into `src/ai_registry/data/providers/` and configure uv package data so they ship in the wheel. Add config-level discovery functions that read built-in providers from `importlib.resources`, project providers from `<root>/.ai-registry/providers/*`, and a single merged file `<root>/.ai-registry/deployments.yaml` containing `profiles` and optional `aliases`. Project providers override built-ins by id. `Registry.from_project` orchestrates discovery and reuses existing validation.
+**Architecture:** Move the 4 provider YAMLs into `src/ai_registry/data/providers/` and configure uv package data so they ship in the wheel. Add config-level discovery functions that read built-in providers from `importlib.resources`, project providers from `<root>/.ai-registry/providers/*`, and a single merged file `<root>/.ai-registry/registry.yaml` containing `profiles` and optional `aliases`. Project providers override built-ins by id. `Registry.from_project` orchestrates discovery and reuses existing validation.
 
 **Tech Stack:** Python 3.11+, uv build backend (`uv_build`), `importlib.resources.files`, PyYAML, Pydantic, pytest, ruff, mypy.
 
@@ -234,7 +234,7 @@ git add src/ai_registry/config.py tests/test_config.py
 git commit -m "feat: discover and merge project providers"
 ```
 
-### Task 4: Load merged deployments.yaml
+### Task 4: Load merged registry.yaml
 
 **Files:**
 - Modify: `src/ai_registry/config.py` (refactor profile/alias parsing)
@@ -245,7 +245,7 @@ git commit -m "feat: discover and merge project providers"
 
 ```python
 def test_loads_merged_deployments_file(tmp_path: Path) -> None:
-    path = tmp_path / "deployments.yaml"
+    path = tmp_path / "registry.yaml"
     path.write_text(
         "profiles:\n"
         "  - id: primary\n"
@@ -276,7 +276,7 @@ def test_loads_merged_deployments_file(tmp_path: Path) -> None:
 def test_deployments_file_requires_profiles_and_optional_aliases(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "deployments.yaml"
+    path = tmp_path / "registry.yaml"
     path.write_text("aliases: []\n", encoding="utf-8")
     with pytest.raises(ConfigurationError, match="profiles"):
         load_deployments_file(path)
@@ -409,7 +409,7 @@ def test_from_project_loads_builtin_providers_and_deployments(
 ) -> None:
     deployments_dir = tmp_path / ".ai-registry"
     deployments_dir.mkdir()
-    (deployments_dir / "deployments.yaml").write_text(
+    (deployments_dir / "registry.yaml").write_text(
         "profiles:\n"
         "  - id: deepseek-primary\n"
         "    provider_id: deepseek\n"
@@ -430,7 +430,7 @@ def test_from_project_loads_builtin_providers_and_deployments(
 
 
 def test_from_project_missing_deployments_file_is_actionable(tmp_path: Path) -> None:
-    with pytest.raises(ConfigurationError, match="deployments.yaml"):
+    with pytest.raises(ConfigurationError, match="registry.yaml"):
         Registry.from_project(tmp_path)
 ```
 
@@ -462,11 +462,11 @@ def from_project(
     router: DeploymentRouter | None = None,
 ) -> Registry:
     root_path = Path(root) if root is not None else Path.cwd()
-    deployments_file = root_path / ".ai-registry" / "deployments.yaml"
+    deployments_file = root_path / ".ai-registry" / "registry.yaml"
     if not deployments_file.is_file():
         raise ConfigurationError(
             f"Missing project deployments file '{deployments_file}'; "
-            "create it from examples/deployments.example.yaml"
+            "create it from examples/registry.example.yaml"
         )
     deployments = load_deployments_file(deployments_file)
     return cls.from_data(
@@ -497,7 +497,7 @@ git commit -m "feat: discover project configuration from_project"
 ### Task 6: Examples, cleanup, and docs
 
 **Files:**
-- Create: `examples/deployments.example.yaml`
+- Create: `examples/registry.example.yaml`
 - Remove: `data/ai/providers/profiles/builtin.yaml`
 - Modify: `tests/test_config.py` (replace builtin profile test with legacy-fields test)
 - Modify: `README.md`, `docs/overview.md`, `docs/getting-started.md`, `docs/configuration.md`, `docs/use-cases.md`, `docs/api-reference.md`
@@ -510,7 +510,7 @@ and `description` (same assertions), and add:
 
 ```python
 def test_example_deployments_file_loads() -> None:
-    example = Path(__file__).parents[1] / "examples" / "deployments.example.yaml"
+    example = Path(__file__).parents[1] / "examples" / "registry.example.yaml"
     deployments = load_deployments_file(example)
     assert deployments.profiles
     assert deployments.aliases
@@ -530,7 +530,7 @@ Expected: FAIL because the example file does not exist.
 
 **Step 3: Create the example and remove the old data tree**
 
-Create `examples/deployments.example.yaml` referencing the built-in providers
+Create `examples/registry.example.yaml` referencing the built-in providers
 (`deepseek`, `uniapi`, `uniapi-rerankers`) with a `profiles` list and `aliases`
 list using the normalized credential form. Remove
 `data/ai/providers/profiles/builtin.yaml` and the now-empty `data/` tree.
@@ -540,11 +540,11 @@ list using the normalized credential form. Remove
 - README: show the `.ai-registry/` layout and a `from_project` quick start;
   keep `from_files` mention.
 - docs/overview.md: document provider scope (built-in + project override) and
-  the `.ai-registry/deployments.yaml` merged file.
+  the `.ai-registry/registry.yaml` merged file.
 - docs/getting-started.md: add a "discover from your project" section using
   `Registry.from_project`.
 - docs/configuration.md: replace the separate profile/alias file sections with
-  the merged `deployments.yaml`; add provider scope/merge rules and the
+  the merged `registry.yaml`; add provider scope/merge rules and the
   directory layout.
 - docs/use-cases.md: add a project-layout use case; keep explicit-path examples
   tagged as `from_files`.

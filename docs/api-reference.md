@@ -96,7 +96,7 @@ Registry.from_project(
 
 Build a registry from built-in providers plus project configuration discovered
 at `root` (or the current working directory when omitted). Loads the merged
-profiles/aliases from `<root>/.ai-registry/deployments.yaml` (required) and
+profiles/aliases from `<root>/.ai-registry/registry.yaml` (required) and
 project providers from `<root>/.ai-registry/providers/` (optional). Project
 providers replace built-ins by `id`; the deployments file may reference any of
 the merged providers. Raises `ConfigurationError` when the deployments file is

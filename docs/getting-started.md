@@ -84,17 +84,17 @@ meant for the adapter boundary and is not invoked until you call it (lazy).
 
 The registry can discover a project's configuration from a `.ai-registry/`
 directory at the project root. Providers are optional there — the built-in
-catalog ships with the package — but `deployments.yaml` is required and holds
+catalog ships with the package — but `registry.yaml` is required and holds
 merged profiles and aliases:
 
 ```text
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # REQUIRED — merged profiles + aliases
 ```
 
-Copy `examples/deployments.example.yaml`, which references the built-in
+Copy `examples/registry.example.yaml`, which references the built-in
 `deepseek`, `uniapi`, and `uniapi-rerankers` providers:
 
 ```yaml

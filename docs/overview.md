@@ -113,13 +113,13 @@ Profiles and aliases are configured in one merged file:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # REQUIRED — merged profiles + aliases
 ```
 
 `Registry.from_project(root)` discovers both scopes and loads
-`.ai-registry/deployments.yaml`, then validates the whole graph with the same
+`.ai-registry/registry.yaml`, then validates the whole graph with the same
 rules as `from_files`/`from_data`. Start from
-`examples/deployments.example.yaml` when creating the file.
+`examples/registry.example.yaml` when creating the file.
 
 ## What it is not
 
@@ -153,7 +153,7 @@ adapters are built on.
 5. **Built-in catalog, project overrides.** The provider catalog ships with
    the package; project providers under `.ai-registry/providers/` replace
    built-ins by id, and profiles and aliases live in one merged
-   `.ai-registry/deployments.yaml`. Legacy catalog and profile formats still
+   `.ai-registry/registry.yaml`. Legacy catalog and profile formats still
    load and normalize without migration.
 
 ## Architecture

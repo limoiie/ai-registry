@@ -103,10 +103,10 @@ Projects keep configuration in a `.ai-registry/` directory at the root:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # REQUIRED — merged profiles + aliases
 ```
 
-Start from `examples/deployments.example.yaml`, which references the built-in
+Start from `examples/registry.example.yaml`, which references the built-in
 providers (`deepseek`, `uniapi`, `uniapi-rerankers`) that ship with the
 package. A project provider with the same `id` replaces the built-in provider
 entirely.

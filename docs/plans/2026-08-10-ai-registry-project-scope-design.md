@@ -14,13 +14,13 @@ aliases are merged into a single project-scope file.
 └── .ai-registry/
     ├── providers/          # OPTIONAL — user-customized providers (project scope)
     │   └── my-vllm.yaml
-    └── deployments.yaml    # REQUIRED — merged profiles + aliases (project scope)
+    └── registry.yaml    # REQUIRED — merged profiles + aliases (project scope)
 ```
 
 Built-in providers ship inside the installed package as package data at
 `ai_registry/data/providers/*.yml`.
 
-## Merged deployments.yaml
+## Merged registry.yaml
 
 ```yaml
 profiles:
@@ -60,14 +60,14 @@ Registry.from_project(
 ```
 
 - `root=None` uses the current working directory.
-- Discovery merges providers, loads `deployments.yaml`, then reuses the
+- Discovery merges providers, loads `registry.yaml`, then reuses the
   existing `from_data` validation and reference checks.
 - `Registry.from_files` and `Registry.from_data` remain unchanged for explicit
   path control.
 
 ## Error handling
 
-- Missing `.ai-registry/deployments.yaml` raises an actionable
+- Missing `.ai-registry/registry.yaml` raises an actionable
   `ConfigurationError` telling the user to create it (e.g. by copying the
   example).
 - Missing `.ai-registry/` or `.ai-registry/providers/` is not an error for
@@ -79,14 +79,14 @@ Registry.from_project(
   uv package data so they ship in the wheel (verified by inspecting the built
   wheel).
 - Remove `data/ai/providers/profiles/builtin.yaml` (profiles are project-only).
-- Convert `builtin.example.yaml` into `examples/deployments.example.yaml`, a
-  documented template users copy to `.ai-registry/deployments.yaml`.
+- Convert `builtin.example.yaml` into `examples/registry.example.yaml`, a
+  documented template users copy to `.ai-registry/registry.yaml`.
 
 ## Tests and docs
 
 - New tests: built-in-only discovery, project override by id, adding a new
   provider, merged deployments load, missing-file error, example template
-  loads, legacy profile fields inside `deployments.yaml`.
+  loads, legacy profile fields inside `registry.yaml`.
 - Update `README.md`, `docs/overview.md`, `docs/getting-started.md`,
   `docs/configuration.md`, `docs/use-cases.md`, and `docs/api-reference.md` for
   the new layout and `from_project`.
