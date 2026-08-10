@@ -31,6 +31,15 @@ def test_missing_environment_variable_raises_safe_error() -> None:
     assert isinstance(error.value, RegistryError)
 
 
+def test_empty_environment_variable_raises_safe_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AI_REGISTRY_EMPTY_KEY", "")
+
+    with pytest.raises(SecretResolutionError, match="is empty"):
+        EnvironmentSecretResolver().resolve("AI_REGISTRY_EMPTY_KEY")
+
+
 def test_dispatch_resolves_environment_credential(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

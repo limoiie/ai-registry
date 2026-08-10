@@ -59,11 +59,18 @@ class DeploymentRouter:
         self.health_store = health_store or DeploymentHealthStore()
         self._random_source = random_source
 
-    def select(self, alias: Alias) -> SelectedDeployment:
+    def select(
+        self,
+        alias: Alias,
+        *,
+        eligible: Callable[[Deployment], bool] | None = None,
+    ) -> SelectedDeployment:
+        eligibility = eligible or (lambda deployment: True)
         available = [
             (candidate_index, deployment)
             for candidate_index, deployment in enumerate(alias.deployments)
             if deployment.routing.enabled
+            and eligibility(deployment)
             and self.health_store.is_healthy(alias.id, candidate_index)
         ]
         if not available:

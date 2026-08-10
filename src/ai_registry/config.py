@@ -109,6 +109,8 @@ def normalize_provider(
             settings[key] = value[key]
             value.pop(key)
     value["settings"] = settings
+    if value.get("sdk_type") == "uniapi":
+        value["sdk_type"] = "openai"
     if settings.get("sdk_type") == "uniapi":
         value["sdk_type"] = "openai"
     raw_model_cards = value.get("model_cards")

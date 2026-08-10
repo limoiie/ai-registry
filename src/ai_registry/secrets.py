@@ -31,6 +31,10 @@ class EnvironmentSecretResolver:
             raise SecretResolutionError(
                 f"environment variable {reference!r} is not set"
             )
+        if value == "":
+            raise SecretResolutionError(
+                f"environment variable {reference!r} is empty; set a non-empty value"
+            )
         return value
 
 

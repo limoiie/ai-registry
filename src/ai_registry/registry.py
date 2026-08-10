@@ -16,6 +16,7 @@ from ai_registry.config import (
     load_provider_files,
 )
 from ai_registry.errors import ConfigurationError, RegistryError
+from ai_registry.routing import DeploymentRouter
 from ai_registry.schemas import (
     Alias,
     Deployment,
@@ -53,13 +54,30 @@ class Resolution:
             return None
         return resolve_credential(self.profile.credential, self._secret_resolver)
 
+    def __repr__(self) -> str:
+        return (
+            "Resolution("
+            f"provider_id={self.provider.id!r}, model_id={self.model.id!r}, "
+            f"profile_id={self.profile.id!r}, deployment_id={self.deployment_id!r}, "
+            f"endpoint={self.endpoint!r}, "
+            f"endpoint_metadata={_redact_metadata(self.endpoint_metadata)!r})"
+        )
+
+    __str__ = __repr__
+
 
 class Registry:
     """Immutable configuration index for aliases and explicit deployments."""
 
-    def __init__(self, config: RegistryConfig, secret_resolver: SecretResolver | None):
+    def __init__(
+        self,
+        config: RegistryConfig,
+        secret_resolver: SecretResolver | None,
+        router: DeploymentRouter | None = None,
+    ):
         self._config = config.model_copy(deep=True)
         self._secret_resolver = secret_resolver
+        self._router = router or DeploymentRouter()
         self._providers = {provider.id: provider for provider in self._config.providers}
         self._profiles = {profile.id: profile for profile in self._config.profiles}
         self._aliases = {alias.id: alias for alias in self._config.aliases}
@@ -73,6 +91,7 @@ class Registry:
         profiles: Sequence[Profile | Mapping[str, Any]],
         aliases: Sequence[Alias | Mapping[str, Any]] = (),
         secret_resolver: SecretResolver | None = None,
+        router: DeploymentRouter | None = None,
     ) -> Registry:
         """Build a registry from normalized objects or schema-compatible mappings."""
         config = RegistryConfig(
@@ -80,7 +99,7 @@ class Registry:
             profiles=_models(Profile, profiles, "profile"),
             aliases=_models(Alias, aliases, "alias"),
         )
-        return cls(config, secret_resolver)
+        return cls(config, secret_resolver, router)
 
     @classmethod
     def from_files(
@@ -90,6 +109,7 @@ class Registry:
         alias_files: Sequence[PathSource] = (),
         *,
         secret_resolver: SecretResolver | None = None,
+        router: DeploymentRouter | None = None,
     ) -> Registry:
         """Load provider, profile, and optional alias documents without secrets."""
         aliases: list[dict[str, Any]] = []
@@ -115,14 +135,20 @@ class Registry:
             profiles=_load_profiles(profile_files),
             aliases=aliases,
             secret_resolver=secret_resolver,
+            router=router,
         )
 
     def resolve(self, reference: str) -> Resolution:
         """Resolve an alias first, then an explicit ``profile-id/model-id``."""
         alias = self._aliases.get(reference)
         if alias is not None:
-            deployment = alias.deployments[0]
-            return self._resolution(deployment, alias.id)
+            selected = self._router.select(
+                alias,
+                eligible=lambda deployment: (
+                    self._profiles[deployment.profile_id].enabled
+                ),
+            )
+            return self._resolution(selected.deployment, selected.deployment_id)
 
         if "/" not in reference:
             raise RegistryError(
@@ -133,6 +159,10 @@ class Registry:
         if profile is None:
             raise RegistryError(
                 "unknown profile; configure the profile or use an alias"
+            )
+        if not profile.enabled:
+            raise RegistryError(
+                f"profile '{profile.id}' is disabled; enable it or use an alias"
             )
         self._validate_model_enabled(profile, model_id, include_model=False)
         return self._resolution(
@@ -210,6 +240,33 @@ class Registry:
 
 def _find_model(provider: Provider, model_id: str) -> ModelCard | None:
     return next((card for card in provider.model_cards if card.id == model_id), None)
+
+
+_SENSITIVE_METADATA_KEYS = {
+    "api_key",
+    "apikey",
+    "authorization",
+    "credential",
+    "password",
+    "secret",
+    "token",
+}
+
+
+def _redact_metadata(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {
+            key: "<redacted>"
+            if isinstance(key, str)
+            and any(part in key.lower() for part in _SENSITIVE_METADATA_KEYS)
+            else _redact_metadata(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_metadata(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_metadata(item) for item in value)
+    return value
 
 
 def _models(model_type: Any, values: Iterable[Any], label: str) -> list[Any]:

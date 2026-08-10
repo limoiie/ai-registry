@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from ai_registry import Registry
 from ai_registry.errors import ConfigurationError, RegistryError
+from ai_registry.routing import DeploymentHealthStore, DeploymentRouter
 from ai_registry.schemas import (
     Alias,
     CredentialRef,
@@ -13,6 +15,7 @@ from ai_registry.schemas import (
     Profile,
     Provider,
 )
+from ai_registry.secrets import SecretResolver
 
 
 def provider() -> Provider:
@@ -58,6 +61,32 @@ def test_constructs_from_normalized_data_and_resolves_alias() -> None:
     assert result.deployment_id == "fast"
     assert result.endpoint == "https://profile.example.test"
     assert result.endpoint_metadata == {"region": "us"}
+
+
+def test_alias_resolution_uses_injected_router_and_health_recovery() -> None:
+    alias = Alias(
+        id="fast",
+        deployments=[
+            Deployment(profile_id="primary", model_id="chat"),
+            Deployment(profile_id="backup", model_id="other"),
+        ],
+    )
+    health = DeploymentHealthStore()
+    router = DeploymentRouter(health, random_source=lambda: 0.0)
+    registry = Registry.from_data(
+        providers=[provider()],
+        profiles=[
+            profile(),
+            Profile(id="backup", provider_id="openai", enabled_models=["other"]),
+        ],
+        aliases=[alias],
+        router=router,
+    )
+
+    health.mark_failure("fast", 0)
+    assert registry.resolve("fast").profile_id == "backup"
+    health.mark_success("fast", 0)
+    assert registry.resolve("fast").profile_id == "primary"
 
 
 def test_registry_isolated_from_mutations_to_input_configuration() -> None:
@@ -114,6 +143,33 @@ def test_resolution_isolated_from_nested_result_mutations() -> None:
     assert fresh.endpoint == "https://profile.example.test"
 
 
+def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        profiles=[
+            profile().model_copy(
+                update={
+                    "metadata": {
+                        "region": "us",
+                        "api_key": "secret-key",
+                        "nested": {"token": "secret-token", "safe": "value"},
+                    }
+                }
+            )
+        ],
+        secret_resolver=cast(SecretResolver, object()),
+    )
+
+    result = registry.resolve("primary/chat")
+    rendered = f"{result!r} {result!s}"
+
+    assert "secret-key" not in rendered
+    assert "secret-token" not in rendered
+    assert "_secret_resolver" not in rendered
+    assert "'api_key': '<redacted>'" in rendered
+    assert "'token': '<redacted>'" in rendered
+
+
 def test_alias_wins_over_direct_profile_model_reference() -> None:
     registry = Registry.from_data(
         providers=[provider()],
@@ -133,6 +189,37 @@ def test_alias_wins_over_direct_profile_model_reference() -> None:
     )
 
     assert registry.resolve("primary").model.id == "other"
+
+
+def test_disabled_profile_is_not_resolvable_directly() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        profiles=[profile().model_copy(update={"enabled": False})],
+    )
+
+    with pytest.raises(RegistryError, match="profile 'primary' is disabled"):
+        registry.resolve("primary/chat")
+
+
+def test_disabled_alias_candidates_are_excluded_from_routing() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        profiles=[
+            profile().model_copy(update={"enabled": False}),
+            Profile(id="backup", provider_id="openai", enabled_models=["other"]),
+        ],
+        aliases=[
+            Alias(
+                id="fast",
+                deployments=[
+                    Deployment(profile_id="primary", model_id="chat"),
+                    Deployment(profile_id="backup", model_id="other"),
+                ],
+            )
+        ],
+    )
+
+    assert registry.resolve("fast").profile_id == "backup"
 
 
 @pytest.mark.parametrize(

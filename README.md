@@ -28,11 +28,12 @@ model cards and SDK-neutral settings; profiles select enabled models and hold
 only credential references. Credentials can refer to an environment variable
 with `api_key_env` in the current catalog format or the normalized
 `credential: {env: NAME}` form. Values are resolved only when an adapter asks
-for them.
+for them; missing or empty environment variables raise a safe configuration
+error rather than producing an empty credential.
 
 `load_provider_file`, `load_profile_file`, and `Registry.from_files` load the
 current provider and profile files under `data/ai/providers/`, including legacy
-fields such as `settings.sdk_type`, `abilities`, `max_dimension`, and
+fields such as top-level or nested `sdk_type: uniapi`, `abilities`, `max_dimension`, and
 `api_key_env`. New configuration should prefer the normalized shape.
 
 Aliases resolve to deployments such as `chat-default`; callers may also use a

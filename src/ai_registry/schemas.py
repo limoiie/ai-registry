@@ -182,9 +182,14 @@ class Provider(SafeModel):
     def normalize_nested_settings(cls, data: Any) -> Any:
         if isinstance(data, dict):
             settings = data.get("settings")
-            if "sdk_type" not in data and isinstance(settings, dict):
+            if data.get("sdk_type") == "uniapi":
+                data = dict(data)
+                data["sdk_type"] = SDKType.OPENAI
+            elif "sdk_type" not in data and isinstance(settings, dict):
                 data = dict(data)
                 data["sdk_type"] = settings.get("sdk_type", SDKType.OPENAI)
+                if data["sdk_type"] == "uniapi":
+                    data["sdk_type"] = SDKType.OPENAI
         return data
 
 
