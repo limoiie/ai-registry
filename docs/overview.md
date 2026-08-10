@@ -95,6 +95,32 @@ registry.resolve("sol")  # alias-first
 registry.resolve("uniapi-primary/deepseek-v4-flash")  # explicit fallback
 ```
 
+## Provider scope and project layout
+
+Providers come from two scopes, merged by provider `id`:
+
+- **Built-in** — the catalog shipped with the package at
+  `ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
+  `uniapi-rerankers`). It is available in every project with no configuration.
+- **Project** — optional files under `<project-root>/.ai-registry/providers/`
+  (`.yaml`, `.yml`, or `.json`). A project provider with the same `id`
+  replaces the built-in provider **entirely**; unique ids add to the catalog.
+  There is no field-level merge.
+
+Profiles and aliases are configured in one merged file:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── providers/          # OPTIONAL — override or add providers
+    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+```
+
+`Registry.from_project(root)` discovers both scopes and loads
+`.ai-registry/deployments.yaml`, then validates the whole graph with the same
+rules as `from_files`/`from_data`. Start from
+`examples/deployments.example.yaml` when creating the file.
+
 ## What it is not
 
 `ai-registry` deliberately does not replace the frameworks:
@@ -124,8 +150,11 @@ adapters are built on.
    and serialized configuration.
 4. **Static config stays immutable.** Health state and runtime selection live
    in separate stores so routing never mutates your configuration.
-5. **Compatibility-first loading.** The existing `data/ai/providers/*.yml`
-   catalog and profile formats load and normalize without migration.
+5. **Built-in catalog, project overrides.** The provider catalog ships with
+   the package; project providers under `.ai-registry/providers/` replace
+   built-ins by id, and profiles and aliases live in one merged
+   `.ai-registry/deployments.yaml`. Legacy catalog and profile formats still
+   load and normalize without migration.
 
 ## Architecture
 

@@ -200,6 +200,7 @@ profiles:
 ```
 
 ```python
+# from_files — explicit paths, when you want full control of the files
 from ai_registry import Registry
 from ai_registry.secrets import SecretResolver
 
@@ -288,3 +289,45 @@ Adapters receive the selected deployment and call
 `resolution.resolve_credential()` at client construction time. Optional
 dependency errors should point at the relevant extra, e.g.
 `pip install ai-registry[pydantic-ai]`.
+
+## 13. Project-scoped configuration (`from_project`)
+
+Keep configuration in a `.ai-registry/` directory and let the registry
+discover it. The built-in provider catalog ships with the package, so a fresh
+project only needs a merged deployments file:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── providers/          # OPTIONAL — override or add providers
+    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+```
+
+```yaml
+# .ai-registry/deployments.yaml
+profiles:
+  - id: uniapi-primary
+    provider_id: uniapi
+    credential: {env: UNIAPI_PRIMARY_KEY}
+    enabled_models: [deepseek-v4-flash, bge-large-zh:latest]
+
+aliases:
+  - id: sol
+    deployments:
+      - profile_id: uniapi-primary
+        model_id: deepseek-v4-flash
+```
+
+```python
+from ai_registry import Registry
+
+registry = Registry.from_project()  # discovers ./.ai-registry/
+
+resolution = registry.resolve("sol")
+```
+
+Override a built-in provider by dropping a file with the same `id` under
+`.ai-registry/providers/`; the override replaces the provider entirely, so
+omitted fields fall back to schema defaults. Start from
+`examples/deployments.example.yaml`, and use `Registry.from_files` (use case 8)
+when you need explicit path control instead.
