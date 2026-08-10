@@ -11,6 +11,7 @@ from ai_registry.config import (
 from ai_registry.errors import ConfigurationError
 
 FIXTURES = Path(__file__).parent / "fixtures"
+DATA = Path(__file__).parents[1] / "data" / "ai" / "providers"
 
 
 def test_loads_yaml_and_json_documents() -> None:
@@ -76,4 +77,50 @@ def test_duplicate_model_ids_are_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ConfigurationError, match="duplicate model id 'same'.*provider"):
+        load_provider_file(path)
+
+
+def test_loads_actual_catalog_legacy_model_fields() -> None:
+    uniapi = load_provider_file(DATA / "uniapi.yml")
+    minimax = load_provider_file(DATA / "minimax.yml")
+
+    embedding = next(
+        card for card in uniapi.model_cards if card.id == "bge-large-zh:latest"
+    )
+    unknown_context = next(
+        card for card in uniapi.model_cards if card.id == "qwen2.5-vl:72b"
+    )
+    deprecated = next(
+        card for card in minimax.model_cards if card.id == "MiniMax-M2-Stable"
+    )
+
+    assert embedding.embedding_dimension == 1024
+    assert embedding.metadata["max_dimension"] == 1024
+    assert unknown_context.context_window_tokens is None
+    assert unknown_context.metadata["context_window_tokens"] == 0
+    assert deprecated.metadata["deprecated"] is True
+    assert deprecated.metadata["settings"] == {"search_impl": "params"}
+
+
+def test_loads_actual_builtin_profiles_and_preserves_legacy_metadata() -> None:
+    profiles = load_profile_file(DATA / "profiles" / "builtin.yaml")
+
+    assert profiles[0].metadata == {
+        "remark": "builtin-deepseek",
+        "description": "Built-in DeepSeek profile",
+    }
+    assert profiles[0].credential is not None
+    assert profiles[0].credential.env == "DEEPSEEK_API_KEY"
+
+
+def test_non_mapping_model_card_has_safe_actionable_error(tmp_path: Path) -> None:
+    path = tmp_path / "bad-card.yaml"
+    path.write_text(
+        "id: provider\nname: Provider\nmodel_cards:\n  - bad\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigurationError, match="Invalid model card.*index 0.*mapping"
+    ):
         load_provider_file(path)

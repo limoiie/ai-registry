@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -64,6 +65,11 @@ def load_profile_file(source: PathSource) -> list[Profile]:
             )
         normalized = dict(value)
         api_key_env = normalized.pop("api_key_env", None)
+        metadata = dict(normalized.pop("metadata", {}) or {})
+        for key in ("remark", "description"):
+            if key in normalized:
+                metadata[key] = normalized.pop(key)
+        normalized["metadata"] = metadata
         if api_key_env is not None:
             normalized["credential"] = {"env": api_key_env}
         try:
@@ -86,8 +92,18 @@ def normalize_provider(
             settings[key] = value[key]
             value.pop(key)
     value["settings"] = settings
+    raw_model_cards = value.get("model_cards") or []
+    if not isinstance(raw_model_cards, list):
+        raise ConfigurationError(
+            f"Invalid model cards in '{source_name}': expected a list"
+        )
     model_cards = []
-    for card in value.get("model_cards") or []:
+    for index, card in enumerate(raw_model_cards):
+        if not isinstance(card, Mapping):
+            raise ConfigurationError(
+                f"Invalid model card in '{source_name}' at index {index}: "
+                "expected a mapping"
+            )
         card_value = dict(card)
         abilities = dict(card_value.get("abilities") or {})
         known_capabilities = {
@@ -98,9 +114,16 @@ def normalize_provider(
         if known_capabilities:
             card_value["capabilities"] = known_capabilities
         metadata = dict(card_value.pop("metadata", {}) or {})
-        for key in ("abilities", "pricing"):
+        for key in ("abilities", "pricing", "deprecated", "settings"):
             if key in card_value:
                 metadata[key] = card_value.pop(key)
+        if "max_dimension" in card_value:
+            max_dimension = card_value.pop("max_dimension")
+            card_value.setdefault("embedding_dimension", max_dimension)
+            metadata["max_dimension"] = max_dimension
+        if card_value.get("context_window_tokens") == 0:
+            metadata["context_window_tokens"] = card_value["context_window_tokens"]
+            card_value["context_window_tokens"] = None
         card_value["metadata"] = metadata
         model_cards.append(card_value)
     value["model_cards"] = model_cards

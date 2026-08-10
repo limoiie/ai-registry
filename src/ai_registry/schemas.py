@@ -216,6 +216,7 @@ class Profile(SafeModel):
     enabled_models: list[Identifier] = Field(default_factory=list)
     enabled: bool = True
     timeout_seconds: float | None = Field(default=None, gt=0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     _validate_id = field_validator("id", "provider_id")(_check_identifier)
 
