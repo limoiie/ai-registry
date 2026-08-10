@@ -55,9 +55,9 @@ registry = Registry.from_files(
 
 resolution = registry.resolve("sol")
 
-resolution.profile_id        # -> "uniapi-primary"
-resolution.model_id          # -> "deepseek-v4-flash"
-resolution.endpoint          # -> "https://uni-api.cstcloud.cn/v1"
+resolution.profile_id  # -> "uniapi-primary"
+resolution.model_id  # -> "deepseek-v4-flash"
+resolution.endpoint  # -> "https://uni-api.cstcloud.cn/v1"
 resolution.resolve_credential()  # -> resolves the key lazily
 ```
 
@@ -91,7 +91,7 @@ without any application code changes.
 For example:
 
 ```python
-registry.resolve("sol")                       # alias-first
+registry.resolve("sol")  # alias-first
 registry.resolve("uniapi-primary/deepseek-v4-flash")  # explicit fallback
 ```
 

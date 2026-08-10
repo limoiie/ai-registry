@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -19,17 +21,24 @@ PathSource = str | Path | TextIO
 def load_document(source: PathSource) -> dict[str, Any]:
     """Load one YAML or JSON mapping without resolving any secrets."""
     source_name, text, suffix = _read_source(source)
+    return _parse_document_text(text, suffix, source_name, kind="configuration")
+
+
+def _parse_document_text(
+    text: str, suffix: str, source_name: str, *, kind: str
+) -> dict[str, Any]:
+    """Parse one YAML or JSON mapping, wrapping failures in ConfigurationError."""
     try:
         value = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
     except (json.JSONDecodeError, yaml.YAMLError):
         format_name = "JSON" if suffix == ".json" else "YAML"
         raise ConfigurationError(
-            f"Unable to parse {format_name} configuration '{source_name}'; "
+            f"Unable to parse {format_name} {kind} '{source_name}'; "
             f"check {format_name} syntax and remove malformed values"
         ) from None
     if not isinstance(value, dict):
         raise ConfigurationError(
-            f"Configuration '{source_name}' must contain a top-level mapping"
+            f"{kind.capitalize()} '{source_name}' must contain a top-level mapping"
         )
     return value
 
@@ -41,17 +50,75 @@ def load_provider_file(source: PathSource) -> Provider:
 
 def load_provider_files(sources: list[PathSource]) -> list[Provider]:
     providers = [load_provider_file(source) for source in sources]
+    _ensure_unique_provider_ids(providers)
+    return providers
+
+
+def discover_builtin_providers() -> list[Provider]:
+    """Discover and parse the built-in providers shipped as package data."""
+    base = resources.files("ai_registry") / "data" / "providers"
+    try:
+        entries = list(base.iterdir())
+    except FileNotFoundError as error:
+        raise ConfigurationError(
+            f"Unable to read built-in provider data '{base}': {error}"
+        ) from None
+    providers = [
+        _provider_from_text(entry.name, entry.read_text(encoding="utf-8"))
+        for entry in entries
+        if entry.is_file() and entry.name.lower().endswith((".yaml", ".yml", ".json"))
+    ]
+    providers.sort(key=lambda provider: provider.id)
+    _ensure_unique_provider_ids(providers)
+    return providers
+
+
+def _provider_from_text(name: str, text: str) -> Provider:
+    suffix = Path(name).suffix.lower()
+    document = _parse_document_text(text, suffix, name, kind="provider")
+    return normalize_provider(document, source_name=name)
+
+
+def _ensure_unique_provider_ids(providers: list[Provider]) -> None:
     seen: set[str] = set()
     for provider in providers:
         if provider.id in seen:
             raise ConfigurationError(f"duplicate provider id '{provider.id}'")
         seen.add(provider.id)
+
+
+def discover_project_providers(root: str | Path) -> list[Provider]:
+    """Discover and parse project providers under <root>/.ai-registry/providers."""
+    providers_dir = Path(root) / ".ai-registry" / "providers"
+    if not providers_dir.is_dir():
+        return []
+    providers = [
+        load_provider_file(entry)
+        for entry in sorted(providers_dir.iterdir())
+        if entry.is_file() and entry.suffix.lower() in {".yaml", ".yml", ".json"}
+    ]
+    _ensure_unique_provider_ids(providers)
     return providers
+
+
+def merge_providers(
+    builtin: Sequence[Provider], project: Sequence[Provider]
+) -> list[Provider]:
+    """Merge project providers over built-ins, keyed by provider id."""
+    project_providers = list(project)
+    _ensure_unique_provider_ids(project_providers)
+    merged = {provider.id: provider for provider in builtin}
+    for provider in project_providers:
+        merged[provider.id] = provider
+    return list(merged.values())
 
 
 def load_profile_file(source: PathSource) -> list[Profile]:
     source_name, _, _ = _source_details(source)
-    document = load_document(source)
+    return _parse_profiles(load_document(source), source_name)
+
+
+def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profile]:
     values = document.get("profiles")
     if not isinstance(values, list):
         raise ConfigurationError(
@@ -92,6 +159,52 @@ def load_profile_file(source: PathSource) -> list[Profile]:
                 f"Invalid profile in '{source_name}' at index {index}: {error}"
             ) from None
     return profiles
+
+
+def load_alias_file(source: PathSource) -> list[dict[str, Any]]:
+    source_name, _, _ = _source_details(source)
+    document = load_document(source)
+    return _parse_aliases(document, source_name, required=True)
+
+
+def _parse_aliases(
+    document: Mapping[str, Any], source_name: str, *, required: bool
+) -> list[dict[str, Any]]:
+    if "aliases" not in document:
+        if required:
+            raise ConfigurationError(
+                f"Alias configuration '{source_name}' must contain a 'aliases' list"
+            )
+        return []
+    values = document["aliases"]
+    if not isinstance(values, list):
+        raise ConfigurationError(
+            f"Alias configuration '{source_name}' must contain a 'aliases' list"
+        )
+    aliases: list[dict[str, Any]] = []
+    for index, value in enumerate(values):
+        if not isinstance(value, dict):
+            raise ConfigurationError(
+                f"Alias configuration '{source_name}' has an invalid alias "
+                f"at index {index}"
+            )
+        aliases.append(dict(value))
+    return aliases
+
+
+@dataclass(frozen=True)
+class Deployments:
+    profiles: list[Profile]
+    aliases: list[dict[str, Any]]
+
+
+def load_deployments_file(source: PathSource) -> Deployments:
+    source_name, _, _ = _source_details(source)
+    document = load_document(source)
+    return Deployments(
+        profiles=_parse_profiles(document, source_name),
+        aliases=_parse_aliases(document, source_name, required=False),
+    )
 
 
 def normalize_provider(

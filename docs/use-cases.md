@@ -107,7 +107,7 @@ registry = Registry.from_data(
 # Application adapter reports a failure for candidate 0
 health.mark_failure("chat-default", 0)
 
-resolution = registry.resolve("chat-default")   # fails over to backup
+resolution = registry.resolve("chat-default")  # fails over to backup
 
 # After the deployment recovers, restore it
 health.mark_success("chat-default", 0)
@@ -178,8 +178,8 @@ profiles:
 
 ```python
 resolution = registry.resolve("gateway")
-resolution.endpoint                 # "https://gateway.example/v1"
-resolution.endpoint_metadata        # {"provider_name": ..., "supports_json_mode": ...}
+resolution.endpoint  # "https://gateway.example/v1"
+resolution.endpoint_metadata  # {"provider_name": ..., "supports_json_mode": ...}
 ```
 
 Provider `default_base_url` supplies the endpoint when a profile does not set
@@ -260,11 +260,11 @@ registry = Registry.from_data(
 `Resolution` gives adapters everything they need and nothing more:
 
 ```python
-resolution.provider.id          # provider family
-resolution.model.id             # canonical model ID for requests/logging
-resolution.profile.id           # which profile/key was used
-resolution.endpoint             # base URL
-resolution.endpoint_metadata    # adapter-specific settings
+resolution.provider.id  # provider family
+resolution.model.id  # canonical model ID for requests/logging
+resolution.profile.id  # which profile/key was used
+resolution.endpoint  # base URL
+resolution.endpoint_metadata  # adapter-specific settings
 ```
 
 `str(resolution)` / `repr(resolution)` are redacted, so they are safe to log.
@@ -277,10 +277,10 @@ and builds a framework-native object from the `Resolution`:
 ```python
 # Conceptual — adapters are not yet shipped.
 resolution = registry.resolve("sol")
-client = openai_adapter.build_client(resolution)      # AsyncOpenAI / OpenAI
-model = pydantic_ai_adapter.chat_model(resolution)     # PydanticAIModel
-chat = langchain_adapter.chat_model(resolution)        # BaseChatModel
-llm = llama_index_adapter.llm(resolution)              # LLM
+client = openai_adapter.build_client(resolution)  # AsyncOpenAI / OpenAI
+model = pydantic_ai_adapter.chat_model(resolution)  # PydanticAIModel
+chat = langchain_adapter.chat_model(resolution)  # BaseChatModel
+llm = llama_index_adapter.llm(resolution)  # LLM
 embedding = llama_index_adapter.embedding(resolution)  # Embedding
 ```
 

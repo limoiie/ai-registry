@@ -149,6 +149,7 @@ class ModelType(StrEnum):
     EMBEDDING = "embedding"
     RERANKING = "reranking"
 
+
 class SDKType(StrEnum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"

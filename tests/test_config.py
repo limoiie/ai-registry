@@ -4,15 +4,204 @@ from pathlib import Path
 import pytest
 
 from ai_registry.config import (
+    _ensure_unique_provider_ids,
+    _provider_from_text,
+    discover_builtin_providers,
+    discover_project_providers,
+    load_alias_file,
+    load_deployments_file,
     load_document,
     load_profile_file,
     load_provider_file,
     load_provider_files,
+    merge_providers,
+    normalize_provider,
 )
 from ai_registry.errors import ConfigurationError
 
 FIXTURES = Path(__file__).parent / "fixtures"
-DATA = Path(__file__).parents[1] / "data" / "ai" / "providers"
+DATA = Path(__file__).parents[1] / "src" / "ai_registry" / "data" / "providers"
+
+
+def test_builtin_provider_data_is_package_data() -> None:
+    from importlib import resources
+
+    base = resources.files("ai_registry") / "data" / "providers"
+    names = {entry.name for entry in base.iterdir()}
+    assert {
+        "deepseek.yml",
+        "uniapi.yml",
+        "minimax.yml",
+        "uniapi-rerankers.yml",
+    } <= names
+
+
+def test_discovers_builtin_providers_from_package_data() -> None:
+    providers = discover_builtin_providers()
+
+    assert {provider.id for provider in providers} == {
+        "deepseek",
+        "uniapi",
+        "minimax",
+        "uniapi-rerankers",
+    }
+
+
+def test_discovered_builtin_providers_are_sorted_by_id() -> None:
+    providers = discover_builtin_providers()
+
+    assert [provider.id for provider in providers] == sorted(
+        provider.id for provider in providers
+    )
+
+
+def test_discover_builtin_providers_missing_data_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "importlib.resources.files", lambda _package: tmp_path / "missing"
+    )
+
+    with pytest.raises(ConfigurationError, match="built-in provider data"):
+        discover_builtin_providers()
+
+
+def test_provider_from_text_parses_yaml() -> None:
+    provider = _provider_from_text("custom.yaml", "id: custom\nname: Custom\n")
+
+    assert provider.id == "custom"
+    assert provider.name == "Custom"
+
+
+def test_provider_from_text_parses_json() -> None:
+    provider = _provider_from_text("custom.json", '{"id": "custom", "name": "Custom"}')
+
+    assert provider.id == "custom"
+    assert provider.name == "Custom"
+
+
+@pytest.mark.parametrize(
+    ("name", "text"),
+    [
+        ("broken.yaml", "id: [broken"),
+        ("broken.json", '{"id":'),
+    ],
+)
+def test_provider_from_text_wraps_parse_failures(name: str, text: str) -> None:
+    with pytest.raises(
+        ConfigurationError, match=f"Unable to parse (?:JSON|YAML) provider '{name}'"
+    ):
+        _provider_from_text(name, text)
+
+
+def test_provider_from_text_requires_top_level_mapping() -> None:
+    with pytest.raises(ConfigurationError, match="top-level mapping"):
+        _provider_from_text("list.yaml", "- not\n- a\n- mapping\n")
+
+
+def test_discovers_project_providers_when_directory_missing(
+    tmp_path: Path,
+) -> None:
+    assert discover_project_providers(tmp_path) == []
+
+
+def test_project_provider_overrides_builtin_by_id(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "uniapi.yml").write_text(
+        "id: uniapi\nname: My Uni API\nmodel_cards:\n  - id: custom\n    type: chat\n",
+        encoding="utf-8",
+    )
+
+    merged = merge_providers(
+        discover_builtin_providers(), discover_project_providers(tmp_path)
+    )
+
+    uniapi = next(provider for provider in merged if provider.id == "uniapi")
+    assert uniapi.name == "My Uni API"
+    assert [card.id for card in uniapi.model_cards] == ["custom"]
+    assert len({provider.id for provider in merged}) == len(merged)
+
+
+def test_project_provider_adds_unique_provider(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "my-vllm.yaml").write_text(
+        "id: my-vllm\nname: Local vLLM\nmodel_cards:\n"
+        "  - id: qwen:32b\n    type: chat\n",
+        encoding="utf-8",
+    )
+
+    merged = merge_providers(
+        discover_builtin_providers(), discover_project_providers(tmp_path)
+    )
+
+    assert "my-vllm" in {provider.id for provider in merged}
+
+
+def test_discover_project_providers_rejects_duplicate_ids(
+    tmp_path: Path,
+) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "first.yaml").write_text(
+        "id: duplicate\nname: First\n", encoding="utf-8"
+    )
+    (providers_dir / "second.yml").write_text(
+        "id: duplicate\nname: Second\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'duplicate'"):
+        discover_project_providers(tmp_path)
+
+
+def test_discover_project_providers_loads_json_files(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "custom.json").write_text(
+        '{"id": "custom", "name": "Custom"}', encoding="utf-8"
+    )
+
+    assert [provider.id for provider in discover_project_providers(tmp_path)] == [
+        "custom"
+    ]
+
+
+def test_discover_project_providers_malformed_yaml_is_actionable(
+    tmp_path: Path,
+) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "broken.yaml").write_text("id: [broken", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="Unable to parse YAML.*broken.yaml"):
+        discover_project_providers(tmp_path)
+
+
+def test_merge_providers_empty_project_returns_builtins() -> None:
+    builtin = discover_builtin_providers()
+
+    assert merge_providers(builtin, []) == builtin
+
+
+def test_merge_providers_rejects_duplicate_project_ids(tmp_path: Path) -> None:
+    project = [
+        normalize_provider({"id": "dup", "name": "First"}),
+        normalize_provider({"id": "dup", "name": "Second"}),
+    ]
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+        merge_providers([], project)
+
+
+def test_ensure_unique_provider_ids_rejects_duplicates() -> None:
+    providers = [
+        normalize_provider({"id": "dup", "name": "First"}),
+        normalize_provider({"id": "dup", "name": "Second"}),
+    ]
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+        _ensure_unique_provider_ids(providers)
 
 
 def test_loads_yaml_and_json_documents() -> None:
@@ -216,7 +405,14 @@ def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> N
 
 
 def test_loads_actual_builtin_profiles_and_preserves_legacy_metadata() -> None:
-    profiles = load_profile_file(DATA / "profiles" / "builtin.yaml")
+    profiles = load_profile_file(
+        Path(__file__).parents[1]
+        / "data"
+        / "ai"
+        / "providers"
+        / "profiles"
+        / "builtin.yaml"
+    )
 
     assert profiles[0].metadata == {
         "remark": "builtin-deepseek",
@@ -286,3 +482,90 @@ def test_rejects_conflicting_profile_credentials(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigurationError, match="api_key_env.*credential"):
         load_profile_file(path)
+
+
+def test_loads_merged_deployments_file(tmp_path: Path) -> None:
+    path = tmp_path / "deployments.yaml"
+    path.write_text(
+        "profiles:\n"
+        "  - id: primary\n"
+        "    provider_id: deepseek\n"
+        "    api_key_env: DEEPSEEK_API_KEY\n"
+        "    enabled_models: [deepseek-chat]\n"
+        "    remark: legacy\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - profile_id: primary\n"
+        "        model_id: deepseek-chat\n",
+        encoding="utf-8",
+    )
+
+    deployments = load_deployments_file(path)
+
+    assert deployments.profiles[0].id == "primary"
+    assert deployments.profiles[0].credential is not None
+    assert deployments.profiles[0].credential.env == "DEEPSEEK_API_KEY"
+    assert deployments.profiles[0].metadata["remark"] == "legacy"
+    assert deployments.aliases == [
+        {
+            "id": "chat-default",
+            "deployments": [{"profile_id": "primary", "model_id": "deepseek-chat"}],
+        }
+    ]
+
+
+def test_deployments_file_requires_profiles_and_optional_aliases(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "deployments.yaml"
+    path.write_text("aliases: []\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="profiles"):
+        load_deployments_file(path)
+
+    path.write_text("profiles: []\n", encoding="utf-8")
+    deployments = load_deployments_file(path)
+    assert deployments.profiles == [] and deployments.aliases == []
+
+
+def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "deployments.yaml"
+    path.write_text("profiles: []\naliases: not-a-list\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="'aliases' list"):
+        load_deployments_file(path)
+
+
+def test_load_alias_file_requires_aliases_list(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text("version: 1\n", encoding="utf-8")
+
+    with pytest.raises(
+        ConfigurationError, match="Alias configuration .*must contain a 'aliases' list"
+    ):
+        load_alias_file(path)
+
+
+def test_load_alias_file_rejects_non_list_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text("aliases: not-a-list\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="'aliases' list"):
+        load_alias_file(path)
+
+
+def test_load_alias_file_rejects_non_mapping_alias(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text("aliases:\n  - just-a-string\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="invalid alias at index 0"):
+        load_alias_file(path)
+
+
+def test_load_alias_file_returns_mappings(tmp_path: Path) -> None:
+    path = tmp_path / "aliases.yaml"
+    path.write_text(
+        "aliases:\n  - id: chat-default\n    deployments: []\n", encoding="utf-8"
+    )
+
+    assert load_alias_file(path) == [{"id": "chat-default", "deployments": []}]

@@ -71,9 +71,9 @@ os.environ["DEEPSEEK_API_KEY"] = "sk-example"
 
 resolution = registry.resolve("chat-default")
 
-print(resolution.profile_id)   # "primary"
-print(resolution.model_id)     # "deepseek-chat"
-print(resolution.endpoint)     # "https://api.deepseek.com/v1"
+print(resolution.profile_id)  # "primary"
+print(resolution.model_id)  # "deepseek-chat"
+print(resolution.endpoint)  # "https://api.deepseek.com/v1"
 print(resolution.resolve_credential())  # "sk-example"
 ```
 

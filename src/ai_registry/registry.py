@@ -5,15 +5,20 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence, Set
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
 
 from ai_registry.config import (
     PathSource,
-    load_document,
+    discover_builtin_providers,
+    discover_project_providers,
+    load_alias_file,
+    load_deployments_file,
     load_profile_file,
     load_provider_files,
+    merge_providers,
 )
 from ai_registry.errors import ConfigurationError, RegistryError
 from ai_registry.routing import DeploymentRouter
@@ -121,26 +126,44 @@ class Registry:
         """Load provider, profile, and optional alias documents without secrets."""
         aliases: list[dict[str, Any]] = []
         for source in alias_files:
-            document = load_document(source)
-            if "aliases" not in document:
-                raise ConfigurationError(
-                    "Alias configuration must contain a 'aliases' list"
-                )
-            values = document["aliases"]
-            if not isinstance(values, list):
-                raise ConfigurationError(
-                    "Alias configuration must contain an 'aliases' list"
-                )
-            for value in values:
-                if not isinstance(value, dict):
-                    raise ConfigurationError(
-                        "Alias configuration contains an invalid alias"
-                    )
-                aliases.append(value)
+            aliases.extend(load_alias_file(source))
         return cls.from_data(
             providers=load_provider_files(list(provider_files)),
             profiles=_load_profiles(profile_files),
             aliases=aliases,
+            secret_resolver=secret_resolver,
+            router=router,
+        )
+
+    @classmethod
+    def from_project(
+        cls,
+        root: str | Path | None = None,
+        *,
+        secret_resolver: SecretResolver | None = None,
+        router: DeploymentRouter | None = None,
+    ) -> Registry:
+        """Build a registry from built-in and project-scoped configuration.
+
+        Discovery starts at ``root`` or the current working directory when
+        omitted, and requires a ``<root>/.ai-registry/deployments.yaml`` file
+        containing profiles and optional aliases.
+        """
+        root_path = Path(root) if root is not None else Path.cwd()
+        deployments_file = root_path / ".ai-registry" / "deployments.yaml"
+        if not deployments_file.is_file():
+            raise ConfigurationError(
+                f"Missing project deployments file '{deployments_file}'; "
+                "create it from examples/deployments.example.yaml"
+            )
+        deployments = load_deployments_file(deployments_file)
+        return cls.from_data(
+            providers=merge_providers(
+                discover_builtin_providers(),
+                discover_project_providers(root_path),
+            ),
+            profiles=deployments.profiles,
+            aliases=deployments.aliases,
             secret_resolver=secret_resolver,
             router=router,
         )
