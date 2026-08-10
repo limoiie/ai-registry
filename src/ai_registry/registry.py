@@ -170,7 +170,7 @@ class Registry:
             for model_id in profile.enabled_models:
                 if not _find_model(provider, model_id):
                     raise ConfigurationError(
-                        f"profile '{profile.id}' enables unknown model '{model_id}'; "
+                        f"profile '{profile.id}' enables unknown model; "
                         f"add the model to provider '{provider.id}'"
                     )
         for alias in self._aliases.values():
@@ -182,7 +182,9 @@ class Registry:
                         f"'{deployment.profile_id}'; configure the profile"
                     )
                 try:
-                    self._validate_model_enabled(alias_profile, deployment.model_id)
+                    self._validate_model_enabled(
+                        alias_profile, deployment.model_id, include_model=False
+                    )
                 except RegistryError as error:
                     raise ConfigurationError(
                         f"alias '{alias.id}' deployment is invalid: {error}"

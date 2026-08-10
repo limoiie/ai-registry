@@ -111,6 +111,21 @@ def test_malformed_yaml_has_safe_actionable_error(tmp_path: Path) -> None:
         load_document(path)
 
 
+def test_yaml_parse_error_redacts_secret_like_input(tmp_path: Path) -> None:
+    secret_like_value = "sk-live-secret"
+    path = tmp_path / "broken-secret.yaml"
+    path.write_text(f"id: [{secret_like_value}\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError) as caught:
+        load_document(path)
+
+    error = caught.value
+    for rendered in (str(error), repr(error), str(error.args), str(error.__dict__)):
+        assert secret_like_value not in rendered
+    assert "Unable to parse YAML configuration" in str(error)
+    assert "check YAML syntax" in str(error)
+
+
 def test_duplicate_provider_ids_are_rejected(tmp_path: Path) -> None:
     first = tmp_path / "first.yaml"
     second = tmp_path / "second.yaml"

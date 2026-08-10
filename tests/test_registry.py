@@ -181,7 +181,7 @@ def test_unknown_reference_errors_never_echo_caller_input(
 
 
 def test_aggregate_validation_reports_invalid_alias_deployment() -> None:
-    with pytest.raises(ConfigurationError, match="alias 'fast'.*model 'missing'"):
+    with pytest.raises(ConfigurationError, match="alias 'fast'.*unknown model"):
         Registry.from_data(
             providers=[provider()],
             profiles=[profile()],
@@ -203,7 +203,7 @@ def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
             profiles=[Profile(id="orphan", provider_id="missing")],
         )
 
-    with pytest.raises(ConfigurationError, match="profile 'primary'.*model 'missing'"):
+    with pytest.raises(ConfigurationError, match="profile 'primary'.*unknown model"):
         Registry.from_data(
             providers=[provider()],
             profiles=[
@@ -214,6 +214,28 @@ def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
                 )
             ],
         )
+
+
+def test_validation_redacts_untrusted_model_id() -> None:
+    secret_like_model_id = "sk-live-secret/model"
+
+    with pytest.raises(ConfigurationError) as caught:
+        Registry.from_data(
+            providers=[provider()],
+            profiles=[
+                Profile(
+                    id="primary",
+                    provider_id="openai",
+                    enabled_models=[secret_like_model_id],
+                )
+            ],
+        )
+
+    error = caught.value
+    for rendered in (str(error), repr(error), str(error.args), str(error.__dict__)):
+        assert secret_like_model_id not in rendered
+    assert "profile 'primary' enables unknown model" in str(error)
+    assert "add the model to provider 'openai'" in str(error)
 
 
 def test_from_data_preserves_context_for_malformed_normalized_input() -> None:

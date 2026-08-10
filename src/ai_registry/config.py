@@ -21,10 +21,11 @@ def load_document(source: PathSource) -> dict[str, Any]:
     source_name, text, suffix = _read_source(source)
     try:
         value = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
-    except (json.JSONDecodeError, yaml.YAMLError) as error:
+    except (json.JSONDecodeError, yaml.YAMLError):
         format_name = "JSON" if suffix == ".json" else "YAML"
         raise ConfigurationError(
-            f"Unable to parse {format_name} configuration '{source_name}': {error}"
+            f"Unable to parse {format_name} configuration '{source_name}'; "
+            f"check {format_name} syntax and remove malformed values"
         ) from None
     if not isinstance(value, dict):
         raise ConfigurationError(
