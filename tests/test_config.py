@@ -126,6 +126,25 @@ def test_loads_actual_catalog_legacy_model_fields() -> None:
     assert deprecated.metadata["settings"] == {"search_impl": "params"}
 
 
+def test_normalizes_actual_uniapi_reranker_to_openai() -> None:
+    provider = load_provider_file(DATA / "uniapi-rerankers.yml")
+
+    assert provider.sdk_type.value == "openai"
+    assert provider.settings["sdk_type"] == "uniapi"
+    assert provider.model_cards[0].type.value == "reranking"
+
+
+def test_rejects_unsupported_sdk_type(tmp_path: Path) -> None:
+    path = tmp_path / "unsupported.yaml"
+    path.write_text(
+        "id: provider\nname: Provider\nsettings:\n  sdk_type: unsupported\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="sdk_type"):
+        load_provider_file(path)
+
+
 def test_loads_actual_builtin_profiles_and_preserves_legacy_metadata() -> None:
     profiles = load_profile_file(DATA / "profiles" / "builtin.yaml")
 

@@ -92,6 +92,8 @@ def normalize_provider(
             settings[key] = value[key]
             value.pop(key)
     value["settings"] = settings
+    if settings.get("sdk_type") == "uniapi":
+        value["sdk_type"] = "openai"
     raw_model_cards = value.get("model_cards") or []
     if not isinstance(raw_model_cards, list):
         raise ConfigurationError(
