@@ -165,7 +165,9 @@ def _read_source(source: PathSource) -> tuple[str, str, str]:
             raise ConfigurationError(
                 f"Unable to read configuration '{name}': {error}"
             ) from None
-    if suffix not in {".json", ".yaml", ".yml"}:
+    if suffix not in {".json", ".yaml", ".yml", ""} or (
+        not hasattr(source, "read") and suffix == ""
+    ):
         raise ConfigurationError(
             f"Unsupported configuration format for '{name}'; use .json, .yaml, or .yml"
         )

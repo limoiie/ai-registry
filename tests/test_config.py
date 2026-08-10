@@ -1,3 +1,4 @@
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,29 @@ def test_loads_yaml_and_json_documents() -> None:
 
     assert yaml_document["id"] == "alpha"
     assert json_document["id"] == "beta"
+
+
+def test_loads_unnamed_yaml_and_json_streams() -> None:
+    yaml_document = load_document(StringIO("id: stream-yaml\n"))
+    json_document = load_document(StringIO('{"id": "stream-json"}'))
+
+    assert yaml_document["id"] == "stream-yaml"
+    assert json_document["id"] == "stream-json"
+
+
+def test_loads_provider_and_profile_from_unnamed_streams() -> None:
+    provider = load_provider_file(
+        StringIO("id: stream-provider\nname: Stream Provider\n")
+    )
+    profiles = load_profile_file(
+        StringIO(
+            "profiles:\n  - id: stream-profile\n    provider_id: stream-provider\n"
+            "    api_key_env: STREAM_API_KEY\n"
+        )
+    )
+
+    assert provider.id == "stream-provider"
+    assert profiles[0].provider_id == provider.id
 
 
 def test_normalizes_single_provider_and_preserves_metadata() -> None:
