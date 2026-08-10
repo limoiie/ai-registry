@@ -2,6 +2,6 @@
 
 __version__ = "0.1.0"
 
+from ai_registry.registry import Registry
 
-class Registry:
-    """Placeholder registry API for the initial package skeleton."""
+__all__ = ["Registry", "__version__"]
