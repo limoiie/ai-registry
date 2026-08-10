@@ -84,9 +84,9 @@ def test_alias_wins_over_direct_profile_model_reference() -> None:
 @pytest.mark.parametrize(
     ("reference", "message"),
     [
-        ("missing", "unknown alias or model reference 'missing'"),
-        ("unknown/chat", "unknown profile 'unknown'"),
-        ("primary/other", "model 'other' is not enabled by profile 'primary'"),
+        ("missing", "unknown alias or model reference"),
+        ("unknown/chat", "unknown profile"),
+        ("primary/other", "model is not enabled by profile 'primary'"),
     ],
 )
 def test_resolution_errors_are_descriptive_and_safe(
@@ -96,6 +96,34 @@ def test_resolution_errors_are_descriptive_and_safe(
 
     with pytest.raises(RegistryError, match=message):
         registry.resolve(reference)
+
+
+@pytest.mark.parametrize(
+    ("reference", "diagnostic"),
+    [
+        (
+            "sk-live-secret-value",
+            "unknown alias or model reference; use an alias or 'profile/model'",
+        ),
+        (
+            "sk-live-secret/chat",
+            "unknown profile; configure the profile or use an alias",
+        ),
+    ],
+)
+def test_unknown_reference_errors_never_echo_caller_input(
+    reference: str, diagnostic: str
+) -> None:
+    registry = Registry.from_data(providers=[provider()], profiles=[profile()])
+
+    with pytest.raises(RegistryError) as caught:
+        registry.resolve(reference)
+
+    error = caught.value
+    for rendered in (str(error), repr(error), str(error.args), str(error.__dict__)):
+        assert reference not in rendered
+        assert "sk-live-secret" not in rendered
+    assert diagnostic in str(error)
 
 
 def test_aggregate_validation_reports_invalid_alias_deployment() -> None:

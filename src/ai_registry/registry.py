@@ -121,16 +121,15 @@ class Registry:
 
         if "/" not in reference:
             raise RegistryError(
-                f"unknown alias or model reference '{reference}'; "
-                "use an alias or 'profile/model'"
+                "unknown alias or model reference; use an alias or 'profile/model'"
             )
         profile_id, model_id = reference.split("/", 1)
         profile = self._profiles.get(profile_id)
         if profile is None:
             raise RegistryError(
-                f"unknown profile '{profile_id}'; configure the profile or use an alias"
+                "unknown profile; configure the profile or use an alias"
             )
-        self._validate_model_enabled(profile, model_id)
+        self._validate_model_enabled(profile, model_id, include_model=False)
         return self._resolution(
             Deployment(profile_id=profile_id, model_id=model_id), profile_id
         )
@@ -180,16 +179,20 @@ class Registry:
                         f"alias '{alias.id}' deployment is invalid: {error}"
                     ) from None
 
-    def _validate_model_enabled(self, profile: Profile, model_id: str) -> None:
+    def _validate_model_enabled(
+        self, profile: Profile, model_id: str, *, include_model: bool = True
+    ) -> None:
         provider = self._providers[profile.provider_id]
         if not _find_model(provider, model_id):
+            model_detail = f" '{model_id}'" if include_model else ""
             raise RegistryError(
-                f"unknown model '{model_id}' for provider '{provider.id}'; "
+                f"unknown model{model_detail} for provider '{provider.id}'; "
                 "add it to the provider"
             )
         if model_id not in profile.enabled_models:
+            model_detail = f" '{model_id}'" if include_model else ""
             raise RegistryError(
-                f"model '{model_id}' is not enabled by profile '{profile.id}'; "
+                f"model{model_detail} is not enabled by profile '{profile.id}'; "
                 "enable it in the profile"
             )
 
