@@ -17,8 +17,8 @@ def _write_deployments(
 def _write_registry(
     tmp_path: Path, filename: str, model_id: str = "deepseek-chat"
 ) -> None:
-    (tmp_path / ".ai-registry").mkdir(parents=True, exist_ok=True)
-    (tmp_path / ".ai-registry" / filename).write_text(
+    _write_deployments(
+        tmp_path,
         "profiles:\n"
         "  - id: primary\n"
         "    provider_id: deepseek\n"
@@ -29,7 +29,7 @@ def _write_registry(
         "    deployments:\n"
         "      - profile_id: primary\n"
         "        model_id: deepseek-chat\n",
-        encoding="utf-8",
+        name=filename,
     )
 
 
@@ -73,9 +73,31 @@ def test_from_project_missing_profile_file_is_actionable(tmp_path: Path) -> None
 
 
 def test_from_project_invalid_profile_name_is_rejected(tmp_path: Path) -> None:
-    for bad in ("../escape", "a/b", "a\\b", "a..b"):
+    for bad in (
+        "../escape",
+        "a/b",
+        "a\\b",
+        "a..b",
+        ".",
+        "..",
+        "a b",
+        "a\tb",
+        "a\x00b",
+        "prod✨",
+    ):
+        if "/" not in bad and "\\" not in bad and "\x00" not in bad:
+            _write_registry(tmp_path, f"registry.{bad}.yaml")
         with pytest.raises(ConfigurationError):
             Registry.from_project(tmp_path, profile=bad)
+
+
+def test_from_project_missing_profile_does_not_fall_back_to_default(
+    tmp_path: Path,
+) -> None:
+    _write_registry(tmp_path, "registry.yaml")
+    with pytest.raises(ConfigurationError) as caught:
+        Registry.from_project(tmp_path, profile="prod")
+    assert "registry.prod.yaml" in str(caught.value)
 
 
 def test_from_project_loads_builtin_providers_and_deployments(

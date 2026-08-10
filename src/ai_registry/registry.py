@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Iterable, Mapping, Sequence, Set
 from copy import deepcopy
 from dataclasses import dataclass
@@ -362,9 +363,10 @@ def _resolve_profile(profile: str | None) -> str | None:
         value = os.environ.get(_PROFILE_ENV)
     if value is None or value == "":
         return None
-    if value in {".", ".."} or "/" in value or "\\" in value or "\x00" in value:
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
         raise ConfigurationError(
-            f"invalid registry profile name {value!r}; use a simple name"
+            f"invalid registry profile name {value!r}; "
+            "use letters, digits, '_' or '-' only"
         )
     return value
 
