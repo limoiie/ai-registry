@@ -48,17 +48,13 @@ Run: `uv run pytest tests/test_config.py::test_builtin_provider_data_is_package_
 
 Expected: FAIL because `src/ai_registry/data/providers/` does not exist.
 
-**Step 3: Move files and configure package data**
+**Step 3: Move files and confirm package data**
 
 - Move the 4 provider YAML files from `data/ai/providers/` to
   `src/ai_registry/data/providers/` (git mv, same content).
-- Add to `pyproject.toml`:
-
-```toml
-[tool.uv]
-default-groups = ["dev"]
-package-data = ["src/ai_registry/data/providers/*.yml"]
-```
+- No `[tool.uv] package-data` key is needed: the `uv_build` backend
+  auto-includes every file under the package module directory in the wheel.
+  Adding such a key is invalid for uv and breaks settings discovery.
 
 **Step 4: Run test and verify the wheel**
 
