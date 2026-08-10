@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Mapping, Sequence, Set
 from copy import deepcopy
 from dataclasses import dataclass
@@ -140,6 +141,7 @@ class Registry:
         cls,
         root: str | Path | None = None,
         *,
+        profile: str | None = None,
         secret_resolver: SecretResolver | None = None,
         router: DeploymentRouter | None = None,
     ) -> Registry:
@@ -148,15 +150,22 @@ class Registry:
         Discovery starts at ``root`` or the current working directory when
         omitted, and requires a ``<root>/.ai-registry/registry.yaml`` (or
         ``.yml``/``.json``) file containing profiles and optional aliases.
+        Pass ``profile`` (or set ``AI_REGISTRY_PROFILE``) to select a
+        ``registry.<profile>.yaml`` file instead of the default.
         """
         root_path = Path(root) if root is not None else Path.cwd()
-        deployments_file = _discover_deployments_file(root_path)
+        resolved_profile = _resolve_profile(profile)
+        deployments_file = _discover_registry_file(root_path, resolved_profile)
         if deployments_file is None:
+            expected = (
+                f"registry.{resolved_profile}.yaml"
+                if resolved_profile is not None
+                else "registry.yaml"
+            )
             raise ConfigurationError(
-                f"Missing project deployments file under "
-                f"'{root_path / '.ai-registry'}'; expected registry.yaml, "
-                "registry.yml, or registry.json. Create it from "
-                "examples/registry.example.yaml"
+                f"Missing project registry file under "
+                f"'{root_path / '.ai-registry'}'; expected {expected}. Create it "
+                "from examples/registry.example.yaml"
             )
         deployments = load_deployments_file(deployments_file)
         return cls.from_data(
@@ -341,9 +350,37 @@ def _load_profiles(sources: Sequence[PathSource]) -> list[Profile]:
     return profiles
 
 
-def _discover_deployments_file(root: Path) -> Path | None:
+_PROFILE_ENV = "AI_REGISTRY_PROFILE"
+_REGISTRY_NAMES = ("registry.yaml", "registry.yml", "registry.json")
+
+
+def _resolve_profile(profile: str | None) -> str | None:
+    value: str | None
+    if profile is not None:
+        value = profile
+    else:
+        value = os.environ.get(_PROFILE_ENV)
+    if value is None or value == "":
+        return None
+    if value in {".", ".."} or "/" in value or "\\" in value or "\x00" in value:
+        raise ConfigurationError(
+            f"invalid registry profile name {value!r}; use a simple name"
+        )
+    return value
+
+
+def _discover_registry_file(root: Path, profile: str | None) -> Path | None:
     deployments_dir = root / ".ai-registry"
-    for name in ("registry.yaml", "registry.yml", "registry.json"):
+    names = (
+        (
+            f"registry.{profile}.yaml",
+            f"registry.{profile}.yml",
+            f"registry.{profile}.json",
+        )
+        if profile is not None
+        else _REGISTRY_NAMES
+    )
+    for name in names:
         candidate = deployments_dir / name
         if candidate.is_file():
             return candidate

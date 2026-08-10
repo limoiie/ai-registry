@@ -14,6 +14,70 @@ def _write_deployments(
     (deployments_dir / name).write_text(text, encoding="utf-8")
 
 
+def _write_registry(
+    tmp_path: Path, filename: str, model_id: str = "deepseek-chat"
+) -> None:
+    (tmp_path / ".ai-registry").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".ai-registry" / filename).write_text(
+        "profiles:\n"
+        "  - id: primary\n"
+        "    provider_id: deepseek\n"
+        "    credential: {env: DEEPSEEK_API_KEY}\n"
+        "    enabled_models: [deepseek-chat]\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - profile_id: primary\n"
+        "        model_id: deepseek-chat\n",
+        encoding="utf-8",
+    )
+
+
+def test_from_project_no_profile_uses_default_registry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AI_REGISTRY_PROFILE", raising=False)
+    _write_registry(tmp_path, "registry.yaml")
+    registry = Registry.from_project(tmp_path)
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_from_project_profile_argument_selects_named_file(tmp_path: Path) -> None:
+    _write_registry(tmp_path, "registry.prod.yaml")
+    registry = Registry.from_project(tmp_path, profile="prod")
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_from_project_env_var_selects_named_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AI_REGISTRY_PROFILE", "dev")
+    _write_registry(tmp_path, "registry.dev.yaml")
+    registry = Registry.from_project(tmp_path)
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_from_project_explicit_profile_overrides_env_var(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AI_REGISTRY_PROFILE", "dev")
+    _write_registry(tmp_path, "registry.prod.yaml")
+    registry = Registry.from_project(tmp_path, profile="prod")
+    assert registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_from_project_missing_profile_file_is_actionable(tmp_path: Path) -> None:
+    with pytest.raises(ConfigurationError) as caught:
+        Registry.from_project(tmp_path, profile="prod")
+    assert "registry.prod.yaml" in str(caught.value)
+
+
+def test_from_project_invalid_profile_name_is_rejected(tmp_path: Path) -> None:
+    for bad in ("../escape", "a/b", "a\\b", "a..b"):
+        with pytest.raises(ConfigurationError):
+            Registry.from_project(tmp_path, profile=bad)
+
+
 def test_from_project_loads_builtin_providers_and_deployments(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
