@@ -173,13 +173,13 @@ def _parse_aliases(
     if "aliases" not in document:
         if required:
             raise ConfigurationError(
-                f"Alias configuration '{source_name}' must contain a 'aliases' list"
+                f"Alias configuration '{source_name}' must contain an 'aliases' list"
             )
         return []
     values = document["aliases"]
     if not isinstance(values, list):
         raise ConfigurationError(
-            f"Alias configuration '{source_name}' must contain a 'aliases' list"
+            f"Alias configuration '{source_name}' must contain an 'aliases' list"
         )
     aliases: list[dict[str, Any]] = []
     for index, value in enumerate(values):

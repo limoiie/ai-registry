@@ -2,17 +2,18 @@
 
 This reference documents every data format `ai-registry` understands: the
 **normalized** shape (recommended) and the **legacy compatibility** shape used
-by the existing `data/ai/providers/*.yml` catalog.
+by the built-in provider catalog shipped at `ai_registry/data/providers/*.yml`.
 
 ## Document types
 
-Configuration is plain YAML or JSON. There are three document kinds:
+Configuration is plain YAML or JSON. There are four document kinds:
 
 | Document | Contents | Loaded by |
 | --- | --- | --- |
-| Provider document | **One provider mapping** per file. | `load_provider_file`, `load_provider_files`, `Registry.from_files(provider_files=...)` |
+| Provider document | **One provider mapping** per file. | `load_provider_file`, `load_provider_files`, `Registry.from_files(provider_files=...)`, `Registry.from_project` |
 | Profile document | A top-level `profiles` list. | `load_profile_file`, `Registry.from_files(profile_files=...)` |
-| Alias document | A top-level `aliases` list. | `Registry.from_files(alias_files=...)` |
+| Alias document | A top-level `aliases` list. | `load_alias_file`, `Registry.from_files(alias_files=...)` |
+| Deployments document | A top-level `profiles` list plus optional `aliases` list. | `load_deployments_file`, `Registry.from_project` |
 
 Notes:
 
@@ -20,7 +21,9 @@ Notes:
   `provider_files` as a single provider document (see below). To use several
   providers, list several files. Profile and alias files, by contrast, contain
   lists of many entries.
-- Profile and alias documents can be the same file when it contains both lists.
+- Profile and alias documents can be the same file when it contains both lists;
+  that is exactly the merged deployments document (see
+  [Project layout](#project-layout)).
 - A file shaped like `providers: [...]` is **not** accepted directly by
   `load_provider_file`/`from_files`. Either split it into one file per provider,
   or iterate it with `normalize_provider()` and build the registry with
@@ -32,6 +35,38 @@ The loader accepts a file path (`str` or `pathlib.Path`) or any text stream
 
 No secrets are resolved while loading. Credential references are validated for
 shape but resolved lazily at the adapter boundary.
+
+## Project layout
+
+Projects keep configuration under a `.ai-registry/` directory:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── providers/          # OPTIONAL — override or add providers
+    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+```
+
+- `deployments.yaml` is a single document with a required `profiles` list and
+  an optional `aliases` list (see [Deployments file](#deployments-file)).
+- `providers/` holds project provider documents (one provider per file, any of
+  `.yaml`, `.yml`, `.json`). When the directory is missing, only the built-in
+  catalog is used.
+- `Registry.from_project(root)` discovers both, merges the providers, and
+  loads `deployments.yaml` with the same validation as the explicit loaders.
+
+### Provider scope and override
+
+Providers come from two scopes and are merged by `id`:
+
+- **Built-in** — `deepseek`, `uniapi`, `minimax`, `uniapi-rerankers` ship with
+  the package as package data at `ai_registry/data/providers/*.yml`.
+- **Project** — files under `.ai-registry/providers/`.
+
+A project provider with the same `id` **replaces the built-in provider
+entirely** — there is no deep merge, so fields omitted from the override fall
+back to schema defaults, not to the built-in values. Unique ids are added to
+the catalog, and duplicate project ids are rejected.
 
 ## Provider
 
@@ -115,6 +150,29 @@ model_cards:
 
 `capabilities` supports the keys `tools`, `structured_output`, `vision`, and
 `reasoning` (all optional booleans, default `false`).
+
+## Deployments file
+
+`deployments.yaml` merges profiles and aliases into one document:
+
+```yaml
+profiles:
+  - id: uniapi-primary
+    provider_id: uniapi
+    credential: {env: UNIAPI_PRIMARY_KEY}
+    enabled_models: [deepseek-v4-flash]
+
+aliases:
+  - id: sol
+    deployments:
+      - profile_id: uniapi-primary
+        model_id: deepseek-v4-flash
+```
+
+`profiles` is required; `aliases` is optional and defaults to empty. Legacy
+profile fields (`api_key_env`, `remark`, `description`) are normalized inside
+this file exactly as in a standalone profile document. Loaded by
+`load_deployments_file` and `Registry.from_project`.
 
 ## Profile
 
@@ -260,9 +318,9 @@ instead of at request time.
 
 ## Legacy compatibility format
 
-The existing `data/ai/providers/*.yml` catalog and `profiles/builtin.yaml` use
-an older shape. The loader normalizes it to the schema above automatically.
-**New configuration should prefer the normalized shape.**
+The built-in provider catalog (`ai_registry/data/providers/*.yml`) and legacy
+profile documents use an older shape. The loader normalizes it to the schema
+above automatically. **New configuration should prefer the normalized shape.**
 
 ### Provider catalog compatibility
 

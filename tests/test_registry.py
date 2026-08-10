@@ -650,6 +650,6 @@ def test_from_files_requires_aliases_list(tmp_path: Path) -> None:
 
     with pytest.raises(
         ConfigurationError,
-        match="Alias configuration .*must contain a 'aliases' list",
+        match="Alias configuration .*must contain an 'aliases' list",
     ):
         Registry.from_files([provider_path], [profile_path], [alias_path])

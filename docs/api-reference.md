@@ -85,6 +85,23 @@ files use the single-provider format (one provider per file); profile files
 must contain a `profiles` list; alias files must contain an `aliases` list.
 Raises `ConfigurationError` on any structural problem.
 
+```python
+Registry.from_project(
+    root: str | Path | None = None,
+    *,
+    secret_resolver: SecretResolver | None = None,
+    router: DeploymentRouter | None = None,
+) -> Registry
+```
+
+Build a registry from built-in providers plus project configuration discovered
+at `root` (or the current working directory when omitted). Loads the merged
+profiles/aliases from `<root>/.ai-registry/deployments.yaml` (required) and
+project providers from `<root>/.ai-registry/providers/` (optional). Project
+providers replace built-ins by `id`; the deployments file may reference any of
+the merged providers. Raises `ConfigurationError` when the deployments file is
+missing or invalid.
+
 #### Methods
 
 ```python
@@ -263,7 +280,21 @@ PathSource = str | pathlib.Path | TextIO
 | `load_provider_file(source)` | `PathSource -> Provider` — loads and normalizes one provider document (single provider per file). |
 | `load_provider_files(sources)` | `list[PathSource] -> list[Provider]` — rejects duplicate provider IDs. |
 | `load_profile_file(source)` | `PathSource -> list[Profile]` — requires a `profiles` list. |
+| `load_alias_file(source)` | `PathSource -> list[dict[str, Any]]` — requires an `aliases` list. |
+| `load_deployments_file(source)` | `PathSource -> Deployments` — requires a `profiles` list; `aliases` is optional. |
+| `discover_builtin_providers()` | `-> list[Provider]` — reads the built-in catalog shipped as package data (`ai_registry/data/providers/*.yml`). |
+| `discover_project_providers(root)` | `str | Path -> list[Provider]` — reads `<root>/.ai-registry/providers/`; returns `[]` when the directory is missing. |
+| `merge_providers(builtin, project)` | `Sequence[Provider] x Sequence[Provider] -> list[Provider]` — project providers replace built-ins by id; rejects duplicate project ids. |
 | `normalize_provider(document, *, source_name=...)` | `dict -> Provider` — normalizes the legacy catalog shape into a `Provider`. |
+
+### `Deployments`
+
+A frozen dataclass returned by `load_deployments_file`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `profiles` | `list[Profile]` | Normalized profiles from the `profiles` list. |
+| `aliases` | `list[dict[str, Any]]` | Raw alias mappings from the `aliases` list (empty when absent). |
 
 Raises `ConfigurationError` for unreadable files, unsupported formats, malformed
 documents, and invalid content.

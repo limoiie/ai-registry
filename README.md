@@ -36,8 +36,10 @@ configuration without any application code changes.
   lazy resolution, and pluggable `SecretResolver` for Vault/AWS/Kubernetes.
 - **Secret-safe by construction**: literal keys are rejected; `repr`, dumps,
   and errors are redacted.
-- **Compatibility loaders** for the existing `data/ai/providers/*.yml`
-  catalog and profile formats.
+- **Built-in provider catalog** ships with the package at
+  `ai_registry/data/providers/*.yml`; project providers under
+  `.ai-registry/providers/` override them by id.
+- **Compatibility loaders** normalize the legacy catalog and profile formats.
 - **Framework-independent**: only depends on Pydantic and PyYAML; adapters for
   the OpenAI SDK, Pydantic AI, LangGraph, and LlamaIndex are planned as
   optional extras.
@@ -92,6 +94,38 @@ print(resolution.resolve_credential())
 ```
 
 For file-based configuration, see [Getting started](docs/getting-started.md).
+
+## Discover from your project
+
+Projects keep configuration in a `.ai-registry/` directory at the root:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── providers/          # OPTIONAL — override or add providers
+    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+```
+
+Start from `examples/deployments.example.yaml`, which references the built-in
+providers (`deepseek`, `uniapi`, `uniapi-rerankers`) that ship with the
+package. A project provider with the same `id` replaces the built-in provider
+entirely.
+
+```python
+import os
+from ai_registry import Registry
+
+os.environ["DEEPSEEK_API_KEY"] = "sk-example"
+
+registry = Registry.from_project()  # discovers ./.ai-registry/
+
+resolution = registry.resolve("chat-default")
+print(resolution.endpoint)
+print(resolution.resolve_credential())
+```
+
+`Registry.from_files(...)` remains available when you want explicit control
+over every configuration file.
 
 ## Documentation
 

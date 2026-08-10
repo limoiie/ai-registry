@@ -46,11 +46,12 @@ uv run pytest -q && uv run ruff check . && uv run ruff format --check . && uv ru
 │   ├── secrets.py              # credential resolution
 │   ├── registry.py             # Registry + Resolution
 │   ├── routing.py              # health-aware deployment selection
-│   └── errors.py               # public exceptions
+│   ├── errors.py               # public exceptions
+│   └── data/providers/         # built-in provider catalog (package data)
 ├── tests/
 │   ├── fixtures/               # provider/profile/alias examples
 │   └── test_*.py               # one module per source module
-├── data/ai/providers/          # example catalogs (legacy format)
+├── examples/                   # config templates (deployments.example.yaml)
 └── docs/                       # this documentation set
 ```
 
@@ -86,8 +87,8 @@ These invariants are enforced and must be preserved by changes:
   `[0, 1)`.
 - Security tests assert that secret-like inputs never appear in
   `str`/`repr`/`args`/structured error output or serialized dumps.
-- Use the fixtures under `tests/fixtures/`; represent the real
-  `data/ai/providers/` shapes in compatibility tests.
+- Use the fixtures under `tests/fixtures/`; represent the built-in
+  `ai_registry/data/providers/` shapes in compatibility tests.
 
 ## Versioning and dependencies
 

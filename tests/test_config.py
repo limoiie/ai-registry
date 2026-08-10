@@ -404,15 +404,19 @@ def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> N
         load_provider_file(path)
 
 
-def test_loads_actual_builtin_profiles_and_preserves_legacy_metadata() -> None:
-    profiles = load_profile_file(
-        Path(__file__).parents[1]
-        / "data"
-        / "ai"
-        / "providers"
-        / "profiles"
-        / "builtin.yaml"
+def test_loads_legacy_profile_fields_into_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "legacy-profile.yaml"
+    path.write_text(
+        "profiles:\n"
+        "  - id: builtin-deepseek\n"
+        "    provider_id: deepseek\n"
+        "    api_key_env: DEEPSEEK_API_KEY\n"
+        "    remark: builtin-deepseek\n"
+        "    description: Built-in DeepSeek profile\n",
+        encoding="utf-8",
     )
+
+    profiles = load_profile_file(path)
 
     assert profiles[0].metadata == {
         "remark": "builtin-deepseek",
@@ -536,12 +540,26 @@ def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
         load_deployments_file(path)
 
 
+def test_example_deployments_file_loads() -> None:
+    example = Path(__file__).parents[1] / "examples" / "deployments.example.yaml"
+    deployments = load_deployments_file(example)
+    assert deployments.profiles
+    assert deployments.aliases
+    profile_ids = {profile.id for profile in deployments.profiles}
+    assert {
+        deployment["profile_id"]
+        for alias in deployments.aliases
+        for deployment in alias["deployments"]
+    } <= profile_ids
+
+
 def test_load_alias_file_requires_aliases_list(tmp_path: Path) -> None:
     path = tmp_path / "aliases.yaml"
     path.write_text("version: 1\n", encoding="utf-8")
 
     with pytest.raises(
-        ConfigurationError, match="Alias configuration .*must contain a 'aliases' list"
+        ConfigurationError,
+        match="Alias configuration .*must contain an 'aliases' list",
     ):
         load_alias_file(path)
 

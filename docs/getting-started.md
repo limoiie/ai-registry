@@ -80,11 +80,58 @@ print(resolution.resolve_credential())  # "sk-example"
 `resolve_credential()` is the only API that ever returns the raw secret. It is
 meant for the adapter boundary and is not invoked until you call it (lazy).
 
-## Loading from files
+## Discover from your project
 
-For real use, keep configuration in YAML and load it with `Registry.from_files`.
-The loader accepts paths, `pathlib.Path`, or open file objects, in YAML or
-JSON.
+The registry can discover a project's configuration from a `.ai-registry/`
+directory at the project root. Providers are optional there — the built-in
+catalog ships with the package — but `deployments.yaml` is required and holds
+merged profiles and aliases:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── providers/          # OPTIONAL — override or add providers
+    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+```
+
+Copy `examples/deployments.example.yaml`, which references the built-in
+`deepseek`, `uniapi`, and `uniapi-rerankers` providers:
+
+```yaml
+profiles:
+  - id: deepseek-primary
+    provider_id: deepseek
+    credential: {env: DEEPSEEK_API_KEY}
+    enabled_models: [deepseek-chat, deepseek-reasoner]
+
+aliases:
+  - id: chat-default
+    deployments:
+      - profile_id: deepseek-primary
+        model_id: deepseek-chat
+```
+
+```python
+import os
+
+from ai_registry import Registry
+
+os.environ["DEEPSEEK_API_KEY"] = "sk-example"
+
+registry = Registry.from_project()  # uses the current directory
+
+resolution = registry.resolve("chat-default")
+print(resolution.model_id)  # "deepseek-chat"
+```
+
+Pass a `root` path to discover from another directory. A project provider
+under `.ai-registry/providers/` with the same `id` as a built-in replaces it
+entirely — there is no deep merge.
+
+## Loading from files explicitly (`from_files`)
+
+`Registry.from_files` loads configuration from explicit paths. It accepts
+paths, `pathlib.Path`, or open file objects, in YAML or JSON.
 
 Given these three documents:
 
@@ -147,29 +194,25 @@ Notes:
   registry with `Registry.from_data` (see
   [Configuration](configuration.md)).
 
-## Using existing built-in data
+## Built-in provider catalog
 
-The repository ships example catalogs under `data/ai/providers/`. These use the
-legacy provider-catalog format (top-level `url`, `settings.sdk_type`, and
-`abilities` on model cards), which the loader normalizes automatically:
+The package ships a built-in provider catalog at
+`ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
+`uniapi-rerankers`). These use the legacy provider-catalog format (top-level
+`url`, `settings.sdk_type`, and `abilities` on model cards), which the loader
+normalizes automatically.
+
+`Registry.from_project` loads the built-ins automatically and lets project
+providers override them by id, so most projects never list a provider file:
 
 ```python
-from pathlib import Path
+from ai_registry.config import discover_builtin_providers
 
-from ai_registry import Registry
-
-base = Path("data/ai/providers")
-
-registry = Registry.from_files(
-    provider_files=[
-        base / "deepseek.yml",
-        base / "uniapi.yml",
-        base / "minimax.yml",
-        base / "uniapi-rerankers.yml",
-    ],
-    profile_files=[base / "profiles" / "builtin.yaml"],
-)
+providers = discover_builtin_providers()  # -> list[Provider]
 ```
+
+Use `Registry.from_files` with explicit paths when you keep your own provider,
+profile, and alias files instead.
 
 See [Configuration](configuration.md) for the full file format reference and
 [Use cases](use-cases.md) for more realistic setups.
