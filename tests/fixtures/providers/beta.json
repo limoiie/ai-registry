@@ -1,0 +1,8 @@
+{
+  "id": "beta",
+  "name": "Beta Provider",
+  "settings": {"sdk_type": "openai", "region": "test"},
+  "model_cards": [
+    {"id": "beta-embed", "type": "embedding", "embedding_dimension": 768}
+  ]
+}

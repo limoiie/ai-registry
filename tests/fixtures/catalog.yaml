@@ -1,0 +1,66 @@
+providers:
+  - id: deepseek
+    name: DeepSeek
+    url: https://deepseek.com
+    settings:
+      sdk_type: anthropic
+      proxy_url:
+        placeholder: https://api.deepseek.com
+    model_cards:
+      - id: deepseek-chat
+        display_name: DeepSeek Chat
+        type: chat
+        context_window_tokens: 131072
+        abilities:
+          reasoning: false
+          function_call: true
+      - id: deepseek-reasoner
+        display_name: DeepSeek Reasoner
+        type: chat
+        context_window_tokens: 131072
+        abilities:
+          reasoning: true
+  - id: uniapi
+    name: Uni API
+    url: https://www.cstcloud.cn
+    settings:
+      sdk_type: openai
+      proxy_url:
+        placeholder: https://uni-api.cstcloud.cn/v1
+    model_cards:
+      - id: bge-large-zh:latest
+        display_name: BGE Large ZH Latest
+        type: embedding
+        context_window_tokens: 524288
+        max_dimension: 1024
+      - id: deepseek-v3:671b
+        display_name: DeepSeek V3 671B
+        type: chat
+        context_window_tokens: 65536
+  - id: minimax
+    name: Minimax
+    url: https://www.minimaxi.com
+    settings:
+      sdk_type: openai
+      proxy_url:
+        placeholder: https://api.minimaxi.com/v1
+    model_cards:
+      - id: MiniMax-M2.7
+        display_name: MiniMax M2.7
+        type: chat
+        context_window_tokens: 204800
+        abilities:
+          reasoning: true
+          function_call: true
+  - id: uniapi-rerankers
+    name: Uni API Rerankers
+    url: https://www.cstcloud.cn
+    settings:
+      sdk_type: uniapi
+      proxy_url:
+        placeholder: https://uni-api.cstcloud.cn/v1
+    model_cards:
+      - id: bge-reranker-v2-m3
+        display_name: BGE Reranker V2 M3
+        type: reranking
+        context_window_tokens: 131072
