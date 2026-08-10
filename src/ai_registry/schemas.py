@@ -101,7 +101,13 @@ def _redact(value: Any, secret_fields: set[str]) -> Any:
     if isinstance(value, dict):
         return {
             key: "<redacted>"
-            if key in secret_fields or key in {"env", "secret_ref", "api_key"}
+            if key in secret_fields
+            or key in {"env", "secret_ref", "api_key"}
+            or (
+                isinstance(key, str)
+                and _is_sensitive_key(key)
+                and not (key.casefold() == "credential" and isinstance(item, dict))
+            )
             else _redact(item, secret_fields)
             for key, item in value.items()
         }
@@ -143,8 +149,8 @@ def _check_model_id(value: str) -> str:
     return value
 
 
-_ENDPOINT_SENSITIVE_WORDS = {"authorization", "credential", "password", "secret"}
-_ENDPOINT_TOKEN_QUALIFIERS = {
+_SENSITIVE_KEY_WORDS = {"authorization", "credential", "password", "secret"}
+_TOKEN_QUALIFIERS = {
     "access",
     "auth",
     "authentication",
@@ -156,16 +162,23 @@ _ENDPOINT_TOKEN_QUALIFIERS = {
 }
 
 
-def _is_sensitive_endpoint_key(key: str) -> bool:
-    words = [word for word in re.split(r"[^A-Za-z0-9]+", key.casefold()) if word]
-    if any(word in _ENDPOINT_SENSITIVE_WORDS for word in words):
+def _key_words(key: str) -> list[str]:
+    spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", key)
+    return [word.casefold() for word in re.split(r"[^A-Za-z0-9]+", spaced) if word]
+
+
+def _is_sensitive_key(key: str) -> bool:
+    words = _key_words(key)
+    if not words:
+        return False
+    if any(word in _SENSITIVE_KEY_WORDS for word in words):
         return True
     if "apikey" in words or any(
         left == "api" and right == "key" for left, right in zip(words, words[1:])
     ):
         return True
     return words == ["token"] or (
-        words[-1] == "token" and words[-2] in _ENDPOINT_TOKEN_QUALIFIERS
+        len(words) > 1 and words[-1] == "token" and words[-2] in _TOKEN_QUALIFIERS
     )
 
 
@@ -179,14 +192,19 @@ def _validate_endpoint(value: str | None) -> str | None:
     except ValueError:
         has_userinfo = True
         query = ""
-    if has_userinfo or any(
-        _is_sensitive_endpoint_key(key)
-        for key, _ in parse_qsl(query, keep_blank_values=True)
-    ):
+    if has_userinfo:
         raise ValueError(
             "endpoint contains credential-bearing user info or sensitive query "
             "parameters; use credential references"
         )
+    for key, _ in parse_qsl(query, keep_blank_values=True):
+        if not key:
+            raise ValueError("endpoint query parameter names must be non-empty")
+        if _is_sensitive_key(key):
+            raise ValueError(
+                "endpoint contains credential-bearing user info or sensitive query "
+                "parameters; use credential references"
+            )
     return value
 
 

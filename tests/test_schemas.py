@@ -132,6 +132,28 @@ def test_profile_rejects_credential_bearing_endpoints_without_echoing_secrets(
     assert "query-secret" not in rendered
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://gateway.example.test/v1?accessToken=query-secret",
+        "https://gateway.example.test/v1?clientToken=query-secret",
+        "https://gateway.example.test/v1?authorizationHeader=query-secret",
+    ],
+)
+def test_profile_rejects_camel_case_credential_query_keys(endpoint: str) -> None:
+    with pytest.raises(ValidationError, match="credential-bearing"):
+        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+
+
+def test_profile_rejects_empty_query_key_with_clean_validation_error() -> None:
+    with pytest.raises(ValidationError, match="non-empty"):
+        Profile(
+            id="primary",
+            provider_id="provider",
+            endpoint="https://gateway.example.test/v1?=query-value",
+        )
+
+
 def test_provider_rejects_credential_bearing_default_endpoint() -> None:
     with pytest.raises(ValidationError, match="credential-bearing"):
         Provider(
@@ -278,6 +300,36 @@ def test_repr_and_safe_serialization_do_not_expose_secret_values() -> None:
     assert secret not in str(config.safe_dump())
     assert config.safe_dump()["profiles"][0]["credential"] == {"env": "<redacted>"}
     assert config._raw_dump()["profiles"][0]["credential"]["env"] == secret
+
+
+def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> None:
+    config = RegistryConfig(
+        profiles=[
+            Profile(
+                id="primary",
+                provider_id="provider",
+                metadata={
+                    "nested": {
+                        "password": "password-value",
+                        "secret": "secret-value",
+                        "authorization": "authorization-value",
+                        "accessToken": "token-value",
+                        "model_token_count": 42,
+                    }
+                },
+            )
+        ]
+    )
+
+    for rendered in (repr(config), str(config.model_dump()), config.model_dump_json()):
+        assert "password-value" not in rendered
+        assert "secret-value" not in rendered
+        assert "authorization-value" not in rendered
+        assert "token-value" not in rendered
+    assert "'model_token_count': 42" in str(config.model_dump())
+    assert config.model_dump()["profiles"][0]["metadata"]["nested"]["password"] == (
+        "<redacted>"
+    )
 
 
 def test_errors_have_stable_base_type() -> None:
