@@ -133,7 +133,10 @@ def _redact(value: Any, secret_fields: set[str]) -> Any:
             or (
                 isinstance(key, str)
                 and _is_sensitive_key(key)
-                and not (key.casefold() == "credential" and isinstance(item, Mapping))
+                and not (
+                    key.casefold() == "credential"
+                    and (item is None or isinstance(item, Mapping))
+                )
             )
             else _redact(item, secret_fields)
             for key, item in value.items()
@@ -150,8 +153,6 @@ def _redact(value: Any, secret_fields: set[str]) -> Any:
         return redacted if isinstance(value, tuple) else list(redacted)
     if isinstance(value, Set):
         return {_redact(item, secret_fields) for item in value}
-    if isinstance(value, frozenset):
-        return frozenset(_redact(item, secret_fields) for item in value)
     return value
 
 
@@ -188,17 +189,40 @@ def _check_model_id(value: str) -> str:
     return value
 
 
-_SENSITIVE_KEY_WORDS = {"authorization", "credential", "password", "secret"}
-_TOKEN_QUALIFIERS = {
+_SENSITIVE_KEY_WORDS = {
+    "authorization",
+    "credential",
+    "credentials",
+    "env",
+    "passphrase",
+    "passwd",
+    "password",
+    "secret",
+    "secret_ref",
+    "sig",
+    "signature",
+}
+_SENSITIVE_KEY_QUALIFIERS = {
     "access",
+    "api",
     "auth",
     "authentication",
     "bearer",
     "client",
+    "device",
+    "functions",
     "id",
+    "openai",
+    "private",
     "refresh",
+    "sas",
+    "secret",
+    "security",
     "session",
+    "signing",
+    "user",
 }
+_SENSITIVE_KEY_TOKENS = {"apikey", "authkey", "sessionid"}
 
 
 def _key_words(key: str) -> list[str]:
@@ -212,13 +236,14 @@ def _is_sensitive_key(key: str) -> bool:
         return False
     if any(word in _SENSITIVE_KEY_WORDS for word in words):
         return True
-    if "apikey" in words or any(
-        left == "api" and right == "key" for left, right in zip(words, words[1:])
-    ):
+    if any(token in words for token in _SENSITIVE_KEY_TOKENS):
         return True
-    return words == ["token"] or (
-        len(words) > 1 and words[-1] == "token" and words[-2] in _TOKEN_QUALIFIERS
-    )
+    if len(words) > 1:
+        if words[-1] in {"key", "token"} and words[-2] in _SENSITIVE_KEY_QUALIFIERS:
+            return True
+        if words[-1] == "id" and words[-2] == "session":
+            return True
+    return words == ["token"]
 
 
 def _validate_endpoint(value: str | None) -> str | None:
@@ -239,7 +264,7 @@ def _validate_endpoint(value: str | None) -> str | None:
             "parameters; use credential references"
         )
     for parameters in (query, fragment):
-        for key, _ in parse_qsl(parameters, keep_blank_values=True):
+        for key, _ in parse_qsl(parameters.replace(";", "&"), keep_blank_values=True):
             if not key:
                 raise ValueError("endpoint query parameter names must be non-empty")
             if _is_sensitive_key(key):

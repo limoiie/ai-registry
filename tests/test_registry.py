@@ -15,6 +15,8 @@ from ai_registry.schemas import (
     ModelType,
     Profile,
     Provider,
+    RegistryConfig,
+    SDKType,
 )
 from ai_registry.secrets import SecretResolver
 
@@ -88,6 +90,74 @@ def test_from_data_rejects_conflicting_provider_sdk_type_mappings() -> None:
             ],
             profiles=[],
         )
+
+
+def test_registry_constructor_revalidates_smuggled_endpoint() -> None:
+    smuggled = RegistryConfig(
+        providers=[provider()],
+        profiles=[
+            profile().model_copy(
+                update={"endpoint": "https://g.example.test/v1?api_key=LEAK"}
+            )
+        ],
+    )
+
+    with pytest.raises(ConfigurationError) as caught:
+        Registry(smuggled, None)
+
+    assert "LEAK" not in str(caught.value)
+
+
+def test_registry_constructor_revalidates_conflicting_sdk_types() -> None:
+    smuggled = provider().model_copy(
+        update={"sdk_type": SDKType.ANTHROPIC, "settings": {"sdk_type": "openai"}}
+    )
+
+    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+        Registry(RegistryConfig(providers=[smuggled], profiles=[]), None)
+
+
+def test_resolution_repr_redacts_credential_family_keys() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        profiles=[
+            profile().model_copy(
+                update={
+                    "metadata": {
+                        "private_key": "pk-secret",
+                        "auth_key": "ak-secret",
+                        "session_id": "sid-secret",
+                        "sas_token": "st-secret",
+                        "security_token": "sect-secret",
+                        "device_token": "dt-secret",
+                        "user_token": "ut-secret",
+                        "X-Amz-Signature": "azsig-secret",
+                        "x-functions-key": "fk-secret",
+                        "openai_key": "ok-secret",
+                        "model_token_count": 7,
+                    }
+                }
+            )
+        ],
+    )
+
+    result = registry.resolve("primary/chat")
+    rendered = f"{result!r} {result!s}"
+
+    for value in (
+        "pk-secret",
+        "ak-secret",
+        "sid-secret",
+        "st-secret",
+        "sect-secret",
+        "dt-secret",
+        "ut-secret",
+        "azsig-secret",
+        "fk-secret",
+        "ok-secret",
+    ):
+        assert value not in rendered
+    assert "'model_token_count': 7" in rendered
 
 
 def test_alias_resolution_uses_injected_router_and_health_recovery() -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable, Mapping, Sequence, Set
 from copy import deepcopy
 from dataclasses import dataclass
@@ -26,6 +25,7 @@ from ai_registry.schemas import (
     Provider,
     RegistryConfig,
     SafeModel,
+    _is_sensitive_key,
 )
 from ai_registry.secrets import SecretResolver, resolve_credential
 
@@ -77,6 +77,11 @@ class Registry:
         secret_resolver: SecretResolver | None,
         router: DeploymentRouter | None = None,
     ):
+        config = RegistryConfig(
+            providers=_models(Provider, config.providers, "provider"),
+            profiles=_models(Profile, config.profiles, "profile"),
+            aliases=_models(Alias, config.aliases, "alias"),
+        )
         self._config = config.model_copy(deep=True)
         self._secret_resolver = secret_resolver
         self._router = router or DeploymentRouter()
@@ -166,7 +171,7 @@ class Registry:
             raise RegistryError(
                 f"profile '{profile.id}' is disabled; enable it or use an alias"
             )
-        self._validate_model_enabled(profile, model_id, include_model=False)
+        self._validate_model_enabled(profile, model_id)
         return self._resolution(
             Deployment(profile_id=profile_id, model_id=model_id), profile_id
         )
@@ -214,28 +219,21 @@ class Registry:
                         f"'{deployment.profile_id}'; configure the profile"
                     )
                 try:
-                    self._validate_model_enabled(
-                        alias_profile, deployment.model_id, include_model=False
-                    )
+                    self._validate_model_enabled(alias_profile, deployment.model_id)
                 except RegistryError as error:
                     raise ConfigurationError(
                         f"alias '{alias.id}' deployment is invalid: {error}"
                     ) from None
 
-    def _validate_model_enabled(
-        self, profile: Profile, model_id: str, *, include_model: bool = True
-    ) -> None:
+    def _validate_model_enabled(self, profile: Profile, model_id: str) -> None:
         provider = self._providers[profile.provider_id]
         if not _find_model(provider, model_id):
-            model_detail = f" '{model_id}'" if include_model else ""
             raise RegistryError(
-                f"unknown model{model_detail} for provider '{provider.id}'; "
-                "add it to the provider"
+                f"unknown model for provider '{provider.id}'; add it to the provider"
             )
         if model_id not in profile.enabled_models:
-            model_detail = f" '{model_id}'" if include_model else ""
             raise RegistryError(
-                f"model{model_detail} is not enabled by profile '{profile.id}'; "
+                f"model is not enabled by profile '{profile.id}'; "
                 "enable it in the profile"
             )
 
@@ -244,51 +242,11 @@ def _find_model(provider: Provider, model_id: str) -> ModelCard | None:
     return next((card for card in provider.model_cards if card.id == model_id), None)
 
 
-_SENSITIVE_METADATA_WORDS = {
-    "authorization",
-    "credential",
-    "env",
-    "password",
-    "secret",
-    "secret_ref",
-}
-_TOKEN_QUALIFIERS = {
-    "access",
-    "auth",
-    "authentication",
-    "bearer",
-    "client",
-    "id",
-    "refresh",
-    "session",
-}
-
-
-def _is_sensitive_metadata_key(key: str) -> bool:
-    words = _metadata_key_words(key)
-    if not words:
-        return False
-    if any(word in _SENSITIVE_METADATA_WORDS for word in words):
-        return True
-    if "apikey" in words or any(
-        left == "api" and right == "key" for left, right in zip(words, words[1:])
-    ):
-        return True
-    return words == ["token"] or (
-        words[-1] == "token" and words[-2] in _TOKEN_QUALIFIERS
-    )
-
-
-def _metadata_key_words(key: str) -> list[str]:
-    spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", key)
-    return [word.casefold() for word in re.split(r"[^A-Za-z0-9]+", spaced) if word]
-
-
 def _redact_metadata(value: Any) -> Any:
     if isinstance(value, Mapping):
         return {
             key: "<redacted>"
-            if isinstance(key, str) and _is_sensitive_metadata_key(key)
+            if isinstance(key, str) and _is_sensitive_key(key)
             else _redact_metadata(item)
             for key, item in value.items()
         }
@@ -300,17 +258,11 @@ def _redact_metadata(value: Any) -> Any:
         return redacted if isinstance(value, tuple) else list(redacted)
     if isinstance(value, Set):
         return {_redact_metadata(item) for item in value}
-    if isinstance(value, frozenset):
-        return frozenset(_redact_metadata(item) for item in value)
     return value
 
 
 def _is_sensitive_pair(value: Sequence[Any]) -> bool:
-    return (
-        len(value) == 2
-        and isinstance(value[0], str)
-        and _is_sensitive_metadata_key(value[0])
-    )
+    return len(value) == 2 and isinstance(value[0], str) and _is_sensitive_key(value[0])
 
 
 def _models(model_type: Any, values: Iterable[Any], label: str) -> list[Any]:

@@ -163,6 +163,26 @@ def test_profile_rejects_credential_bearing_fragments_without_echoing_secrets(
     assert "fragment-secret" not in str(caught.value)
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://gateway.example.test/v1?private_key=LEAK",
+        "https://gateway.example.test/v1?authkey=LEAK",
+        "https://gateway.example.test/v1?session_id=LEAK",
+        "https://gateway.example.test/v1?sessionid=LEAK",
+        "https://gateway.example.test/v1?sas_token=LEAK",
+        "https://gateway.example.test/v1?security_token=LEAK",
+        "https://gateway.example.test/v1?X-Amz-Signature=LEAK",
+        "https://gateway.example.test/v1?x-functions-key=LEAK",
+        "https://gateway.example.test/v1?openai_key=LEAK",
+        "https://gateway.example.test/v1?x=y;api_key=LEAK",
+    ],
+)
+def test_endpoint_rejects_widened_credential_query_keys(endpoint: str) -> None:
+    with pytest.raises(ValidationError, match="credential-bearing"):
+        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+
+
 def test_profile_rejects_empty_query_key_with_clean_validation_error() -> None:
     with pytest.raises(ValidationError, match="non-empty"):
         Profile(
@@ -424,6 +444,62 @@ def test_userdict_metadata_is_recursively_redacted() -> None:
     for rendered in (repr(config), str(config.model_dump()), config.model_dump_json()):
         assert "userdict-secret" not in rendered
     assert "value" in str(config.model_dump())
+
+
+def test_credential_none_is_preserved_in_dump() -> None:
+    profile = Profile(id="primary", provider_id="provider")
+
+    dump = profile.model_dump()
+
+    assert dump["credential"] is None
+
+
+_CREDENTIAL_FAMILY_SECRETS: dict[str, object] = {
+    "private_key": "private-key-secret",
+    "credentials": "credentials-secret",
+    "passwd": "passwd-secret",
+    "passphrase": "passphrase-secret",
+    "auth_key": "auth-key-secret",
+    "authkey": "authkey-secret",
+    "session_id": "session-id-secret",
+    "sessionid": "sessionid-secret",
+    "sas_token": "sas-token-secret",
+    "security_token": "security-token-secret",
+    "device_token": "device-token-secret",
+    "user_token": "user-token-secret",
+    "X-Amz-Security-Token": "amz-security-secret",
+    "X-Amz-Signature": "amz-signature-secret",
+    "sig": "sig-secret",
+    "signature": "signature-secret",
+    "x-functions-key": "functions-key-secret",
+    "openai_key": "openai-key-secret",
+    "model_token_count": 42,
+}
+
+
+def test_credential_family_metadata_keys_are_redacted_across_serializations() -> None:
+    config = RegistryConfig(
+        profiles=[
+            Profile(
+                id="primary",
+                provider_id="provider",
+                metadata=dict(_CREDENTIAL_FAMILY_SECRETS),
+            )
+        ]
+    )
+
+    for rendered in (
+        repr(config),
+        str(config),
+        str(config.model_dump()),
+        config.model_dump_json(),
+        str(config.safe_dump()),
+    ):
+        for value in _CREDENTIAL_FAMILY_SECRETS.values():
+            if not isinstance(value, str):
+                continue
+            assert value not in rendered
+    assert "'model_token_count': 42" in str(config.model_dump())
 
 
 def test_errors_have_stable_base_type() -> None:
