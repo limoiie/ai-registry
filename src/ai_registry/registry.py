@@ -5,15 +5,20 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence, Set
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
 
 from ai_registry.config import (
     PathSource,
+    discover_builtin_providers,
+    discover_project_providers,
     load_alias_file,
+    load_deployments_file,
     load_profile_file,
     load_provider_files,
+    merge_providers,
 )
 from ai_registry.errors import ConfigurationError, RegistryError
 from ai_registry.routing import DeploymentRouter
@@ -126,6 +131,34 @@ class Registry:
             providers=load_provider_files(list(provider_files)),
             profiles=_load_profiles(profile_files),
             aliases=aliases,
+            secret_resolver=secret_resolver,
+            router=router,
+        )
+
+    @classmethod
+    def from_project(
+        cls,
+        root: str | Path | None = None,
+        *,
+        secret_resolver: SecretResolver | None = None,
+        router: DeploymentRouter | None = None,
+    ) -> Registry:
+        """Build a registry from built-in and project-scoped configuration."""
+        root_path = Path(root) if root is not None else Path.cwd()
+        deployments_file = root_path / ".ai-registry" / "deployments.yaml"
+        if not deployments_file.is_file():
+            raise ConfigurationError(
+                f"Missing project deployments file '{deployments_file}'; "
+                "create it from examples/deployments.example.yaml"
+            )
+        deployments = load_deployments_file(deployments_file)
+        return cls.from_data(
+            providers=merge_providers(
+                discover_builtin_providers(),
+                discover_project_providers(root_path),
+            ),
+            profiles=deployments.profiles,
+            aliases=deployments.aliases,
             secret_resolver=secret_resolver,
             router=router,
         )
