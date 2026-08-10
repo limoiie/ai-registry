@@ -13,11 +13,11 @@ registry = Registry.from_files(
     alias_files=["aliases.yaml"],
 )
 
-resolution = registry.resolve("sol")          # stable logical name
+resolution = registry.resolve("sol")  # stable logical name
 
-resolution.profile_id          # which profile/key was selected
-resolution.model_id            # canonical model id (for requests/logging)
-resolution.endpoint            # base URL
+resolution.profile_id  # which profile/key was selected
+resolution.model_id  # canonical model id (for requests/logging)
+resolution.endpoint  # base URL
 resolution.resolve_credential()  # resolved lazily, only at the adapter boundary
 ```
 

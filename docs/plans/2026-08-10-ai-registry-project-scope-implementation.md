@@ -34,7 +34,12 @@ def test_builtin_provider_data_is_package_data() -> None:
 
     base = resources.files("ai_registry") / "data" / "providers"
     names = {entry.name for entry in base.iterdir()}
-    assert {"deepseek.yml", "uniapi.yml", "minimax.yml", "uniapi-rerankers.yml"} <= names
+    assert {
+        "deepseek.yml",
+        "uniapi.yml",
+        "minimax.yml",
+        "uniapi-rerankers.yml",
+    } <= names
 ```
 
 **Step 2: Run test to verify it fails**
@@ -97,6 +102,7 @@ Add to `config.py`:
 ```python
 from importlib import resources
 
+
 def discover_builtin_providers() -> list[Provider]:
     base = resources.files("ai_registry") / "data" / "providers"
     providers = [
@@ -107,6 +113,7 @@ def discover_builtin_providers() -> list[Provider]:
     providers.sort(key=lambda provider: provider.id)
     _ensure_unique_provider_ids(providers)
     return providers
+
 
 def _provider_from_text(name: str, text: str) -> Provider:
     suffix = Path(name).suffix.lower()
@@ -122,9 +129,12 @@ def _provider_from_text(name: str, text: str) -> Provider:
         raise ConfigurationError(f"Provider '{name}' must contain a top-level mapping")
     return normalize_provider(value, source_name=name)
 
+
 def _ensure_unique_provider_ids(providers: list[Provider]) -> None:
     ids = [provider.id for provider in providers]
-    duplicates = sorted({provider_id for provider_id in ids if ids.count(provider_id) > 1})
+    duplicates = sorted(
+        {provider_id for provider_id in ids if ids.count(provider_id) > 1}
+    )
     if duplicates:
         raise ConfigurationError(f"duplicate provider id '{duplicates[0]}'")
 ```
@@ -154,6 +164,7 @@ git commit -m "feat: discover built-in providers from package data"
 def test_discovers_project_providers_when_directory_missing(tmp_path: Path) -> None:
     assert discover_project_providers(tmp_path) == []
 
+
 def test_project_provider_overrides_builtin_by_id(tmp_path: Path) -> None:
     providers_dir = tmp_path / ".ai-registry" / "providers"
     providers_dir.mkdir(parents=True)
@@ -161,11 +172,14 @@ def test_project_provider_overrides_builtin_by_id(tmp_path: Path) -> None:
         "id: uniapi\nname: My Uni API\nmodel_cards:\n  - id: custom\n    type: chat\n",
         encoding="utf-8",
     )
-    merged = merge_providers(discover_builtin_providers(), discover_project_providers(tmp_path))
+    merged = merge_providers(
+        discover_builtin_providers(), discover_project_providers(tmp_path)
+    )
     uniapi = next(provider for provider in merged if provider.id == "uniapi")
     assert uniapi.name == "My Uni API"
     assert [card.id for card in uniapi.model_cards] == ["custom"]
     assert len({provider.id for provider in merged}) == len(merged)
+
 
 def test_project_provider_adds_unique_provider(tmp_path: Path) -> None:
     providers_dir = tmp_path / ".ai-registry" / "providers"
@@ -174,7 +188,9 @@ def test_project_provider_adds_unique_provider(tmp_path: Path) -> None:
         "id: my-vllm\nname: Local vLLM\nmodel_cards:\n  - id: qwen:32b\n    type: chat\n",
         encoding="utf-8",
     )
-    merged = merge_providers(discover_builtin_providers(), discover_project_providers(tmp_path))
+    merged = merge_providers(
+        discover_builtin_providers(), discover_project_providers(tmp_path)
+    )
     assert "my-vllm" in {provider.id for provider in merged}
 ```
 
@@ -198,6 +214,7 @@ def discover_project_providers(root: str | Path) -> list[Provider]:
     ]
     _ensure_unique_provider_ids(providers)
     return providers
+
 
 def merge_providers(
     builtin: Sequence[Provider], project: Sequence[Provider]
@@ -252,12 +269,17 @@ def test_loads_merged_deployments_file(tmp_path: Path) -> None:
     assert deployments.profiles[0].credential is not None
     assert deployments.profiles[0].credential.env == "DEEPSEEK_API_KEY"
     assert deployments.profiles[0].metadata["remark"] == "legacy"
-    assert deployments.aliases == [{
-        "id": "chat-default",
-        "deployments": [{"profile_id": "primary", "model_id": "deepseek-chat"}],
-    }]
+    assert deployments.aliases == [
+        {
+            "id": "chat-default",
+            "deployments": [{"profile_id": "primary", "model_id": "deepseek-chat"}],
+        }
+    ]
 
-def test_deployments_file_requires_profiles_and_optional_aliases(tmp_path: Path) -> None:
+
+def test_deployments_file_requires_profiles_and_optional_aliases(
+    tmp_path: Path,
+) -> None:
     path = tmp_path / "deployments.yaml"
     path.write_text("aliases: []\n", encoding="utf-8")
     with pytest.raises(ConfigurationError, match="profiles"):
@@ -284,6 +306,7 @@ def load_profile_file(source: PathSource) -> list[Profile]:
     source_name, _, _ = _source_details(source)
     return _parse_profiles(load_document(source), source_name)
 
+
 def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profile]:
     values = document.get("profiles")
     if not isinstance(values, list):
@@ -296,10 +319,12 @@ def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profi
         ...
     return profiles
 
+
 def load_alias_file(source: PathSource) -> list[dict[str, Any]]:
     source_name, _, _ = _source_details(source)
     document = load_document(source)
     return _parse_aliases(document, source_name, required=True)
+
 
 def _parse_aliases(
     document: Mapping[str, Any], source_name: str, *, required: bool
@@ -324,10 +349,12 @@ def _parse_aliases(
         aliases.append(dict(value))
     return aliases
 
+
 @dataclass(frozen=True)
 class Deployments:
     profiles: list[Profile]
     aliases: list[dict[str, Any]]
+
 
 def load_deployments_file(source: PathSource) -> Deployments:
     source_name, _, _ = _source_details(source)
@@ -381,7 +408,9 @@ git commit -m "feat: load merged profiles and aliases deployments file"
 **Step 1: Write the failing tests**
 
 ```python
-def test_from_project_loads_builtin_providers_and_deployments(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_from_project_loads_builtin_providers_and_deployments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     deployments_dir = tmp_path / ".ai-registry"
     deployments_dir.mkdir()
     (deployments_dir / "deployments.yaml").write_text(
@@ -402,6 +431,7 @@ def test_from_project_loads_builtin_providers_and_deployments(tmp_path: Path, mo
     resolution = registry.resolve("chat-default")
     assert resolution.model_id == "deepseek-chat"
     assert resolution.provider.id == "deepseek"
+
 
 def test_from_project_missing_deployments_file_is_actionable(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="deployments.yaml"):
@@ -489,8 +519,11 @@ def test_example_deployments_file_loads() -> None:
     assert deployments.profiles
     assert deployments.aliases
     profile_ids = {profile.id for profile in deployments.profiles}
-    assert {deployment.profile_id for alias in deployments.aliases
-            for deployment in alias["deployments"]} <= profile_ids
+    assert {
+        deployment.profile_id
+        for alias in deployments.aliases
+        for deployment in alias["deployments"]
+    } <= profile_ids
 ```
 
 **Step 2: Run test to verify it fails**

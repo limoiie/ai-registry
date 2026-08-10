@@ -84,6 +84,7 @@ from the representation.
 ```python
 # All rejected
 "https://user:pass@host/v1"
+
 "https://host/v1?api_key=secret"
 "https://host/v1?x=y;access_token=secret"
 "https://host/v1#aws_access_key_id=secret"
