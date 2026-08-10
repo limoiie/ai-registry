@@ -64,8 +64,20 @@ def load_profile_file(source: PathSource) -> list[Profile]:
                 f"at index {index}"
             )
         normalized = dict(value)
+        has_api_key_env = "api_key_env" in normalized
         api_key_env = normalized.pop("api_key_env", None)
-        metadata = dict(normalized.pop("metadata", {}) or {})
+        if has_api_key_env and "credential" in normalized:
+            raise ConfigurationError(
+                f"Profile configuration '{source_name}' at index {index} "
+                "cannot define both api_key_env and credential"
+            )
+        metadata = (
+            _require_mapping(
+                normalized.pop("metadata"), "profile metadata", source_name
+            )
+            if "metadata" in normalized
+            else {}
+        )
         for key in ("remark", "description"):
             if key in normalized:
                 metadata[key] = normalized.pop(key)
@@ -86,7 +98,11 @@ def normalize_provider(
 ) -> Provider:
     """Normalize the current provider catalog shape into a Provider schema."""
     value = dict(document)
-    settings = dict(value.get("settings") or {})
+    settings = (
+        _require_mapping(value["settings"], "settings", source_name)
+        if "settings" in value
+        else {}
+    )
     for key in ("url", "check_model", "models_url"):
         if key in value:
             settings[key] = value[key]
@@ -107,7 +123,11 @@ def normalize_provider(
                 "expected a mapping"
             )
         card_value = dict(card)
-        abilities = dict(card_value.get("abilities") or {})
+        abilities = (
+            _require_mapping(card_value["abilities"], "abilities", source_name)
+            if "abilities" in card_value
+            else {}
+        )
         known_capabilities = {
             key: abilities[key]
             for key in ("reasoning", "structured_output", "vision", "tools")
@@ -115,7 +135,11 @@ def normalize_provider(
         }
         if known_capabilities:
             card_value["capabilities"] = known_capabilities
-        metadata = dict(card_value.pop("metadata", {}) or {})
+        metadata = (
+            _require_mapping(card_value.pop("metadata"), "metadata", source_name)
+            if "metadata" in card_value
+            else {}
+        )
         for key in ("abilities", "pricing", "deprecated", "settings"):
             if key in card_value:
                 metadata[key] = card_value.pop(key)
@@ -144,6 +168,14 @@ def normalize_provider(
             f"duplicate model id '{duplicates[0]}' in provider '{provider.id}'"
         )
     return provider
+
+
+def _require_mapping(value: Any, field: str, source_name: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ConfigurationError(
+            f"Invalid {field} in '{source_name}': expected a mapping"
+        )
+    return dict(value)
 
 
 def _source_details(source: PathSource) -> tuple[str, str, str]:

@@ -167,3 +167,52 @@ def test_non_mapping_model_card_has_safe_actionable_error(tmp_path: Path) -> Non
         ConfigurationError, match="Invalid model card.*index 0.*mapping"
     ):
         load_provider_file(path)
+
+
+@pytest.mark.parametrize(
+    ("label", "document"),
+    [
+        ("settings", "id: provider\nname: Provider\nsettings: bad\n"),
+        (
+            "abilities",
+            "id: provider\nname: Provider\nmodel_cards:\n"
+            "  - id: model\n    type: chat\n    abilities: bad\n",
+        ),
+        (
+            "metadata",
+            "id: provider\nname: Provider\nmodel_cards:\n"
+            "  - id: model\n    type: chat\n    metadata: bad\n",
+        ),
+    ],
+)
+def test_non_mapping_provider_fields_have_safe_errors(
+    tmp_path: Path, label: str, document: str
+) -> None:
+    path = tmp_path / f"bad-{label}.yaml"
+    path.write_text(document, encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match=f"Invalid {label}.*mapping"):
+        load_provider_file(path)
+
+
+def test_non_mapping_profile_metadata_has_safe_error(tmp_path: Path) -> None:
+    path = tmp_path / "bad-profile-metadata.yaml"
+    path.write_text(
+        "profiles:\n  - id: profile\n    provider_id: provider\n    metadata: bad\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="Invalid profile metadata.*mapping"):
+        load_profile_file(path)
+
+
+def test_rejects_conflicting_profile_credentials(tmp_path: Path) -> None:
+    path = tmp_path / "conflicting-credentials.yaml"
+    path.write_text(
+        "profiles:\n  - id: profile\n    provider_id: provider\n"
+        "    api_key_env: API_KEY\n    credential:\n      env: OTHER_KEY\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="api_key_env.*credential"):
+        load_profile_file(path)
