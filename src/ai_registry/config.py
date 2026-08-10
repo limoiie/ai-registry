@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from importlib import resources
 from pathlib import Path
 from typing import Any, TextIO
@@ -84,6 +84,30 @@ def _ensure_unique_provider_ids(providers: list[Provider]) -> None:
         if provider.id in seen:
             raise ConfigurationError(f"duplicate provider id '{provider.id}'")
         seen.add(provider.id)
+
+
+def discover_project_providers(root: str | Path) -> list[Provider]:
+    """Discover and parse project providers under <root>/.ai-registry/providers."""
+    providers_dir = Path(root) / ".ai-registry" / "providers"
+    if not providers_dir.is_dir():
+        return []
+    providers = [
+        load_provider_file(entry)
+        for entry in sorted(providers_dir.iterdir())
+        if entry.is_file() and entry.suffix.lower() in {".yaml", ".yml", ".json"}
+    ]
+    _ensure_unique_provider_ids(providers)
+    return providers
+
+
+def merge_providers(
+    builtin: Sequence[Provider], project: Sequence[Provider]
+) -> list[Provider]:
+    """Merge project providers over built-ins, keyed by provider id."""
+    merged = {provider.id: provider for provider in builtin}
+    for provider in project:
+        merged[provider.id] = provider
+    return list(merged.values())
 
 
 def load_profile_file(source: PathSource) -> list[Profile]:

@@ -7,10 +7,12 @@ from ai_registry.config import (
     _ensure_unique_provider_ids,
     _provider_from_text,
     discover_builtin_providers,
+    discover_project_providers,
     load_document,
     load_profile_file,
     load_provider_file,
     load_provider_files,
+    merge_providers,
     normalize_provider,
 )
 from ai_registry.errors import ConfigurationError
@@ -93,6 +95,74 @@ def test_provider_from_text_wraps_parse_failures(name: str, text: str) -> None:
 def test_provider_from_text_requires_top_level_mapping() -> None:
     with pytest.raises(ConfigurationError, match="top-level mapping"):
         _provider_from_text("list.yaml", "- not\n- a\n- mapping\n")
+
+
+def test_discovers_project_providers_when_directory_missing(
+    tmp_path: Path,
+) -> None:
+    assert discover_project_providers(tmp_path) == []
+
+
+def test_project_provider_overrides_builtin_by_id(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "uniapi.yml").write_text(
+        "id: uniapi\nname: My Uni API\nmodel_cards:\n  - id: custom\n    type: chat\n",
+        encoding="utf-8",
+    )
+
+    merged = merge_providers(
+        discover_builtin_providers(), discover_project_providers(tmp_path)
+    )
+
+    uniapi = next(provider for provider in merged if provider.id == "uniapi")
+    assert uniapi.name == "My Uni API"
+    assert [card.id for card in uniapi.model_cards] == ["custom"]
+    assert len({provider.id for provider in merged}) == len(merged)
+
+
+def test_project_provider_adds_unique_provider(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "my-vllm.yaml").write_text(
+        "id: my-vllm\nname: Local vLLM\nmodel_cards:\n"
+        "  - id: qwen:32b\n    type: chat\n",
+        encoding="utf-8",
+    )
+
+    merged = merge_providers(
+        discover_builtin_providers(), discover_project_providers(tmp_path)
+    )
+
+    assert "my-vllm" in {provider.id for provider in merged}
+
+
+def test_discover_project_providers_rejects_duplicate_ids(
+    tmp_path: Path,
+) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "first.yaml").write_text(
+        "id: duplicate\nname: First\n", encoding="utf-8"
+    )
+    (providers_dir / "second.yml").write_text(
+        "id: duplicate\nname: Second\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'duplicate'"):
+        discover_project_providers(tmp_path)
+
+
+def test_discover_project_providers_loads_json_files(tmp_path: Path) -> None:
+    providers_dir = tmp_path / ".ai-registry" / "providers"
+    providers_dir.mkdir(parents=True)
+    (providers_dir / "custom.json").write_text(
+        '{"id": "custom", "name": "Custom"}', encoding="utf-8"
+    )
+
+    assert [provider.id for provider in discover_project_providers(tmp_path)] == [
+        "custom"
+    ]
 
 
 def test_ensure_unique_provider_ids_rejects_duplicates() -> None:
