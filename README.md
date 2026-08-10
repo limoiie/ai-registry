@@ -103,7 +103,9 @@ Projects keep configuration in a `.ai-registry/` directory at the root:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # REQUIRED — merged profiles + aliases
+    ├── registry.yaml    # REQUIRED — merged profiles + aliases (default)
+    ├── registry.dev.yaml   # OPTIONAL — profile "dev"
+    └── registry.prod.yaml  # OPTIONAL — profile "prod"
 ```
 
 Start from `examples/registry.example.yaml`, which references the built-in
@@ -123,6 +125,10 @@ resolution = registry.resolve("chat-default")
 print(resolution.endpoint)
 print(resolution.resolve_credential())
 ```
+
+Select a profile by environment with `Registry.from_project(profile="prod")`
+or by setting `AI_REGISTRY_PROFILE`, which loads `registry.prod.yaml` instead
+of the default. See [Configuration](docs/configuration.md).
 
 `Registry.from_files(...)` remains available when you want explicit control
 over every configuration file.

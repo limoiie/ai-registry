@@ -89,6 +89,7 @@ Raises `ConfigurationError` on any structural problem.
 Registry.from_project(
     root: str | Path | None = None,
     *,
+    profile: str | None = None,
     secret_resolver: SecretResolver | None = None,
     router: DeploymentRouter | None = None,
 ) -> Registry
@@ -101,6 +102,14 @@ project providers from `<root>/.ai-registry/providers/` (optional). Project
 providers replace built-ins by `id`; the deployments file may reference any of
 the merged providers. Raises `ConfigurationError` when the deployments file is
 missing or invalid.
+
+`profile` selects a named registry file. When set, `from_project` loads
+`<root>/.ai-registry/registry.<profile>.yaml` (or `.yml`/`.json`) instead of
+the default `registry.yaml`. If `profile` is omitted, the `AI_REGISTRY_PROFILE`
+environment variable is used. The explicit `profile` argument takes precedence
+over the environment variable. Profile names are restricted to `[A-Za-z0-9_-]`;
+invalid names and missing profile files raise `ConfigurationError`. A requested
+(but missing) profile file never falls back to the default `registry.yaml`.
 
 #### Methods
 

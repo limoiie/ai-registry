@@ -128,6 +128,30 @@ Pass a `root` path to discover from another directory. A project provider
 under `.ai-registry/providers/` with the same `id` as a built-in replaces it
 entirely — there is no deep merge.
 
+### Select by environment
+
+To keep separate registries per environment, copy the example to a
+profile-named file and select it. Copy `examples/registry.example.yaml` to
+`.ai-registry/registry.prod.yaml` (adjusting the contents for production), then
+select the `prod` profile either by argument or by environment variable:
+
+```python
+from ai_registry import Registry
+
+registry = Registry.from_project(profile="prod")  # loads registry.prod.yaml
+```
+
+```bash
+export AI_REGISTRY_PROFILE=prod
+python -c "from ai_registry import Registry; Registry.from_project()"
+```
+
+The file is named `registry.<profile>.yaml` under `.ai-registry/`. Without a
+profile, the default `registry.yaml` is used. An explicit `profile=` argument
+overrides the `AI_REGISTRY_PROFILE` environment variable. If a requested
+profile file is missing, `from_project` raises instead of silently falling back
+to the default. See [Configuration](configuration.md) for full details.
+
 ## Loading from files explicitly (`from_files`)
 
 `Registry.from_files` loads configuration from explicit paths. It accepts

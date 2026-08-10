@@ -113,13 +113,18 @@ Profiles and aliases are configured in one merged file:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # REQUIRED — merged profiles + aliases
+    ├── registry.yaml    # REQUIRED — merged profiles + aliases (default)
+    ├── registry.dev.yaml   # OPTIONAL — profile "dev"
+    └── registry.prod.yaml  # OPTIONAL — profile "prod"
 ```
 
 `Registry.from_project(root)` discovers both scopes and loads
 `.ai-registry/registry.yaml`, then validates the whole graph with the same
 rules as `from_files`/`from_data`. Start from
-`examples/registry.example.yaml` when creating the file.
+`examples/registry.example.yaml` when creating the file. Pass `profile="prod"`
+(or set `AI_REGISTRY_PROFILE`) to load `registry.prod.yaml` instead; a
+requested but missing profile file raises rather than falling back to the
+default.
 
 ## What it is not
 
@@ -155,6 +160,10 @@ adapters are built on.
    built-ins by id, and profiles and aliases live in one merged
    `.ai-registry/registry.yaml`. Legacy catalog and profile formats still
    load and normalize without migration.
+6. **Profile-based selection.** `registry.<env>.yaml` files are chosen by an
+   explicit `profile=` argument or the `AI_REGISTRY_PROFILE` environment
+   variable, with a safe default and no silent fallback when a requested
+   profile file is missing.
 
 ## Architecture
 

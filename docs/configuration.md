@@ -55,6 +55,39 @@ Projects keep configuration under a `.ai-registry/` directory:
 - `Registry.from_project(root)` discovers both, merges the providers, and
   loads `registry.yaml` with the same validation as the explicit loaders.
 
+### Profile selection
+
+`Registry.from_project` can select among several registry files by **profile**
+(typically one per environment or tenant). The active file is named
+`registry.<profile>.yaml` (or `.yml`/`.json`) instead of the default
+`registry.yaml`:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── providers/           # OPTIONAL — override or add providers
+    ├── registry.yaml        # default (no profile)
+    ├── registry.dev.yaml    # profile "dev"
+    └── registry.prod.yaml   # profile "prod"
+```
+
+The profile is chosen by precedence — the first that applies wins:
+
+1. **Explicit argument** — `Registry.from_project(root, profile="prod")`.
+2. **Environment variable** — `AI_REGISTRY_PROFILE` set to the profile name.
+3. **Default** — no profile, so `registry.yaml` (or `.yml`/`.json`).
+
+An explicit `profile=` always overrides the environment variable. Profile names
+are restricted to `[A-Za-z0-9_-]`; anything else (including path separators and
+`.`/`..`) is rejected with a `ConfigurationError`.
+
+**There is no silent fallback.** Once a profile is requested — by argument or
+environment variable — the matching file must exist. If
+`registry.<profile>.yaml`/`.yml`/`.json` is missing, `from_project` raises a
+`ConfigurationError` naming the expected file; it never falls back to the
+default `registry.yaml`. The default is only used when no profile is requested
+at all.
+
 ### Provider scope and override
 
 Providers come from two scopes and are merged by `id`:

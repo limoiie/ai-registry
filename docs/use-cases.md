@@ -331,3 +331,52 @@ Override a built-in provider by dropping a file with the same `id` under
 omitted fields fall back to schema defaults. Start from
 `examples/registry.example.yaml`, and use `Registry.from_files` (use case 8)
 when you need explicit path control instead.
+
+## 14. Environment switching
+
+Keep one registry per environment under `.ai-registry/` and select it by
+profile, so the same application code runs against dev, staging, and prod
+without edits:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── registry.yaml        # default (e.g. local development)
+    ├── registry.dev.yaml    # profile "dev"
+    └── registry.prod.yaml   # profile "prod"
+```
+
+```yaml
+# .ai-registry/registry.prod.yaml
+profiles:
+  - id: uniapi-primary
+    provider_id: uniapi
+    credential: {env: UNIAPI_PROD_KEY}
+    enabled_models: [deepseek-v4-flash]
+
+aliases:
+  - id: sol
+    deployments:
+      - profile_id: uniapi-primary
+        model_id: deepseek-v4-flash
+```
+
+Select the profile explicitly, or drive it from the environment:
+
+```python
+from ai_registry import Registry
+
+registry = Registry.from_project(profile="prod")  # loads registry.prod.yaml
+```
+
+```bash
+export AI_REGISTRY_PROFILE=prod
+python -c "from ai_registry import Registry; Registry.from_project()"
+```
+
+Selection precedence is: explicit `profile=` argument, then the
+`AI_REGISTRY_PROFILE` environment variable, then the default `registry.yaml`.
+Profile names are restricted to `[A-Za-z0-9_-]`. A requested but missing
+profile file raises a `ConfigurationError` — it never silently falls back to
+the default. See the profile-selection section in
+[Configuration](configuration.md).
