@@ -51,6 +51,17 @@ def test_discovered_builtin_providers_are_sorted_by_id() -> None:
     )
 
 
+def test_discover_builtin_providers_missing_data_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "importlib.resources.files", lambda _package: tmp_path / "missing"
+    )
+
+    with pytest.raises(ConfigurationError, match="built-in provider data"):
+        discover_builtin_providers()
+
+
 def test_provider_from_text_parses_yaml() -> None:
     provider = _provider_from_text("custom.yaml", "id: custom\nname: Custom\n")
 
@@ -74,7 +85,7 @@ def test_provider_from_text_parses_json() -> None:
 )
 def test_provider_from_text_wraps_parse_failures(name: str, text: str) -> None:
     with pytest.raises(
-        ConfigurationError, match="Unable to parse .* provider 'broken[.a-z]*'"
+        ConfigurationError, match=f"Unable to parse (?:JSON|YAML) provider '{name}'"
     ):
         _provider_from_text(name, text)
 

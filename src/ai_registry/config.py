@@ -20,17 +20,24 @@ PathSource = str | Path | TextIO
 def load_document(source: PathSource) -> dict[str, Any]:
     """Load one YAML or JSON mapping without resolving any secrets."""
     source_name, text, suffix = _read_source(source)
+    return _parse_document_text(text, suffix, source_name, kind="configuration")
+
+
+def _parse_document_text(
+    text: str, suffix: str, source_name: str, *, kind: str
+) -> dict[str, Any]:
+    """Parse one YAML or JSON mapping, wrapping failures in ConfigurationError."""
     try:
         value = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
     except (json.JSONDecodeError, yaml.YAMLError):
         format_name = "JSON" if suffix == ".json" else "YAML"
         raise ConfigurationError(
-            f"Unable to parse {format_name} configuration '{source_name}'; "
+            f"Unable to parse {format_name} {kind} '{source_name}'; "
             f"check {format_name} syntax and remove malformed values"
         ) from None
     if not isinstance(value, dict):
         raise ConfigurationError(
-            f"Configuration '{source_name}' must contain a top-level mapping"
+            f"{kind.capitalize()} '{source_name}' must contain a top-level mapping"
         )
     return value
 
@@ -42,20 +49,23 @@ def load_provider_file(source: PathSource) -> Provider:
 
 def load_provider_files(sources: list[PathSource]) -> list[Provider]:
     providers = [load_provider_file(source) for source in sources]
-    seen: set[str] = set()
-    for provider in providers:
-        if provider.id in seen:
-            raise ConfigurationError(f"duplicate provider id '{provider.id}'")
-        seen.add(provider.id)
+    _ensure_unique_provider_ids(providers)
     return providers
 
 
 def discover_builtin_providers() -> list[Provider]:
+    """Discover and parse the built-in providers shipped as package data."""
     base = resources.files("ai_registry") / "data" / "providers"
+    try:
+        entries = list(base.iterdir())
+    except FileNotFoundError as error:
+        raise ConfigurationError(
+            f"Unable to read built-in provider data '{base}': {error}"
+        ) from None
     providers = [
         _provider_from_text(entry.name, entry.read_text(encoding="utf-8"))
-        for entry in base.iterdir()
-        if entry.name.lower().endswith((".yaml", ".yml", ".json"))
+        for entry in entries
+        if entry.is_file() and entry.name.lower().endswith((".yaml", ".yml", ".json"))
     ]
     providers.sort(key=lambda provider: provider.id)
     _ensure_unique_provider_ids(providers)
@@ -64,26 +74,16 @@ def discover_builtin_providers() -> list[Provider]:
 
 def _provider_from_text(name: str, text: str) -> Provider:
     suffix = Path(name).suffix.lower()
-    try:
-        value = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
-    except (json.JSONDecodeError, yaml.YAMLError):
-        format_name = "JSON" if suffix == ".json" else "YAML"
-        raise ConfigurationError(
-            f"Unable to parse {format_name} provider '{name}'; "
-            "check syntax and remove malformed values"
-        ) from None
-    if not isinstance(value, dict):
-        raise ConfigurationError(f"Provider '{name}' must contain a top-level mapping")
-    return normalize_provider(value, source_name=name)
+    document = _parse_document_text(text, suffix, name, kind="provider")
+    return normalize_provider(document, source_name=name)
 
 
 def _ensure_unique_provider_ids(providers: list[Provider]) -> None:
-    ids = [provider.id for provider in providers]
-    duplicates = sorted(
-        {provider_id for provider_id in ids if ids.count(provider_id) > 1}
-    )
-    if duplicates:
-        raise ConfigurationError(f"duplicate provider id '{duplicates[0]}'")
+    seen: set[str] = set()
+    for provider in providers:
+        if provider.id in seen:
+            raise ConfigurationError(f"duplicate provider id '{provider.id}'")
+        seen.add(provider.id)
 
 
 def load_profile_file(source: PathSource) -> list[Profile]:
