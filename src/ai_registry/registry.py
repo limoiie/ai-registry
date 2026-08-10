@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -242,23 +243,49 @@ def _find_model(provider: Provider, model_id: str) -> ModelCard | None:
     return next((card for card in provider.model_cards if card.id == model_id), None)
 
 
-_SENSITIVE_METADATA_KEYS = {
-    "api_key",
-    "apikey",
+_SENSITIVE_METADATA_WORDS = {
     "authorization",
     "credential",
     "password",
     "secret",
-    "token",
 }
+_TOKEN_QUALIFIERS = {
+    "access",
+    "auth",
+    "authentication",
+    "bearer",
+    "client",
+    "id",
+    "refresh",
+    "session",
+}
+
+
+def _is_sensitive_metadata_key(key: str) -> bool:
+    words = _metadata_key_words(key)
+    if not words:
+        return False
+    if any(word in _SENSITIVE_METADATA_WORDS for word in words):
+        return True
+    if "apikey" in words or any(
+        left == "api" and right == "key" for left, right in zip(words, words[1:])
+    ):
+        return True
+    return words == ["token"] or (
+        words[-1] == "token" and words[-2] in _TOKEN_QUALIFIERS
+    )
+
+
+def _metadata_key_words(key: str) -> list[str]:
+    spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", key)
+    return [word.casefold() for word in re.split(r"[^A-Za-z0-9]+", spaced) if word]
 
 
 def _redact_metadata(value: Any) -> Any:
     if isinstance(value, Mapping):
         return {
             key: "<redacted>"
-            if isinstance(key, str)
-            and any(part in key.lower() for part in _SENSITIVE_METADATA_KEYS)
+            if isinstance(key, str) and _is_sensitive_metadata_key(key)
             else _redact_metadata(item)
             for key, item in value.items()
         }

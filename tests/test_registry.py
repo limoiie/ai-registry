@@ -152,7 +152,17 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
                     "metadata": {
                         "region": "us",
                         "api_key": "secret-key",
-                        "nested": {"token": "secret-token", "safe": "value"},
+                        "nested": {
+                            "api-key": "hyphen-key",
+                            "x-api-key": "prefixed-key",
+                            "apiKey": "camel-key",
+                            "X-API-Key": "uppercase-key",
+                            "access-token": "access-secret",
+                            "authorization-header": "auth-secret",
+                            "token": "secret-token",
+                            "model_token_count": 42,
+                            "safe": "value",
+                        },
                     }
                 }
             )
@@ -165,9 +175,22 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
 
     assert "secret-key" not in rendered
     assert "secret-token" not in rendered
+    assert "hyphen-key" not in rendered
+    assert "prefixed-key" not in rendered
+    assert "camel-key" not in rendered
+    assert "uppercase-key" not in rendered
+    assert "access-secret" not in rendered
+    assert "auth-secret" not in rendered
     assert "_secret_resolver" not in rendered
     assert "'api_key': '<redacted>'" in rendered
+    assert "'api-key': '<redacted>'" in rendered
+    assert "'x-api-key': '<redacted>'" in rendered
+    assert "'apiKey': '<redacted>'" in rendered
+    assert "'X-API-Key': '<redacted>'" in rendered
+    assert "'access-token': '<redacted>'" in rendered
+    assert "'authorization-header': '<redacted>'" in rendered
     assert "'token': '<redacted>'" in rendered
+    assert "'model_token_count': 42" in rendered
 
 
 def test_alias_wins_over_direct_profile_model_reference() -> None:
