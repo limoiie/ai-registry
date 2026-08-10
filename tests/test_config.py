@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from ai_registry import Registry
 from ai_registry.config import (
     _ensure_unique_provider_ids,
     _provider_from_text,
@@ -551,6 +552,12 @@ def test_example_deployments_file_loads() -> None:
         for alias in deployments.aliases
         for deployment in alias["deployments"]
     } <= profile_ids
+
+    Registry.from_data(
+        providers=discover_builtin_providers(),
+        profiles=deployments.profiles,
+        aliases=deployments.aliases,
+    )
 
 
 def test_load_alias_file_requires_aliases_list(tmp_path: Path) -> None:
