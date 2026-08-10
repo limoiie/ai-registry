@@ -103,7 +103,7 @@ Projects keep configuration in a `.ai-registry/` directory at the root:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    ├── registry.yaml    # REQUIRED — merged profiles + aliases (default)
+    ├── registry.yaml    # default — used when no profile requested
     ├── registry.dev.yaml   # OPTIONAL — profile "dev"
     └── registry.prod.yaml  # OPTIONAL — profile "prod"
 ```

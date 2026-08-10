@@ -44,11 +44,14 @@ Projects keep configuration under a `.ai-registry/` directory:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # default — merged profiles + aliases (no profile)
 ```
 
-- `registry.yaml` is a single document with a required `profiles` list and
-  an optional `aliases` list (see [Registry file](#registry-file)).
+- `registry.yaml` is the default registry file, used when no profile is
+  requested. It is a single document with a required `profiles` list and an
+  optional `aliases` list (see [Registry file](#registry-file)). Profile-named
+  files (`registry.<env>.yaml`) follow the same shape; see
+  [Profile selection](#profile-selection).
 - `providers/` holds project provider documents (one provider per file, any of
   `.yaml`, `.yml`, `.json`). When the directory is missing, only the built-in
   catalog is used.
@@ -86,7 +89,9 @@ environment variable — the matching file must exist. If
 `registry.<profile>.yaml`/`.yml`/`.json` is missing, `from_project` raises a
 `ConfigurationError` naming the expected file; it never falls back to the
 default `registry.yaml`. The default is only used when no profile is requested
-at all.
+at all. An empty or blank profile (an empty `profile=` value or an unset/empty
+`AI_REGISTRY_PROFILE`) is treated as "no profile" and selects the default
+rather than being rejected.
 
 ### Provider scope and override
 

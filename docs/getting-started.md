@@ -84,14 +84,16 @@ meant for the adapter boundary and is not invoked until you call it (lazy).
 
 The registry can discover a project's configuration from a `.ai-registry/`
 directory at the project root. Providers are optional there — the built-in
-catalog ships with the package — but `registry.yaml` is required and holds
-merged profiles and aliases:
+catalog ships with the package — but a registry file is required and holds
+merged profiles and aliases. By default that is `registry.yaml`; profile-named
+files (see [Select by environment](#select-by-environment) below) are also
+accepted:
 
 ```text
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # default — merged profiles + aliases
 ```
 
 Copy `examples/registry.example.yaml`, which references the built-in
@@ -150,7 +152,8 @@ The file is named `registry.<profile>.yaml` under `.ai-registry/`. Without a
 profile, the default `registry.yaml` is used. An explicit `profile=` argument
 overrides the `AI_REGISTRY_PROFILE` environment variable. If a requested
 profile file is missing, `from_project` raises instead of silently falling back
-to the default. See [Configuration](configuration.md) for full details.
+to the default. An empty or blank profile selects the default rather than being
+rejected. See [Configuration](configuration.md) for full details.
 
 ## Loading from files explicitly (`from_files`)
 
