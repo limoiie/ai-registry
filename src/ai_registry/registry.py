@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence, Set
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
@@ -292,22 +292,20 @@ def _redact_metadata(value: Any) -> Any:
             else _redact_metadata(item)
             for key, item in value.items()
         }
-    if isinstance(value, list):
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         if _is_sensitive_pair(value):
-            return [value[0], "<redacted>"]
-        return [_redact_metadata(item) for item in value]
-    if isinstance(value, tuple):
-        if _is_sensitive_pair(value):
-            return (value[0], "<redacted>")
-        return tuple(_redact_metadata(item) for item in value)
-    if isinstance(value, set):
+            redacted = (value[0], "<redacted>")
+        else:
+            redacted = tuple(_redact_metadata(item) for item in value)
+        return redacted if isinstance(value, tuple) else list(redacted)
+    if isinstance(value, Set):
         return {_redact_metadata(item) for item in value}
     if isinstance(value, frozenset):
         return frozenset(_redact_metadata(item) for item in value)
     return value
 
 
-def _is_sensitive_pair(value: list[Any] | tuple[Any, ...]) -> bool:
+def _is_sensitive_pair(value: Sequence[Any]) -> bool:
     return (
         len(value) == 2
         and isinstance(value[0], str)

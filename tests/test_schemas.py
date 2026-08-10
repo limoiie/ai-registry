@@ -1,4 +1,4 @@
-from collections import UserDict
+from collections import UserDict, UserList, deque
 from datetime import date
 from typing import Any, cast
 
@@ -355,6 +355,50 @@ def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> 
     assert config.model_dump()["profiles"][0]["metadata"]["nested"]["password"] == (
         "<redacted>"
     )
+
+
+def test_generic_sequence_containers_are_redacted_and_json_safe() -> None:
+    config = RegistryConfig(
+        profiles=[
+            Profile(
+                id="primary",
+                provider_id="provider",
+                metadata={
+                    "list_data": UserList(
+                        [{"password": "userlist-secret"}, "ordinary"]
+                    ),
+                    "deque_data": deque([{"token": "deque-secret"}, "safe"]),
+                },
+            )
+        ]
+    )
+
+    for rendered in (repr(config), str(config.model_dump()), config.model_dump_json()):
+        assert "userlist-secret" not in rendered
+        assert "deque-secret" not in rendered
+    assert "ordinary" in str(config.model_dump())
+    assert "safe" in str(config.model_dump())
+
+
+def test_provider_rejects_conflicting_sdk_type_declarations() -> None:
+    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+        Provider.model_validate(
+            {"id": "provider", "name": "Provider", "sdk_type": "anthropic"}
+            | {"settings": {"sdk_type": "openai"}}
+        )
+
+
+def test_provider_accepts_equivalent_sdk_type_declarations() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "provider",
+            "name": "Provider",
+            "sdk_type": "uniapi",
+            "settings": {"sdk_type": "uniapi"},
+        }
+    )
+
+    assert provider.sdk_type is SDKType.OPENAI
 
 
 def test_userdict_metadata_is_recursively_redacted() -> None:

@@ -11,7 +11,7 @@ import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
 from ai_registry.errors import ConfigurationError
-from ai_registry.schemas import Profile, Provider
+from ai_registry.schemas import Profile, Provider, canonical_sdk_type
 
 PathSource = str | Path | TextIO
 
@@ -111,16 +111,17 @@ def normalize_provider(
     value["settings"] = settings
     top_sdk_type = value.get("sdk_type")
     nested_sdk_type = settings.get("sdk_type")
-    if top_sdk_type is not None and nested_sdk_type is not None:
-        canonical_top = "openai" if top_sdk_type == "uniapi" else top_sdk_type
-        canonical_nested = "openai" if nested_sdk_type == "uniapi" else nested_sdk_type
-        if canonical_top != canonical_nested:
-            raise ConfigurationError(
-                f"conflicting sdk_type values in '{source_name}'; "
-                "use one canonical SDK type"
-            )
-    canonical_sdk_type = top_sdk_type if top_sdk_type is not None else nested_sdk_type
-    if canonical_sdk_type == "uniapi":
+    try:
+        canonical_sdk_type(top_sdk_type, nested_sdk_type)
+    except ConfigurationError:
+        raise ConfigurationError(
+            f"conflicting sdk_type values in '{source_name}'; "
+            "use one canonical SDK type"
+        ) from None
+    if top_sdk_type is not None:
+        if top_sdk_type == "uniapi":
+            value["sdk_type"] = "openai"
+    elif nested_sdk_type == "uniapi":
         value["sdk_type"] = "openai"
     raw_model_cards = value.get("model_cards")
     if raw_model_cards is None:

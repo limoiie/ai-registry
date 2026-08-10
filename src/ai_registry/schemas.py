@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence, Set
 from datetime import date
 from enum import StrEnum
 from typing import Any, ClassVar, Self, cast
@@ -36,6 +36,19 @@ class SDKType(StrEnum):
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
     CUSTOM = "custom"
+
+
+def canonical_sdk_type(top_sdk_type: Any, nested_sdk_type: Any) -> Any:
+    """Validate equivalent SDK declarations and return the canonical value."""
+    if top_sdk_type is not None and nested_sdk_type is not None:
+        canonical_top = "openai" if top_sdk_type == "uniapi" else top_sdk_type
+        canonical_nested = "openai" if nested_sdk_type == "uniapi" else nested_sdk_type
+        if canonical_top != canonical_nested:
+            raise ConfigurationError(
+                "conflicting sdk_type values; use one canonical SDK type"
+            )
+    canonical = top_sdk_type if top_sdk_type is not None else nested_sdk_type
+    return "openai" if canonical == "uniapi" else canonical
 
 
 class SafeModel(BaseModel):
@@ -104,6 +117,10 @@ class SafeModel(BaseModel):
 def _json_fallback(value: Any) -> Any:
     if isinstance(value, Mapping):
         return dict(value)
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return list(value)
+    if isinstance(value, Set):
+        return set(value)
     raise TypeError(f"unsupported serialization type: {type(value).__name__}")
 
 
@@ -116,28 +133,22 @@ def _redact(value: Any, secret_fields: set[str]) -> Any:
             or (
                 isinstance(key, str)
                 and _is_sensitive_key(key)
-                and not (key.casefold() == "credential" and isinstance(item, dict))
+                and not (key.casefold() == "credential" and isinstance(item, Mapping))
             )
             else _redact(item, secret_fields)
             for key, item in value.items()
         }
-    if isinstance(value, list):
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         if (
             len(value) == 2
             and isinstance(value[0], str)
             and _is_sensitive_key(value[0])
         ):
-            return [value[0], "<redacted>"]
-        return [_redact(item, secret_fields) for item in value]
-    if isinstance(value, tuple):
-        if (
-            len(value) == 2
-            and isinstance(value[0], str)
-            and _is_sensitive_key(value[0])
-        ):
-            return (value[0], "<redacted>")
-        return tuple(_redact(item, secret_fields) for item in value)
-    if isinstance(value, set):
+            redacted = (value[0], "<redacted>")
+        else:
+            redacted = tuple(_redact(item, secret_fields) for item in value)
+        return redacted if isinstance(value, tuple) else list(redacted)
+    if isinstance(value, Set):
         return {_redact(item, secret_fields) for item in value}
     if isinstance(value, frozenset):
         return frozenset(_redact(item, secret_fields) for item in value)
@@ -281,14 +292,13 @@ class Provider(SafeModel):
     def normalize_nested_settings(cls, data: Any) -> Any:
         if isinstance(data, dict):
             settings = data.get("settings")
-            if data.get("sdk_type") == "uniapi":
+            top_sdk_type = data.get("sdk_type")
+            nested_sdk_type = (
+                settings.get("sdk_type") if isinstance(settings, dict) else None
+            )
+            if top_sdk_type is not None or nested_sdk_type is not None:
                 data = dict(data)
-                data["sdk_type"] = SDKType.OPENAI
-            elif "sdk_type" not in data and isinstance(settings, dict):
-                data = dict(data)
-                data["sdk_type"] = settings.get("sdk_type", SDKType.OPENAI)
-                if data["sdk_type"] == "uniapi":
-                    data["sdk_type"] = SDKType.OPENAI
+                data["sdk_type"] = canonical_sdk_type(top_sdk_type, nested_sdk_type)
         return data
 
 

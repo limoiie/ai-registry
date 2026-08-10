@@ -1,3 +1,4 @@
+from collections import UserList, deque
 from pathlib import Path
 from typing import cast
 
@@ -72,6 +73,21 @@ def test_from_data_revalidates_model_instances_with_updated_endpoints() -> None:
         Registry.from_data(providers=[provider()], profiles=[invalid_profile])
 
     assert "leaked" not in str(caught.value)
+
+
+def test_from_data_rejects_conflicting_provider_sdk_type_mappings() -> None:
+    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+        Registry.from_data(
+            providers=[
+                {
+                    "id": "openai",
+                    "name": "OpenAI",
+                    "sdk_type": "anthropic",
+                    "settings": {"sdk_type": "openai"},
+                }
+            ],
+            profiles=[],
+        )
 
 
 def test_alias_resolution_uses_injected_router_and_health_recovery() -> None:
@@ -186,6 +202,12 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
                                     ("ordinary", "frozenset-value"),
                                 }
                             ),
+                            "list_container": UserList(
+                                [{"password": "USERLIST_LEAK"}, "list-ok"]
+                            ),
+                            "deque_container": deque(
+                                [{"token": "DEQUE_LEAK"}, "deque-ok"]
+                            ),
                             "model_token_count": 42,
                             "safe": "value",
                         },
@@ -211,6 +233,8 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "TUPLE_LEAK" not in rendered
     assert "SET_LEAK" not in rendered
     assert "FROZEN_LEAK" not in rendered
+    assert "USERLIST_LEAK" not in rendered
+    assert "DEQUE_LEAK" not in rendered
     assert "_secret_resolver" not in rendered
     assert "'api_key': '<redacted>'" in rendered
     assert "'api-key': '<redacted>'" in rendered
@@ -224,6 +248,8 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "tuple-value" in rendered
     assert "set-value" in rendered
     assert "frozenset-value" in rendered
+    assert "list-ok" in rendered
+    assert "deque-ok" in rendered
     assert "'model_token_count': 42" in rendered
 
 
