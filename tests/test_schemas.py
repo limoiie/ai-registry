@@ -82,6 +82,32 @@ def test_credentials_require_exactly_one_reference_and_reject_literal_keys() -> 
         CredentialRef(secret_ref="")
 
 
+def test_invalid_credential_errors_do_not_expose_supplied_values() -> None:
+    env_value = "PRIVATE_ENV_NAME"
+    secret_ref_value = "vault://private/credential"
+    literal_value = "private-literal-api-key"
+
+    with pytest.raises(ValidationError) as conflicting_error:
+        CredentialRef(env=env_value, secret_ref=secret_ref_value)
+    assert env_value not in str(conflicting_error.value)
+    assert secret_ref_value not in str(conflicting_error.value)
+
+    with pytest.raises(ValidationError) as literal_error:
+        CredentialRef(api_key=literal_value)
+    assert literal_value not in str(literal_error.value)
+
+    with pytest.raises(ValidationError) as nested_error:
+        Profile.model_validate(
+            {
+                "id": "primary",
+                "provider_id": "provider",
+                "credential": {"env": env_value, "secret_ref": secret_ref_value},
+            }
+        )
+    assert env_value not in str(nested_error.value)
+    assert secret_ref_value not in str(nested_error.value)
+
+
 def test_alias_deployments_and_routing_metadata() -> None:
     alias = Alias(
         id="fast-chat",

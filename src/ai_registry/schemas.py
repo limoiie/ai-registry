@@ -34,7 +34,9 @@ class SDKType(StrEnum):
 
 
 class SafeModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    model_config = ConfigDict(
+        extra="forbid", validate_assignment=True, hide_input_in_errors=True
+    )
     _secret_fields: ClassVar[set[str]] = set()
 
     def safe_dump(self) -> dict[str, Any]:
