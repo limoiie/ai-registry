@@ -1,0 +1,166 @@
+id: minimax
+name: Minimax
+description: Founded in 2021, MiniMax builds general-purpose AI...
+url: https://www.minimaxi.com
+check_model: MiniMax-M2.1
+models_url: https://platform.minimaxi.com/document/Models
+settings:
+  disable_browser_request: true
+  proxy_url:
+    placeholder: https://api.minimaxi.com
+  response_animation:
+    speed: 2
+    text: smooth
+  sdk_type: openai
+  show_model_fetcher: false
+
+model_cards:
+- id: MiniMax-M2.7
+  display_name: MiniMax M2.7
+  type: chat
+  released_at: '2026-03-18'
+  description: Self-evolving M2-series model for real-world software engineering (56.22% SWE-Pro),
+    office suite delivery, and long-horizon agent harnesses with tool use; 204k context.
+  context_window_tokens: 204800
+  max_output_tokens: 131072
+  abilities:
+    function_call: true
+    reasoning: true
+  pricing:
+    units:
+    - name: textInput
+      rate: 0.3
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheWrite
+      rate: 0.375
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheRead
+      rate: 0.03
+      strategy: fixed
+      unit: millionTokens
+    - name: textOutput
+      rate: 1.2
+      strategy: fixed
+      unit: millionTokens
+- id: MiniMax-M2.5
+  display_name: MiniMax M2.5
+  type: chat
+  released_at: '2026-02-12'
+  description: SOTA model for coding, agentic tool use, and search with 230B parameters
+    (10B active). Achieves 80.2% on SWE-Bench Verified, 51.3% on Multi-SWE-Bench，76.3%
+    on BrowseComp.
+  context_window_tokens: 204800
+  max_output_tokens: 131072
+  abilities:
+    function_call: true
+    reasoning: true
+  pricing:
+    units:
+    - name: textInput
+      rate: 0.3
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheWrite
+      rate: 0.375
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheRead
+      rate: 0.03
+      strategy: fixed
+      unit: millionTokens
+    - name: textOutput
+      rate: 1.2
+      strategy: fixed
+      unit: millionTokens
+- id: MiniMax-M2.1
+  display_name: MiniMax M2.1
+  type: chat
+  released_at: '2025-12-23'
+  description: Powerful multilingual programming capabilities, comprehensively upgraded
+    programming experience.
+  context_window_tokens: 204800
+  max_output_tokens: 131072
+  abilities:
+    function_call: true
+    reasoning: true
+  pricing:
+    units:
+    - name: textInput
+      rate: 0.3
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheWrite
+      rate: 0.375
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheRead
+      rate: 0.03
+      strategy: fixed
+      unit: millionTokens
+    - name: textOutput
+      rate: 1.2
+      strategy: fixed
+      unit: millionTokens
+- id: MiniMax-M2.1-Lightning
+  display_name: MiniMax M2.1 Lightning
+  type: chat
+  released_at: '2025-12-23'
+  description: Powerful multilingual programming capabilities with faster and more
+    efficient inference.
+  context_window_tokens: 204800
+  max_output_tokens: 131072
+  abilities:
+    function_call: true
+    reasoning: true
+  pricing:
+    units:
+    - name: textInput
+      rate: 0.3
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheWrite
+      rate: 0.375
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheRead
+      rate: 0.03
+      strategy: fixed
+      unit: millionTokens
+    - name: textOutput
+      rate: 2.4
+      strategy: fixed
+      unit: millionTokens
+- id: MiniMax-M2-Stable
+  display_name: MiniMax M2
+  type: chat
+  deprecated: true
+  released_at: '2025-10-27'
+  description: Built for efficient coding and agent workflows.
+  context_window_tokens: 204800
+  max_output_tokens: 131072
+  abilities:
+    function_call: true
+    reasoning: true
+    search: true
+  settings:
+    search_impl: params
+  pricing:
+    units:
+    - name: textInput
+      rate: 0.3
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheWrite
+      rate: 0.375
+      strategy: fixed
+      unit: millionTokens
+    - name: textInput_cacheRead
+      rate: 0.03
+      strategy: fixed
+      unit: millionTokens
+    - name: textOutput
+      rate: 1.2
+      strategy: fixed
+      unit: millionTokens

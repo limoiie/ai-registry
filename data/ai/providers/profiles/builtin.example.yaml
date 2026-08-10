@@ -1,0 +1,14 @@
+profiles:
+  - id: deepseek-main
+    provider_id: deepseek
+    api_key_env: DEEPSEEK_API_KEY
+    enabled_models:
+      - deepseek-chat
+      - deepseek-reasoner
+  - id: uniapi-main
+    provider_id: uniapi
+    api_key_env: UNIAPI_API_KEY
+    enabled_models:
+      - bge-large-zh:latest
+      - bge-reranker-v2-m3
+      - deepseek-v3:671b
