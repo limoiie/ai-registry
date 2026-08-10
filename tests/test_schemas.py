@@ -47,6 +47,38 @@ def test_identifiers_are_constrained() -> None:
         ModelCard(id="", type=ModelType.CHAT)
 
 
+def test_model_ids_allow_catalog_native_separators() -> None:
+    catalog_ids = ["bge-large-zh:latest", "Qwen/Qwen3-32B"]
+
+    for model_id in catalog_ids:
+        assert ModelCard(id=model_id, type=ModelType.CHAT).id == model_id
+
+    profile = Profile(
+        id="catalog-profile",
+        provider_id="provider",
+        enabled_models=catalog_ids,
+    )
+    assert profile.enabled_models == catalog_ids
+    assert (
+        Deployment(profile_id="catalog-profile", model_id=catalog_ids[1]).model_id
+        == catalog_ids[1]
+    )
+
+
+def test_logical_ids_retain_strict_constraints() -> None:
+    with pytest.raises(ValidationError):
+        Provider(id="provider/name", name="Provider")
+
+    with pytest.raises(ValidationError):
+        Profile(id="profile:name", provider_id="provider")
+
+    with pytest.raises(ValidationError):
+        Alias(
+            id="alias/name",
+            deployments=[Deployment(profile_id="profile", model_id="model")],
+        )
+
+
 def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> None:
     profile = Profile(
         id="primary",

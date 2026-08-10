@@ -77,6 +77,16 @@ def _check_identifier(value: str) -> str:
     return value
 
 
+def _check_model_id(value: str) -> str:
+    if (
+        not value
+        or any(character.isspace() for character in value)
+        or not all(character.isalnum() or character in "-_.:/" for character in value)
+    ):
+        raise ValueError("must be a non-empty model identifier without whitespace")
+    return value
+
+
 class ModelCapabilities(SafeModel):
     tools: bool = False
     structured_output: bool = False
@@ -98,7 +108,7 @@ class ModelCard(SafeModel):
         validation_alias=AliasChoices("capabilities", "abilities"),
     )
 
-    _validate_id = field_validator("id")(_check_identifier)
+    _validate_id = field_validator("id")(_check_model_id)
 
 
 class Provider(SafeModel):
@@ -149,7 +159,7 @@ class Profile(SafeModel):
     @field_validator("enabled_models")
     @classmethod
     def validate_enabled_models(cls, values: list[str]) -> list[str]:
-        return [_check_identifier(value) for value in values]
+        return [_check_model_id(value) for value in values]
 
 
 class RoutingMetadata(SafeModel):
@@ -166,7 +176,8 @@ class Deployment(SafeModel):
     model_id: Identifier = Field(validation_alias=AliasChoices("model_id", "model"))
     routing: RoutingMetadata = Field(default_factory=RoutingMetadata)
 
-    _validate_id = field_validator("profile_id", "model_id")(_check_identifier)
+    _validate_id = field_validator("profile_id")(_check_identifier)
+    _validate_model_id = field_validator("model_id")(_check_model_id)
 
 
 class Alias(SafeModel):
