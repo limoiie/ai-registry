@@ -134,6 +134,40 @@ def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
         )
 
 
+def test_from_data_preserves_context_for_malformed_normalized_input() -> None:
+    with pytest.raises(
+        ConfigurationError,
+        match="provider 'openai'.*index 0.*type.*valid model type",
+    ):
+        Registry.from_data(
+            providers=[
+                {
+                    "id": "openai",
+                    "name": "OpenAI",
+                    "model_cards": [{"id": "chat", "type": "invalid"}],
+                }
+            ],
+            profiles=[],
+        )
+
+
+def test_from_data_preserves_context_for_malformed_alias() -> None:
+    with pytest.raises(
+        ConfigurationError,
+        match="alias 'fast'.*index 0.*model_id.*define a deployment model",
+    ):
+        Registry.from_data(
+            providers=[provider()],
+            profiles=[profile()],
+            aliases=[
+                {
+                    "id": "fast",
+                    "deployments": [{"profile_id": "primary"}],
+                }
+            ],
+        )
+
+
 def test_credentials_are_resolved_lazily_at_adapter_boundary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -171,3 +205,28 @@ def test_from_files_loads_existing_config_shapes(tmp_path: Path) -> None:
     registry = Registry.from_files([provider_path], [profile_path])
 
     assert registry.resolve("primary/chat").model.id == "chat"
+
+
+def test_from_files_preserves_context_for_malformed_alias(tmp_path: Path) -> None:
+    provider_path = tmp_path / "provider.yaml"
+    provider_path.write_text(
+        "id: openai\nname: OpenAI\nmodel_cards:\n  - id: chat\n    type: chat\n",
+        encoding="utf-8",
+    )
+    profile_path = tmp_path / "profiles.yaml"
+    profile_path.write_text(
+        "profiles:\n  - id: primary\n    provider_id: openai\n"
+        "    enabled_models: [chat]\n",
+        encoding="utf-8",
+    )
+    alias_path = tmp_path / "aliases.yaml"
+    alias_path.write_text(
+        "aliases:\n  - id: fast\n    deployments:\n      - profile_id: primary\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigurationError,
+        match="alias 'fast'.*index 0.*model_id.*define a deployment model",
+    ):
+        Registry.from_files([provider_path], [profile_path], [alias_path])

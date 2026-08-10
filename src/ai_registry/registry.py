@@ -6,6 +6,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import ValidationError
+
 from ai_registry.config import (
     PathSource,
     load_document,
@@ -197,17 +199,44 @@ def _find_model(provider: Provider, model_id: str) -> ModelCard | None:
 
 
 def _models(model_type: Any, values: Iterable[Any], label: str) -> list[Any]:
-    result = []
-    for value in values:
+    result: list[Any] = []
+    for index, value in enumerate(values):
+        identifier = (
+            value.get("id")
+            if isinstance(value, Mapping) and isinstance(value.get("id"), str)
+            else None
+        )
         try:
             result.append(
                 value
                 if isinstance(value, model_type)
                 else model_type.model_validate(value)
             )
-        except Exception as error:
-            raise ConfigurationError(f"invalid {label} configuration") from error
+        except ValidationError as error:
+            subject = f"{label} '{identifier}'" if identifier else label
+            details = "; ".join(_validation_detail(detail) for detail in error.errors())
+            raise ConfigurationError(
+                f"invalid {subject} at index {index}: {details}; "
+                f"{_validation_remediation(label, error)}"
+            ) from None
     return result
+
+
+def _validation_detail(detail: Any) -> str:
+    location = ".".join(str(part) for part in detail.get("loc", ()))
+    message = str(detail.get("msg", "invalid value"))
+    return f"{location}: {message}" if location else message
+
+
+def _validation_remediation(label: str, error: ValidationError) -> str:
+    locations = {
+        str(part) for detail in error.errors() for part in detail.get("loc", ())
+    }
+    if "model_id" in locations:
+        return "define a deployment model_id"
+    if label == "provider" and "type" in locations:
+        return "use a valid model type"
+    return f"fix the {label} fields to match the registry schema"
 
 
 def _load_profiles(sources: Sequence[PathSource]) -> list[Profile]:
