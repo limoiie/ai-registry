@@ -63,6 +63,8 @@ def test_constructs_from_normalized_data_and_resolves_alias() -> None:
 def test_registry_isolated_from_mutations_to_input_configuration() -> None:
     source_provider = provider()
     source_profile = profile()
+    source_provider.model_cards[0].metadata["limits"] = {"regions": ["us"]}
+    source_profile.metadata["limits"] = {"regions": ["us"]}
     source_alias = Alias(
         id="fast",
         deployments=[Deployment(profile_id="primary", model_id="chat")],
@@ -79,6 +81,37 @@ def test_registry_isolated_from_mutations_to_input_configuration() -> None:
 
     assert result.model_id == "chat"
     assert result.profile_id == "primary"
+
+
+def test_resolution_isolated_from_nested_result_mutations() -> None:
+    source_provider = provider()
+    source_provider.model_cards[0].metadata["limits"] = {"regions": ["us"]}
+    source_profile = profile()
+    source_profile.metadata["limits"] = {"regions": ["us"]}
+    registry = Registry.from_data(
+        providers=[source_provider],
+        profiles=[source_profile],
+        aliases=[
+            Alias(
+                id="fast",
+                deployments=[Deployment(profile_id="primary", model_id="chat")],
+            )
+        ],
+    )
+
+    result = registry.resolve("fast")
+    result.provider.model_cards[0].metadata["limits"]["regions"].append("eu")
+    result.model.metadata["limits"]["regions"].append("ap")
+    result.profile.metadata["limits"]["regions"].append("ca")
+    result.endpoint_metadata["limits"]["regions"].append("au")
+    result.profile.endpoint = "https://mutated.example.test"
+
+    fresh = registry.resolve("fast")
+
+    assert fresh.model.metadata["limits"] == {"regions": ["us"]}
+    assert fresh.profile.metadata["limits"] == {"regions": ["us"]}
+    assert fresh.endpoint_metadata == {"region": "us", "limits": {"regions": ["us"]}}
+    assert fresh.endpoint == "https://profile.example.test"
 
 
 def test_alias_wins_over_direct_profile_model_reference() -> None:

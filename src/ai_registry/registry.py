@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -141,16 +142,20 @@ class Registry:
     def _resolution(self, deployment: Any, deployment_id: str) -> Resolution:
         profile = self._profiles[deployment.profile_id]
         provider = self._providers[profile.provider_id]
-        model = next(
-            card for card in provider.model_cards if card.id == deployment.model_id
+        result_provider = provider.model_copy(deep=True)
+        result_profile = profile.model_copy(deep=True)
+        result_model = next(
+            card
+            for card in result_provider.model_cards
+            if card.id == deployment.model_id
         )
         return Resolution(
-            provider=provider,
-            model=model,
-            profile=profile,
+            provider=result_provider,
+            model=result_model,
+            profile=result_profile,
             deployment_id=deployment_id,
-            endpoint=profile.endpoint or provider.default_base_url,
-            endpoint_metadata=dict(profile.metadata),
+            endpoint=result_profile.endpoint or result_provider.default_base_url,
+            endpoint_metadata=deepcopy(result_profile.metadata),
             _secret_resolver=self._secret_resolver,
         )
 
