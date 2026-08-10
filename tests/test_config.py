@@ -203,6 +203,18 @@ def test_normalizes_top_level_uniapi_and_preserves_settings(tmp_path: Path) -> N
     assert provider.settings == {"sdk_type": "uniapi", "custom": "value"}
 
 
+def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> None:
+    path = tmp_path / "conflicting-provider.yml"
+    path.write_text(
+        "id: provider\nname: Provider\nsdk_type: anthropic\n"
+        "settings:\n  sdk_type: openai\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+        load_provider_file(path)
+
+
 def test_loads_actual_builtin_profiles_and_preserves_legacy_metadata() -> None:
     profiles = load_profile_file(DATA / "profiles" / "builtin.yaml")
 

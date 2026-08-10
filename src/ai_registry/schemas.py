@@ -217,22 +217,25 @@ def _validate_endpoint(value: str | None) -> str | None:
         parsed = urlsplit(value)
         has_userinfo = parsed.username is not None or parsed.password is not None
         query = parsed.query
+        fragment = parsed.fragment
     except ValueError:
         has_userinfo = True
         query = ""
+        fragment = ""
     if has_userinfo:
         raise ValueError(
             "endpoint contains credential-bearing user info or sensitive query "
             "parameters; use credential references"
         )
-    for key, _ in parse_qsl(query, keep_blank_values=True):
-        if not key:
-            raise ValueError("endpoint query parameter names must be non-empty")
-        if _is_sensitive_key(key):
-            raise ValueError(
-                "endpoint contains credential-bearing user info or sensitive query "
-                "parameters; use credential references"
-            )
+    for parameters in (query, fragment):
+        for key, _ in parse_qsl(parameters, keep_blank_values=True):
+            if not key:
+                raise ValueError("endpoint query parameter names must be non-empty")
+            if _is_sensitive_key(key):
+                raise ValueError(
+                    "endpoint contains credential-bearing user info or sensitive "
+                    "query parameters; use credential references"
+                )
     return value
 
 

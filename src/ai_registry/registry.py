@@ -25,6 +25,7 @@ from ai_registry.schemas import (
     Profile,
     Provider,
     RegistryConfig,
+    SafeModel,
 )
 from ai_registry.secrets import SecretResolver, resolve_credential
 
@@ -321,11 +322,8 @@ def _models(model_type: Any, values: Iterable[Any], label: str) -> list[Any]:
             _safe_identifier(value.get("id")) if isinstance(value, Mapping) else None
         )
         try:
-            result.append(
-                value
-                if isinstance(value, model_type)
-                else model_type.model_validate(value)
-            )
+            normalized = value._raw_dump() if isinstance(value, SafeModel) else value
+            result.append(model_type.model_validate(normalized))
         except ValidationError as error:
             subject = f"{label} '{identifier}'" if identifier else label
             details = "; ".join(_validation_detail(detail) for detail in error.errors())

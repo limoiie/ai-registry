@@ -63,6 +63,17 @@ def test_constructs_from_normalized_data_and_resolves_alias() -> None:
     assert result.endpoint_metadata == {"region": "us"}
 
 
+def test_from_data_revalidates_model_instances_with_updated_endpoints() -> None:
+    invalid_profile = profile().model_copy(
+        update={"endpoint": "https://gateway.example.test/v1#access_token=leaked"}
+    )
+
+    with pytest.raises(ConfigurationError) as caught:
+        Registry.from_data(providers=[provider()], profiles=[invalid_profile])
+
+    assert "leaked" not in str(caught.value)
+
+
 def test_alias_resolution_uses_injected_router_and_health_recovery() -> None:
     alias = Alias(
         id="fast",

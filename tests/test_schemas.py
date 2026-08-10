@@ -147,6 +147,22 @@ def test_profile_rejects_camel_case_credential_query_keys(endpoint: str) -> None
         Profile(id="primary", provider_id="provider", endpoint=endpoint)
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://gateway.example.test/v1#access_token=fragment-secret",
+        "https://gateway.example.test/v1#clientToken=fragment-secret",
+    ],
+)
+def test_profile_rejects_credential_bearing_fragments_without_echoing_secrets(
+    endpoint: str,
+) -> None:
+    with pytest.raises(ValidationError, match="credential-bearing") as caught:
+        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+
+    assert "fragment-secret" not in str(caught.value)
+
+
 def test_profile_rejects_empty_query_key_with_clean_validation_error() -> None:
     with pytest.raises(ValidationError, match="non-empty"):
         Profile(

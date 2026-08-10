@@ -109,9 +109,18 @@ def normalize_provider(
             settings[key] = value[key]
             value.pop(key)
     value["settings"] = settings
-    if value.get("sdk_type") == "uniapi":
-        value["sdk_type"] = "openai"
-    if settings.get("sdk_type") == "uniapi":
+    top_sdk_type = value.get("sdk_type")
+    nested_sdk_type = settings.get("sdk_type")
+    if top_sdk_type is not None and nested_sdk_type is not None:
+        canonical_top = "openai" if top_sdk_type == "uniapi" else top_sdk_type
+        canonical_nested = "openai" if nested_sdk_type == "uniapi" else nested_sdk_type
+        if canonical_top != canonical_nested:
+            raise ConfigurationError(
+                f"conflicting sdk_type values in '{source_name}'; "
+                "use one canonical SDK type"
+            )
+    canonical_sdk_type = top_sdk_type if top_sdk_type is not None else nested_sdk_type
+    if canonical_sdk_type == "uniapi":
         value["sdk_type"] = "openai"
     raw_model_cards = value.get("model_cards")
     if raw_model_cards is None:
