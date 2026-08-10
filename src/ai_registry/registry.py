@@ -57,11 +57,11 @@ class Registry:
     """Immutable configuration index for aliases and explicit deployments."""
 
     def __init__(self, config: RegistryConfig, secret_resolver: SecretResolver | None):
-        self._config = config
+        self._config = config.model_copy(deep=True)
         self._secret_resolver = secret_resolver
-        self._providers = {provider.id: provider for provider in config.providers}
-        self._profiles = {profile.id: profile for profile in config.profiles}
-        self._aliases = {alias.id: alias for alias in config.aliases}
+        self._providers = {provider.id: provider for provider in self._config.providers}
+        self._profiles = {profile.id: profile for profile in self._config.profiles}
+        self._aliases = {alias.id: alias for alias in self._config.aliases}
         self._validate_references()
 
     @classmethod
@@ -94,7 +94,11 @@ class Registry:
         aliases: list[dict[str, Any]] = []
         for source in alias_files:
             document = load_document(source)
-            values = document.get("aliases", [])
+            if "aliases" not in document:
+                raise ConfigurationError(
+                    "Alias configuration must contain a 'aliases' list"
+                )
+            values = document["aliases"]
             if not isinstance(values, list):
                 raise ConfigurationError(
                     "Alias configuration must contain an 'aliases' list"

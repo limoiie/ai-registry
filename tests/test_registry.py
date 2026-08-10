@@ -60,6 +60,27 @@ def test_constructs_from_normalized_data_and_resolves_alias() -> None:
     assert result.endpoint_metadata == {"region": "us"}
 
 
+def test_registry_isolated_from_mutations_to_input_configuration() -> None:
+    source_provider = provider()
+    source_profile = profile()
+    source_alias = Alias(
+        id="fast",
+        deployments=[Deployment(profile_id="primary", model_id="chat")],
+    )
+    registry = Registry.from_data(
+        providers=[source_provider], profiles=[source_profile], aliases=[source_alias]
+    )
+
+    source_provider.model_cards[0].id = "changed"
+    source_profile.enabled_models.clear()
+    source_alias.deployments[0].model_id = "other"
+
+    result = registry.resolve("fast")
+
+    assert result.model_id == "chat"
+    assert result.profile_id == "primary"
+
+
 def test_alias_wins_over_direct_profile_model_reference() -> None:
     registry = Registry.from_data(
         providers=[provider()],
@@ -281,5 +302,23 @@ def test_from_files_preserves_context_for_malformed_alias(tmp_path: Path) -> Non
     with pytest.raises(
         ConfigurationError,
         match="alias 'fast'.*index 0.*model_id.*define a deployment model",
+    ):
+        Registry.from_files([provider_path], [profile_path], [alias_path])
+
+
+def test_from_files_requires_aliases_list(tmp_path: Path) -> None:
+    provider_path = tmp_path / "provider.yaml"
+    provider_path.write_text("id: openai\nname: OpenAI\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles.yaml"
+    profile_path.write_text(
+        "profiles:\n  - id: primary\n    provider_id: openai\n",
+        encoding="utf-8",
+    )
+    alias_path = tmp_path / "aliases.yaml"
+    alias_path.write_text("version: 1\n", encoding="utf-8")
+
+    with pytest.raises(
+        ConfigurationError,
+        match="Alias configuration .*must contain a 'aliases' list",
     ):
         Registry.from_files([provider_path], [profile_path], [alias_path])
