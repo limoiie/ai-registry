@@ -44,6 +44,9 @@ class SafeModel(BaseModel):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.safe_dump()!r})"
 
+    def __str__(self) -> str:
+        return repr(self)
+
 
 def _redact(value: Any, secret_fields: set[str]) -> Any:
     if isinstance(value, dict):
@@ -111,8 +114,8 @@ class Provider(SafeModel):
 
 
 class CredentialRef(SafeModel):
-    env: StrictStr | None = None
-    secret_ref: StrictStr | None = None
+    env: StrictStr | None = Field(default=None, min_length=1)
+    secret_ref: StrictStr | None = Field(default=None, min_length=1)
     api_key: StrictStr | None = None
     _secret_fields = {"env", "secret_ref", "api_key"}
 

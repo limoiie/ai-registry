@@ -44,7 +44,7 @@ def test_identifiers_are_constrained() -> None:
         Provider(id="bad id", name="Invalid")
 
     with pytest.raises(ValidationError):
-        ModelCard(id="", type="chat")
+        ModelCard(id="", type=ModelType.CHAT)
 
 
 def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> None:
@@ -58,6 +58,7 @@ def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> N
 
     assert profile.endpoint == "https://example.test/v1"
     assert profile.enabled_models == ["chat-model"]
+    assert profile.credential is not None
     assert profile.credential.env == "AI_API_KEY"
 
 
@@ -73,6 +74,12 @@ def test_credentials_require_exactly_one_reference_and_reject_literal_keys() -> 
 
     with pytest.raises(ValidationError):
         CredentialRef(api_key="literal-api-key")
+
+    with pytest.raises(ValidationError):
+        CredentialRef(env="")
+
+    with pytest.raises(ValidationError):
+        CredentialRef(secret_ref="")
 
 
 def test_alias_deployments_and_routing_metadata() -> None:
@@ -119,6 +126,7 @@ def test_repr_and_safe_serialization_do_not_expose_secret_values() -> None:
 
     assert secret not in repr(config)
     assert secret not in repr(config.profiles[0])
+    assert secret not in str(config)
     assert secret not in str(config.safe_dump())
     assert config.safe_dump()["profiles"][0]["credential"] == {"env": "<redacted>"}
 
