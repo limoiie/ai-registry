@@ -161,6 +161,20 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
                             "authorization-header": "auth-secret",
                             "token": "secret-token",
                             "env": "environment-secret",
+                            "tuple_pairs": (
+                                ("api_key", "TUPLE_LEAK"),
+                                ("ordinary", "tuple-value"),
+                            ),
+                            "set_pairs": {
+                                ("token", "SET_LEAK"),
+                                ("ordinary", "set-value"),
+                            },
+                            "frozenset_pairs": frozenset(
+                                {
+                                    ("authorization", "FROZEN_LEAK"),
+                                    ("ordinary", "frozenset-value"),
+                                }
+                            ),
                             "model_token_count": 42,
                             "safe": "value",
                         },
@@ -183,6 +197,9 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "access-secret" not in rendered
     assert "auth-secret" not in rendered
     assert "environment-secret" not in rendered
+    assert "TUPLE_LEAK" not in rendered
+    assert "SET_LEAK" not in rendered
+    assert "FROZEN_LEAK" not in rendered
     assert "_secret_resolver" not in rendered
     assert "'api_key': '<redacted>'" in rendered
     assert "'api-key': '<redacted>'" in rendered
@@ -193,6 +210,9 @@ def test_resolution_repr_redacts_nested_sensitive_metadata_and_resolver() -> Non
     assert "'authorization-header': '<redacted>'" in rendered
     assert "'token': '<redacted>'" in rendered
     assert "'env': '<redacted>'" in rendered
+    assert "tuple-value" in rendered
+    assert "set-value" in rendered
+    assert "frozenset-value" in rendered
     assert "'model_token_count': 42" in rendered
 
 

@@ -292,10 +292,26 @@ def _redact_metadata(value: Any) -> Any:
             for key, item in value.items()
         }
     if isinstance(value, list):
+        if _is_sensitive_pair(value):
+            return [value[0], "<redacted>"]
         return [_redact_metadata(item) for item in value]
     if isinstance(value, tuple):
+        if _is_sensitive_pair(value):
+            return (value[0], "<redacted>")
         return tuple(_redact_metadata(item) for item in value)
+    if isinstance(value, set):
+        return {_redact_metadata(item) for item in value}
+    if isinstance(value, frozenset):
+        return frozenset(_redact_metadata(item) for item in value)
     return value
+
+
+def _is_sensitive_pair(value: list[Any] | tuple[Any, ...]) -> bool:
+    return (
+        len(value) == 2
+        and isinstance(value[0], str)
+        and _is_sensitive_metadata_key(value[0])
+    )
 
 
 def _models(model_type: Any, values: Iterable[Any], label: str) -> list[Any]:
