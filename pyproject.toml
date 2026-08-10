@@ -22,6 +22,7 @@ dev = [
 
 [tool.uv]
 default-groups = ["dev"]
+package-data = ["src/ai_registry/data/providers/*.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -12,7 +12,20 @@ from ai_registry.config import (
 from ai_registry.errors import ConfigurationError
 
 FIXTURES = Path(__file__).parent / "fixtures"
-DATA = Path(__file__).parents[1] / "data" / "ai" / "providers"
+DATA = Path(__file__).parents[1] / "src" / "ai_registry" / "data" / "providers"
+
+
+def test_builtin_provider_data_is_package_data() -> None:
+    from importlib import resources
+
+    base = resources.files("ai_registry") / "data" / "providers"
+    names = {entry.name for entry in base.iterdir()}
+    assert {
+        "deepseek.yml",
+        "uniapi.yml",
+        "minimax.yml",
+        "uniapi-rerankers.yml",
+    } <= names
 
 
 def test_loads_yaml_and_json_documents() -> None:
@@ -216,7 +229,14 @@ def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> N
 
 
 def test_loads_actual_builtin_profiles_and_preserves_legacy_metadata() -> None:
-    profiles = load_profile_file(DATA / "profiles" / "builtin.yaml")
+    profiles = load_profile_file(
+        Path(__file__).parents[1]
+        / "data"
+        / "ai"
+        / "providers"
+        / "profiles"
+        / "builtin.yaml"
+    )
 
     assert profiles[0].metadata == {
         "remark": "builtin-deepseek",
