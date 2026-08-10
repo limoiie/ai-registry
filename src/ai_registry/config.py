@@ -105,9 +105,11 @@ def merge_providers(
     builtin: Sequence[Provider], project: Sequence[Provider]
 ) -> list[Provider]:
     """Merge project providers over built-ins, keyed by provider id."""
+    builtin_providers = list(builtin)
     project_providers = list(project)
+    _ensure_unique_provider_ids(builtin_providers)
     _ensure_unique_provider_ids(project_providers)
-    merged = {provider.id: provider for provider in builtin}
+    merged = {provider.id: provider for provider in builtin_providers}
     for provider in project_providers:
         merged[provider.id] = provider
     return list(merged.values())

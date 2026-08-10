@@ -6,10 +6,12 @@ from ai_registry import Registry
 from ai_registry.errors import ConfigurationError
 
 
-def _write_deployments(tmp_path: Path, text: str) -> None:
+def _write_deployments(
+    tmp_path: Path, text: str, *, name: str = "deployments.yaml"
+) -> None:
     deployments_dir = tmp_path / ".ai-registry"
     deployments_dir.mkdir(exist_ok=True)
-    (deployments_dir / "deployments.yaml").write_text(text, encoding="utf-8")
+    (deployments_dir / name).write_text(text, encoding="utf-8")
 
 
 def test_from_project_loads_builtin_providers_and_deployments(
@@ -149,6 +151,74 @@ def test_from_project_invalid_alias_fails_at_construction(tmp_path: Path) -> Non
         match="alias 'chat-default'.*index 0.*model_id.*define a deployment model",
     ):
         Registry.from_project(tmp_path)
+
+
+def test_from_project_accepts_str_root(tmp_path: Path) -> None:
+    _write_deployments(
+        tmp_path,
+        "profiles:\n"
+        "  - id: deepseek-primary\n"
+        "    provider_id: deepseek\n"
+        "    enabled_models: [deepseek-chat]\n",
+    )
+
+    registry = Registry.from_project(str(tmp_path))
+
+    resolution = registry.resolve("deepseek-primary/deepseek-chat")
+    assert resolution.provider.id == "deepseek"
+    assert resolution.model_id == "deepseek-chat"
+
+
+def test_from_project_resolves_explicit_profile_model(tmp_path: Path) -> None:
+    _write_deployments(
+        tmp_path,
+        "profiles:\n"
+        "  - id: deepseek-primary\n"
+        "    provider_id: deepseek\n"
+        "    credential: {env: DEEPSEEK_API_KEY}\n"
+        "    enabled_models: [deepseek-chat, deepseek-reasoner]\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - profile_id: deepseek-primary\n"
+        "        model_id: deepseek-chat\n",
+    )
+
+    registry = Registry.from_project(tmp_path)
+
+    resolution = registry.resolve("deepseek-primary/deepseek-reasoner")
+
+    assert resolution.profile_id == "deepseek-primary"
+    assert resolution.deployment_id == "deepseek-primary"
+    assert resolution.provider.id == "deepseek"
+    assert resolution.model_id == "deepseek-reasoner"
+
+
+@pytest.mark.parametrize("name", ["deployments.yml", "deployments.json"])
+def test_from_project_loads_alternate_deployments_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    document = (
+        "profiles:\n"
+        "  - id: deepseek-primary\n"
+        "    provider_id: deepseek\n"
+        "    credential: {env: DEEPSEEK_API_KEY}\n"
+        "    enabled_models: [deepseek-chat]\n"
+        if name.endswith(".yml")
+        else (
+            '{"profiles": [{"id": "deepseek-primary", "provider_id": "deepseek", '
+            '"credential": {"env": "DEEPSEEK_API_KEY"}, '
+            '"enabled_models": ["deepseek-chat"]}]}'
+        )
+    )
+    _write_deployments(tmp_path, document, name=name)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test")
+
+    registry = Registry.from_project(tmp_path)
+
+    resolution = registry.resolve("deepseek-primary/deepseek-chat")
+    assert resolution.provider.id == "deepseek"
+    assert resolution.model_id == "deepseek-chat"
 
 
 def test_from_project_deployment_references_unknown_profile(tmp_path: Path) -> None:

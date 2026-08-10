@@ -195,6 +195,16 @@ def test_merge_providers_rejects_duplicate_project_ids(tmp_path: Path) -> None:
         merge_providers([], project)
 
 
+def test_merge_providers_rejects_duplicate_builtin_ids() -> None:
+    builtin = [
+        normalize_provider({"id": "dup", "name": "First"}),
+        normalize_provider({"id": "dup", "name": "Second"}),
+    ]
+
+    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+        merge_providers(builtin, [])
+
+
 def test_ensure_unique_provider_ids_rejects_duplicates() -> None:
     providers = [
         normalize_provider({"id": "dup", "name": "First"}),
