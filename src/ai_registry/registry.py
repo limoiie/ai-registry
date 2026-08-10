@@ -202,9 +202,7 @@ def _models(model_type: Any, values: Iterable[Any], label: str) -> list[Any]:
     result: list[Any] = []
     for index, value in enumerate(values):
         identifier = (
-            value.get("id")
-            if isinstance(value, Mapping) and isinstance(value.get("id"), str)
-            else None
+            _safe_identifier(value.get("id")) if isinstance(value, Mapping) else None
         )
         try:
             result.append(
@@ -226,6 +224,14 @@ def _validation_detail(detail: Any) -> str:
     location = ".".join(str(part) for part in detail.get("loc", ()))
     message = str(detail.get("msg", "invalid value"))
     return f"{location}: {message}" if location else message
+
+
+def _safe_identifier(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    if value.replace("-", "").replace("_", "").replace(".", "").isalnum():
+        return value
+    return None
 
 
 def _validation_remediation(label: str, error: ValidationError) -> str:

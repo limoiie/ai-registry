@@ -151,6 +151,31 @@ def test_from_data_preserves_context_for_malformed_normalized_input() -> None:
         )
 
 
+def test_validation_error_redacts_invalid_secret_like_identifier() -> None:
+    secret_like_id = "sk-live-secret/value"
+
+    with pytest.raises(ConfigurationError) as caught:
+        Registry.from_data(
+            providers=[
+                {
+                    "id": secret_like_id,
+                    "name": "OpenAI",
+                    "model_cards": [{"id": "chat", "type": "invalid"}],
+                }
+            ],
+            profiles=[],
+        )
+
+    error = caught.value
+    assert secret_like_id not in str(error)
+    assert secret_like_id not in repr(error)
+    assert secret_like_id not in str(error.args)
+    assert secret_like_id not in str(error.__dict__)
+    assert "provider at index 0" in str(error)
+    assert "model_cards.0.type" in str(error)
+    assert "use a valid model type" in str(error)
+
+
 def test_from_data_preserves_context_for_malformed_alias() -> None:
     with pytest.raises(
         ConfigurationError,
