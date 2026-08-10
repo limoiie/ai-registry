@@ -18,6 +18,7 @@ Run the project checks with:
 uv run pytest -q
 uv run ruff check .
 uv run ruff format --check .
+uv run mypy src tests
 ```
 
 ## Configuration

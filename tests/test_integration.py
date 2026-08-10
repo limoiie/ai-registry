@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 from ai_registry import Registry
 from ai_registry.config import (
@@ -14,7 +17,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_representative_catalog_resolves_aliases_and_preserves_adapter_metadata(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     catalog = load_document(FIXTURES / "catalog.yaml")
     registry_data = load_document(FIXTURES / "registry.yaml")
@@ -56,4 +59,33 @@ def test_representative_catalog_resolves_aliases_and_preserves_adapter_metadata(
         "minimax",
         "uniapi-rerankers",
     }
-    assert not {"openai", "anthropic", "langchain", "litellm"} & sys.modules.keys()
+
+
+def test_registry_core_does_not_import_optional_sdks() -> None:
+    script = """
+import sys
+
+from ai_registry import Registry
+from ai_registry.schemas import ModelCard, Profile, Provider
+
+provider = Provider(
+    id="provider",
+    name="Provider",
+    model_cards=[ModelCard(id="chat", type="chat")],
+)
+profile = Profile(id="profile", provider_id="provider", enabled_models=["chat"])
+Registry.from_data(providers=[provider], profiles=[profile])
+
+optional_sdks = {"openai", "anthropic", "langchain", "litellm"}
+loaded = optional_sdks.intersection(sys.modules)
+if loaded:
+    raise SystemExit(f"optional SDKs imported: {sorted(loaded)}")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
