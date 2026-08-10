@@ -190,7 +190,9 @@ def _check_model_id(value: str) -> str:
 
 
 _SENSITIVE_KEY_WORDS = {
+    "assertion",
     "authorization",
+    "bearer",
     "credential",
     "credentials",
     "env",
@@ -204,15 +206,20 @@ _SENSITIVE_KEY_WORDS = {
 }
 _SENSITIVE_KEY_QUALIFIERS = {
     "access",
+    "account",
     "api",
     "auth",
     "authentication",
     "bearer",
     "client",
+    "consumer",
     "device",
     "functions",
     "id",
+    "master",
+    "oauth",
     "openai",
+    "primary",
     "private",
     "refresh",
     "sas",
@@ -220,9 +227,11 @@ _SENSITIVE_KEY_QUALIFIERS = {
     "security",
     "session",
     "signing",
+    "subscription",
     "user",
 }
-_SENSITIVE_KEY_TOKENS = {"apikey", "authkey", "sessionid"}
+_SENSITIVE_KEY_TOKENS = {"apikey", "authkey", "jwt", "sessionid"}
+_SENSITIVE_KEY_PHRASES = {("connection", "string")}
 
 
 def _key_words(key: str) -> list[str]:
@@ -238,8 +247,21 @@ def _is_sensitive_key(key: str) -> bool:
         return True
     if any(token in words for token in _SENSITIVE_KEY_TOKENS):
         return True
+    if any(
+        tuple(words[index : index + len(phrase)]) == phrase
+        for phrase in _SENSITIVE_KEY_PHRASES
+        for index in range(len(words) - len(phrase) + 1)
+    ):
+        return True
     if len(words) > 1:
         if words[-1] in {"key", "token"} and words[-2] in _SENSITIVE_KEY_QUALIFIERS:
+            return True
+        if (
+            words[-1] == "id"
+            and words[-2] == "key"
+            and len(words) > 2
+            and words[-3] in _SENSITIVE_KEY_QUALIFIERS
+        ):
             return True
         if words[-1] == "id" and words[-2] == "session":
             return True

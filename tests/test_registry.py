@@ -134,6 +134,16 @@ def test_resolution_repr_redacts_credential_family_keys() -> None:
                         "X-Amz-Signature": "azsig-secret",
                         "x-functions-key": "fk-secret",
                         "openai_key": "ok-secret",
+                        "aws_access_key_id": "aws-secret",
+                        "connection_string": "conn-secret",
+                        "client_assertion": "assert-secret",
+                        "primary_key": "pk-secret",
+                        "storage_account_key": "storage-secret",
+                        "oauth_token": "oauth-secret",
+                        "jwt": "jwt-secret",
+                        "bearer": "bearer-secret",
+                        "client_id": "client-ok",
+                        "username": "user-ok",
                         "model_token_count": 7,
                     }
                 }
@@ -155,8 +165,17 @@ def test_resolution_repr_redacts_credential_family_keys() -> None:
         "azsig-secret",
         "fk-secret",
         "ok-secret",
+        "aws-secret",
+        "conn-secret",
+        "assert-secret",
+        "storage-secret",
+        "oauth-secret",
+        "jwt-secret",
+        "bearer-secret",
     ):
         assert value not in rendered
+    assert "client-ok" in rendered
+    assert "user-ok" in rendered
     assert "'model_token_count': 7" in rendered
 
 

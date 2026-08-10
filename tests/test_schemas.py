@@ -183,6 +183,39 @@ def test_endpoint_rejects_widened_credential_query_keys(endpoint: str) -> None:
         Profile(id="primary", provider_id="provider", endpoint=endpoint)
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://gateway.example.test/v1?aws_access_key_id=LEAK",
+        "https://gateway.example.test/v1?awsAccessKeyId=LEAK",
+        "https://gateway.example.test/v1?connection_string=LEAK",
+        "https://gateway.example.test/v1?client_assertion=LEAK",
+        "https://gateway.example.test/v1?consumer_key=LEAK",
+        "https://gateway.example.test/v1?primary_key=LEAK",
+        "https://gateway.example.test/v1?master_key=LEAK",
+        "https://gateway.example.test/v1?subscription_key=LEAK",
+        "https://gateway.example.test/v1?storage_account_key=LEAK",
+        "https://gateway.example.test/v1?oauth_token=LEAK",
+        "https://gateway.example.test/v1?jwt=LEAK",
+        "https://gateway.example.test/v1?bearer=LEAK",
+    ],
+)
+def test_endpoint_rejects_cloud_and_oauth_credential_query_keys(
+    endpoint: str,
+) -> None:
+    with pytest.raises(ValidationError, match="credential-bearing"):
+        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+
+
+def test_endpoint_allows_ordinary_query_keys() -> None:
+    endpoint = (
+        "https://gateway.example.test/v1?client_id=123&username=user&api-version=1"
+    )
+    profile = Profile(id="primary", provider_id="provider", endpoint=endpoint)
+
+    assert profile.endpoint == endpoint
+
+
 def test_profile_rejects_empty_query_key_with_clean_validation_error() -> None:
     with pytest.raises(ValidationError, match="non-empty"):
         Profile(
@@ -473,6 +506,19 @@ _CREDENTIAL_FAMILY_SECRETS: dict[str, object] = {
     "signature": "signature-secret",
     "x-functions-key": "functions-key-secret",
     "openai_key": "openai-key-secret",
+    "aws_access_key_id": "aws-access-secret",
+    "AWS_ACCESS_KEY_ID": "aws-upper-secret",
+    "awsAccessKeyId": "aws-camel-secret",
+    "connection_string": "conn-secret",
+    "client_assertion": "assertion-secret",
+    "consumer_key": "consumer-secret",
+    "primary_key": "primary-secret",
+    "master_key": "master-secret",
+    "subscription_key": "subscription-secret",
+    "storage_account_key": "storage-secret",
+    "oauth_token": "oauth-secret",
+    "jwt": "jwt-secret",
+    "bearer": "bearer-secret",
     "model_token_count": 42,
 }
 
@@ -500,6 +546,27 @@ def test_credential_family_metadata_keys_are_redacted_across_serializations() ->
                 continue
             assert value not in rendered
     assert "'model_token_count': 42" in str(config.model_dump())
+
+
+def test_ordinary_metadata_keys_remain_visible() -> None:
+    config = RegistryConfig(
+        profiles=[
+            Profile(
+                id="primary",
+                provider_id="provider",
+                metadata={
+                    "client_id": "client-123",
+                    "username": "alice",
+                    "model_token_count": 42,
+                },
+            )
+        ]
+    )
+
+    for rendered in (repr(config), str(config.model_dump()), config.model_dump_json()):
+        assert "client-123" in rendered
+        assert "alice" in rendered
+        assert "42" in rendered
 
 
 def test_errors_have_stable_base_type() -> None:
