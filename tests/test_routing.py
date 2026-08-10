@@ -34,13 +34,14 @@ def test_selects_enabled_healthy_deployment_with_lowest_priority() -> None:
         ],
     )
     health = DeploymentHealthStore()
-    health.mark_failure("chat", alias.deployments[3])
+    health.mark_failure("chat", 3)
 
     selected = DeploymentRouter(health).select(alias)
 
     assert selected.deployment.profile_id == "primary"
     assert selected.metadata == {
         "alias_id": "chat",
+        "candidate_index": 2,
         "profile_id": "primary",
         "model_id": "chat",
         "priority": 0,
@@ -69,10 +70,10 @@ def test_health_failure_excludes_deployment_until_recovery() -> None:
     health = DeploymentHealthStore()
     router = DeploymentRouter(health, random_source=lambda: 0.0)
 
-    health.mark_failure("chat", first)
+    health.mark_failure("chat", 0)
     assert router.select(alias).deployment.profile_id == "backup"
 
-    health.mark_success("chat", first)
+    health.mark_success("chat", 0)
     assert router.select(alias).deployment.profile_id == "primary"
 
 
@@ -80,7 +81,7 @@ def test_no_available_deployment_error_is_safe() -> None:
     secret_like = deployment("primary", model_id="chat")
     alias = Alias(id="chat", deployments=[secret_like])
     health = DeploymentHealthStore()
-    health.mark_failure("chat", secret_like)
+    health.mark_failure("chat", 0)
 
     with pytest.raises(NoAvailableDeploymentError) as caught:
         DeploymentRouter(health).select(alias)
@@ -99,3 +100,27 @@ def test_router_does_not_mutate_static_deployment_configuration() -> None:
     selected.deployment.routing.priority = 99
 
     assert alias.deployments[0].routing.priority == 1
+
+
+def test_health_identity_survives_routing_metadata_mutation() -> None:
+    configured = deployment("primary", priority=1, weight=2)
+    alias = Alias(id="chat", deployments=[configured, deployment("backup")])
+    health = DeploymentHealthStore()
+    health.mark_failure("chat", 0)
+    configured.routing.priority = 99
+    configured.routing.weight = 20
+
+    assert DeploymentRouter(health).select(alias).deployment.profile_id == "backup"
+
+
+def test_duplicate_deployments_have_independent_health_state() -> None:
+    first = deployment("primary")
+    second = deployment("primary")
+    alias = Alias(id="chat", deployments=[first, second])
+    health = DeploymentHealthStore()
+    health.mark_failure("chat", 0)
+
+    selected = DeploymentRouter(health, random_source=lambda: 0.0).select(alias)
+
+    assert selected.candidate_index == 1
+    assert selected.metadata["candidate_index"] == 1
