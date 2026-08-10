@@ -44,16 +44,16 @@ Projects keep configuration under a `.ai-registry/` directory:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # REQUIRED — merged profiles + aliases
 ```
 
-- `deployments.yaml` is a single document with a required `profiles` list and
-  an optional `aliases` list (see [Deployments file](#deployments-file)).
+- `registry.yaml` is a single document with a required `profiles` list and
+  an optional `aliases` list (see [Registry file](#registry-file)).
 - `providers/` holds project provider documents (one provider per file, any of
   `.yaml`, `.yml`, `.json`). When the directory is missing, only the built-in
   catalog is used.
 - `Registry.from_project(root)` discovers both, merges the providers, and
-  loads `deployments.yaml` with the same validation as the explicit loaders.
+  loads `registry.yaml` with the same validation as the explicit loaders.
 
 ### Provider scope and override
 
@@ -151,9 +151,9 @@ model_cards:
 `capabilities` supports the keys `tools`, `structured_output`, `vision`, and
 `reasoning` (all optional booleans, default `false`).
 
-## Deployments file
+## Registry file
 
-`deployments.yaml` merges profiles and aliases into one document:
+`registry.yaml` merges profiles and aliases into one document:
 
 ```yaml
 profiles:

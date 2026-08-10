@@ -300,11 +300,11 @@ project only needs a merged deployments file:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── deployments.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # REQUIRED — merged profiles + aliases
 ```
 
 ```yaml
-# .ai-registry/deployments.yaml
+# .ai-registry/registry.yaml
 profiles:
   - id: uniapi-primary
     provider_id: uniapi
@@ -329,5 +329,5 @@ resolution = registry.resolve("sol")
 Override a built-in provider by dropping a file with the same `id` under
 `.ai-registry/providers/`; the override replaces the provider entirely, so
 omitted fields fall back to schema defaults. Start from
-`examples/deployments.example.yaml`, and use `Registry.from_files` (use case 8)
+`examples/registry.example.yaml`, and use `Registry.from_files` (use case 8)
 when you need explicit path control instead.

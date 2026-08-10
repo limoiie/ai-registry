@@ -146,7 +146,7 @@ class Registry:
         """Build a registry from built-in and project-scoped configuration.
 
         Discovery starts at ``root`` or the current working directory when
-        omitted, and requires a ``<root>/.ai-registry/deployments.yaml`` (or
+        omitted, and requires a ``<root>/.ai-registry/registry.yaml`` (or
         ``.yml``/``.json``) file containing profiles and optional aliases.
         """
         root_path = Path(root) if root is not None else Path.cwd()
@@ -154,9 +154,9 @@ class Registry:
         if deployments_file is None:
             raise ConfigurationError(
                 f"Missing project deployments file under "
-                f"'{root_path / '.ai-registry'}'; expected deployments.yaml, "
-                "deployments.yml, or deployments.json. Create it from "
-                "examples/deployments.example.yaml"
+                f"'{root_path / '.ai-registry'}'; expected registry.yaml, "
+                "registry.yml, or registry.json. Create it from "
+                "examples/registry.example.yaml"
             )
         deployments = load_deployments_file(deployments_file)
         return cls.from_data(
@@ -343,7 +343,7 @@ def _load_profiles(sources: Sequence[PathSource]) -> list[Profile]:
 
 def _discover_deployments_file(root: Path) -> Path | None:
     deployments_dir = root / ".ai-registry"
-    for name in ("deployments.yaml", "deployments.yml", "deployments.json"):
+    for name in ("registry.yaml", "registry.yml", "registry.json"):
         candidate = deployments_dir / name
         if candidate.is_file():
             return candidate

@@ -500,7 +500,7 @@ def test_rejects_conflicting_profile_credentials(tmp_path: Path) -> None:
 
 
 def test_loads_merged_deployments_file(tmp_path: Path) -> None:
-    path = tmp_path / "deployments.yaml"
+    path = tmp_path / "registry.yaml"
     path.write_text(
         "profiles:\n"
         "  - id: primary\n"
@@ -533,7 +533,7 @@ def test_loads_merged_deployments_file(tmp_path: Path) -> None:
 def test_deployments_file_requires_profiles_and_optional_aliases(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "deployments.yaml"
+    path = tmp_path / "registry.yaml"
     path.write_text("aliases: []\n", encoding="utf-8")
     with pytest.raises(ConfigurationError, match="profiles"):
         load_deployments_file(path)
@@ -544,15 +544,15 @@ def test_deployments_file_requires_profiles_and_optional_aliases(
 
 
 def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
-    path = tmp_path / "deployments.yaml"
+    path = tmp_path / "registry.yaml"
     path.write_text("profiles: []\naliases: not-a-list\n", encoding="utf-8")
 
     with pytest.raises(ConfigurationError, match="'aliases' list"):
         load_deployments_file(path)
 
 
-def test_example_deployments_file_loads() -> None:
-    example = Path(__file__).parents[1] / "examples" / "deployments.example.yaml"
+def test_example_registry_file_loads() -> None:
+    example = Path(__file__).parents[1] / "examples" / "registry.example.yaml"
     deployments = load_deployments_file(example)
     assert deployments.profiles
     assert deployments.aliases

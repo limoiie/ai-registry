@@ -51,7 +51,7 @@ uv run pytest -q && uv run ruff check . && uv run ruff format --check . && uv ru
 ├── tests/
 │   ├── fixtures/               # provider/profile/alias examples
 │   └── test_*.py               # one module per source module
-├── examples/                   # config templates (deployments.example.yaml)
+├── examples/                   # config templates (registry.example.yaml)
 └── docs/                       # this documentation set
 ```
 
