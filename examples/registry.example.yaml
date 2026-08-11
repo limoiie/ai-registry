@@ -4,7 +4,7 @@
 # the referenced environment variables. The built-in providers (deepseek,
 # uniapi, uniapi-rerankers) ship with the package, so no provider file is
 # needed unless you override or add a provider in .ai-registry/providers/.
-profiles:
+accounts:
   - id: deepseek-primary
     provider_id: deepseek
     credential: {env: DEEPSEEK_API_KEY}
@@ -24,15 +24,15 @@ profiles:
 aliases:
   - id: chat-default
     deployments:
-      - profile_id: deepseek-primary
+      - account_id: deepseek-primary
         model_id: deepseek-chat
-      - profile_id: uniapi-chat
+      - account_id: uniapi-chat
         model_id: deepseek-v4-flash
   - id: embed-default
     deployments:
-      - profile_id: uniapi-embedding
+      - account_id: uniapi-embedding
         model_id: bge-large-zh:latest
   - id: rerank-default
     deployments:
-      - profile_id: uniapi-rerankers
+      - account_id: uniapi-rerankers
         model_id: bge-reranker-v2-m3

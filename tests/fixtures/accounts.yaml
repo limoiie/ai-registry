@@ -1,10 +1,10 @@
-profiles:
-  - id: alpha-main
+accounts:
+  - id: alpha-account
     provider_id: alpha
     api_key_env: ALPHA_API_KEY
     enabled_models:
       - alpha-chat
-  - id: beta-main
+  - id: beta-account
     provider_id: beta
     api_key_env: BETA_API_KEY
     enabled_models:

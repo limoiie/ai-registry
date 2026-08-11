@@ -9,10 +9,10 @@ from ai_registry.config import (
     _provider_from_text,
     discover_builtin_providers,
     discover_project_providers,
+    load_account_file,
     load_alias_file,
     load_deployments_file,
     load_document,
-    load_profile_file,
     load_provider_file,
     load_provider_files,
     merge_providers,
@@ -231,19 +231,19 @@ def test_loads_unnamed_yaml_and_json_streams() -> None:
     assert json_document["id"] == "stream-json"
 
 
-def test_loads_provider_and_profile_from_unnamed_streams() -> None:
+def test_loads_provider_and_account_from_unnamed_streams() -> None:
     provider = load_provider_file(
         StringIO("id: stream-provider\nname: Stream Provider\n")
     )
-    profiles = load_profile_file(
+    accounts = load_account_file(
         StringIO(
-            "profiles:\n  - id: stream-profile\n    provider_id: stream-provider\n"
+            "accounts:\n  - id: stream-account\n    provider_id: stream-provider\n"
             "    api_key_env: STREAM_API_KEY\n"
         )
     )
 
     assert provider.id == "stream-provider"
-    assert profiles[0].provider_id == provider.id
+    assert accounts[0].provider_id == provider.id
 
 
 def test_normalizes_single_provider_and_preserves_metadata() -> None:
@@ -295,12 +295,12 @@ def test_allows_empty_model_cards_values(tmp_path: Path, model_cards: object) ->
     assert load_provider_file(path).model_cards == []
 
 
-def test_normalizes_profiles_without_resolving_credentials() -> None:
-    profiles = load_profile_file(FIXTURES / "profiles.yaml")
+def test_normalizes_accounts_without_resolving_credentials() -> None:
+    accounts = load_account_file(FIXTURES / "accounts.yaml")
 
-    assert profiles[0].credential is not None
-    assert profiles[0].credential.env == "ALPHA_API_KEY"
-    assert profiles[0].enabled_models == ["alpha-chat"]
+    assert accounts[0].credential is not None
+    assert accounts[0].credential.env == "ALPHA_API_KEY"
+    assert accounts[0].enabled_models == ["alpha-chat"]
 
 
 def test_malformed_yaml_has_safe_actionable_error(tmp_path: Path) -> None:
@@ -415,26 +415,26 @@ def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> N
         load_provider_file(path)
 
 
-def test_loads_legacy_profile_fields_into_metadata(tmp_path: Path) -> None:
-    path = tmp_path / "legacy-profile.yaml"
+def test_loads_legacy_account_fields_into_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "legacy-account.yaml"
     path.write_text(
-        "profiles:\n"
+        "accounts:\n"
         "  - id: builtin-deepseek\n"
         "    provider_id: deepseek\n"
         "    api_key_env: DEEPSEEK_API_KEY\n"
         "    remark: builtin-deepseek\n"
-        "    description: Built-in DeepSeek profile\n",
+        "    description: Built-in DeepSeek account\n",
         encoding="utf-8",
     )
 
-    profiles = load_profile_file(path)
+    accounts = load_account_file(path)
 
-    assert profiles[0].metadata == {
+    assert accounts[0].metadata == {
         "remark": "builtin-deepseek",
-        "description": "Built-in DeepSeek profile",
+        "description": "Built-in DeepSeek account",
     }
-    assert profiles[0].credential is not None
-    assert profiles[0].credential.env == "DEEPSEEK_API_KEY"
+    assert accounts[0].credential is not None
+    assert accounts[0].credential.env == "DEEPSEEK_API_KEY"
 
 
 def test_non_mapping_model_card_has_safe_actionable_error(tmp_path: Path) -> None:
@@ -476,33 +476,33 @@ def test_non_mapping_provider_fields_have_safe_errors(
         load_provider_file(path)
 
 
-def test_non_mapping_profile_metadata_has_safe_error(tmp_path: Path) -> None:
-    path = tmp_path / "bad-profile-metadata.yaml"
+def test_non_mapping_account_metadata_has_safe_error(tmp_path: Path) -> None:
+    path = tmp_path / "bad-account-metadata.yaml"
     path.write_text(
-        "profiles:\n  - id: profile\n    provider_id: provider\n    metadata: bad\n",
+        "accounts:\n  - id: account\n    provider_id: provider\n    metadata: bad\n",
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="Invalid profile metadata.*mapping"):
-        load_profile_file(path)
+    with pytest.raises(ConfigurationError, match="Invalid account metadata.*mapping"):
+        load_account_file(path)
 
 
-def test_rejects_conflicting_profile_credentials(tmp_path: Path) -> None:
+def test_rejects_conflicting_account_credentials(tmp_path: Path) -> None:
     path = tmp_path / "conflicting-credentials.yaml"
     path.write_text(
-        "profiles:\n  - id: profile\n    provider_id: provider\n"
+        "accounts:\n  - id: account\n    provider_id: provider\n"
         "    api_key_env: API_KEY\n    credential:\n      env: OTHER_KEY\n",
         encoding="utf-8",
     )
 
     with pytest.raises(ConfigurationError, match="api_key_env.*credential"):
-        load_profile_file(path)
+        load_account_file(path)
 
 
 def test_loads_merged_deployments_file(tmp_path: Path) -> None:
     path = tmp_path / "registry.yaml"
     path.write_text(
-        "profiles:\n"
+        "accounts:\n"
         "  - id: primary\n"
         "    provider_id: deepseek\n"
         "    api_key_env: DEEPSEEK_API_KEY\n"
@@ -511,41 +511,41 @@ def test_loads_merged_deployments_file(tmp_path: Path) -> None:
         "aliases:\n"
         "  - id: chat-default\n"
         "    deployments:\n"
-        "      - profile_id: primary\n"
+        "      - account_id: primary\n"
         "        model_id: deepseek-chat\n",
         encoding="utf-8",
     )
 
     deployments = load_deployments_file(path)
 
-    assert deployments.profiles[0].id == "primary"
-    assert deployments.profiles[0].credential is not None
-    assert deployments.profiles[0].credential.env == "DEEPSEEK_API_KEY"
-    assert deployments.profiles[0].metadata["remark"] == "legacy"
+    assert deployments.accounts[0].id == "primary"
+    assert deployments.accounts[0].credential is not None
+    assert deployments.accounts[0].credential.env == "DEEPSEEK_API_KEY"
+    assert deployments.accounts[0].metadata["remark"] == "legacy"
     assert deployments.aliases == [
         {
             "id": "chat-default",
-            "deployments": [{"profile_id": "primary", "model_id": "deepseek-chat"}],
+            "deployments": [{"account_id": "primary", "model_id": "deepseek-chat"}],
         }
     ]
 
 
-def test_deployments_file_requires_profiles_and_optional_aliases(
+def test_deployments_file_requires_accounts_and_optional_aliases(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "registry.yaml"
     path.write_text("aliases: []\n", encoding="utf-8")
-    with pytest.raises(ConfigurationError, match="profiles"):
+    with pytest.raises(ConfigurationError, match="accounts"):
         load_deployments_file(path)
 
-    path.write_text("profiles: []\n", encoding="utf-8")
+    path.write_text("accounts: []\n", encoding="utf-8")
     deployments = load_deployments_file(path)
-    assert deployments.profiles == [] and deployments.aliases == []
+    assert deployments.accounts == [] and deployments.aliases == []
 
 
 def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
     path = tmp_path / "registry.yaml"
-    path.write_text("profiles: []\naliases: not-a-list\n", encoding="utf-8")
+    path.write_text("accounts: []\naliases: not-a-list\n", encoding="utf-8")
 
     with pytest.raises(ConfigurationError, match="'aliases' list"):
         load_deployments_file(path)
@@ -554,18 +554,18 @@ def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
 def test_example_registry_file_loads() -> None:
     example = Path(__file__).parents[1] / "examples" / "registry.example.yaml"
     deployments = load_deployments_file(example)
-    assert deployments.profiles
+    assert deployments.accounts
     assert deployments.aliases
-    profile_ids = {profile.id for profile in deployments.profiles}
+    account_ids = {account.id for account in deployments.accounts}
     assert {
-        deployment["profile_id"]
+        deployment["account_id"]
         for alias in deployments.aliases
         for deployment in alias["deployments"]
-    } <= profile_ids
+    } <= account_ids
 
     Registry.from_data(
         providers=discover_builtin_providers(),
-        profiles=deployments.profiles,
+        accounts=deployments.accounts,
         aliases=deployments.aliases,
     )
 

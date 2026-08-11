@@ -16,19 +16,19 @@ from ai_registry.config import (
     PathSource,
     discover_builtin_providers,
     discover_project_providers,
+    load_account_file,
     load_alias_file,
     load_deployments_file,
-    load_profile_file,
     load_provider_files,
     merge_providers,
 )
 from ai_registry.errors import ConfigurationError, RegistryError
 from ai_registry.routing import DeploymentRouter
 from ai_registry.schemas import (
+    Account,
     Alias,
     Deployment,
     ModelCard,
-    Profile,
     Provider,
     RegistryConfig,
     SafeModel,
@@ -43,7 +43,7 @@ class Resolution:
 
     provider: Provider
     model: ModelCard
-    profile: Profile
+    account: Account
     deployment_id: str
     endpoint: str | None
     endpoint_metadata: dict[str, Any]
@@ -54,20 +54,20 @@ class Resolution:
         return self.model.id
 
     @property
-    def profile_id(self) -> str:
-        return self.profile.id
+    def account_id(self) -> str:
+        return self.account.id
 
     def resolve_credential(self) -> str | None:
-        """Resolve the profile credential only when an adapter requests it."""
-        if self.profile.credential is None:
+        """Resolve the account credential only when an adapter requests it."""
+        if self.account.credential is None:
             return None
-        return resolve_credential(self.profile.credential, self._secret_resolver)
+        return resolve_credential(self.account.credential, self._secret_resolver)
 
     def __repr__(self) -> str:
         return (
             "Resolution("
             f"provider_id={self.provider.id!r}, model_id={self.model.id!r}, "
-            f"profile_id={self.profile.id!r}, deployment_id={self.deployment_id!r}, "
+            f"account_id={self.account.id!r}, deployment_id={self.deployment_id!r}, "
             f"endpoint={self.endpoint!r}, "
             f"endpoint_metadata={_redact_metadata(self.endpoint_metadata)!r})"
         )
@@ -86,14 +86,14 @@ class Registry:
     ):
         config = RegistryConfig(
             providers=_models(Provider, config.providers, "provider"),
-            profiles=_models(Profile, config.profiles, "profile"),
+            accounts=_models(Account, config.accounts, "account"),
             aliases=_models(Alias, config.aliases, "alias"),
         )
         self._config = config.model_copy(deep=True)
         self._secret_resolver = secret_resolver
         self._router = router or DeploymentRouter()
         self._providers = {provider.id: provider for provider in self._config.providers}
-        self._profiles = {profile.id: profile for profile in self._config.profiles}
+        self._accounts = {account.id: account for account in self._config.accounts}
         self._aliases = {alias.id: alias for alias in self._config.aliases}
         self._validate_references()
 
@@ -102,7 +102,7 @@ class Registry:
         cls,
         *,
         providers: Sequence[Provider | Mapping[str, Any]],
-        profiles: Sequence[Profile | Mapping[str, Any]],
+        accounts: Sequence[Account | Mapping[str, Any]],
         aliases: Sequence[Alias | Mapping[str, Any]] = (),
         secret_resolver: SecretResolver | None = None,
         router: DeploymentRouter | None = None,
@@ -110,7 +110,7 @@ class Registry:
         """Build a registry from normalized objects or schema-compatible mappings."""
         config = RegistryConfig(
             providers=_models(Provider, providers, "provider"),
-            profiles=_models(Profile, profiles, "profile"),
+            accounts=_models(Account, accounts, "account"),
             aliases=_models(Alias, aliases, "alias"),
         )
         return cls(config, secret_resolver, router)
@@ -119,19 +119,19 @@ class Registry:
     def from_files(
         cls,
         provider_files: Sequence[PathSource],
-        profile_files: Sequence[PathSource],
+        account_files: Sequence[PathSource],
         alias_files: Sequence[PathSource] = (),
         *,
         secret_resolver: SecretResolver | None = None,
         router: DeploymentRouter | None = None,
     ) -> Registry:
-        """Load provider, profile, and optional alias documents without secrets."""
+        """Load provider, account, and optional alias documents without secrets."""
         aliases: list[dict[str, Any]] = []
         for source in alias_files:
             aliases.extend(load_alias_file(source))
         return cls.from_data(
             providers=load_provider_files(list(provider_files)),
-            profiles=_load_profiles(profile_files),
+            accounts=_load_accounts(account_files),
             aliases=aliases,
             secret_resolver=secret_resolver,
             router=router,
@@ -174,48 +174,48 @@ class Registry:
                 discover_builtin_providers(),
                 discover_project_providers(root_path),
             ),
-            profiles=deployments.profiles,
+            accounts=deployments.accounts,
             aliases=deployments.aliases,
             secret_resolver=secret_resolver,
             router=router,
         )
 
     def resolve(self, reference: str) -> Resolution:
-        """Resolve an alias first, then an explicit ``profile-id/model-id``."""
+        """Resolve an alias first, then an explicit ``account-id/model-id``."""
         alias = self._aliases.get(reference)
         if alias is not None:
             selected = self._router.select(
                 alias,
                 eligible=lambda deployment: (
-                    self._profiles[deployment.profile_id].enabled
+                    self._accounts[deployment.account_id].enabled
                 ),
             )
             return self._resolution(selected.deployment, selected.deployment_id)
 
         if "/" not in reference:
             raise RegistryError(
-                "unknown alias or model reference; use an alias or 'profile/model'"
+                "unknown alias or model reference; use an alias or 'account/model'"
             )
-        profile_id, model_id = reference.split("/", 1)
-        profile = self._profiles.get(profile_id)
-        if profile is None:
+        account_id, model_id = reference.split("/", 1)
+        account = self._accounts.get(account_id)
+        if account is None:
             raise RegistryError(
-                "unknown profile; configure the profile or use an alias"
+                "unknown account; configure the account or use an alias"
             )
-        if not profile.enabled:
+        if not account.enabled:
             raise RegistryError(
-                f"profile '{profile.id}' is disabled; enable it or use an alias"
+                f"account '{account.id}' is disabled; enable it or use an alias"
             )
-        self._validate_model_enabled(profile, model_id)
+        self._validate_model_enabled(account, model_id)
         return self._resolution(
-            Deployment(profile_id=profile_id, model_id=model_id), profile_id
+            Deployment(account_id=account_id, model_id=model_id), account_id
         )
 
     def _resolution(self, deployment: Any, deployment_id: str) -> Resolution:
-        profile = self._profiles[deployment.profile_id]
-        provider = self._providers[profile.provider_id]
+        account = self._accounts[deployment.account_id]
+        provider = self._providers[account.provider_id]
         result_provider = provider.model_copy(deep=True)
-        result_profile = profile.model_copy(deep=True)
+        result_account = account.model_copy(deep=True)
         result_model = next(
             card
             for card in result_provider.model_cards
@@ -224,52 +224,52 @@ class Registry:
         return Resolution(
             provider=result_provider,
             model=result_model,
-            profile=result_profile,
+            account=result_account,
             deployment_id=deployment_id,
-            endpoint=result_profile.endpoint or result_provider.default_base_url,
-            endpoint_metadata=deepcopy(result_profile.metadata),
+            endpoint=result_account.endpoint or result_provider.default_base_url,
+            endpoint_metadata=deepcopy(result_account.metadata),
             _secret_resolver=self._secret_resolver,
         )
 
     def _validate_references(self) -> None:
-        for profile in self._profiles.values():
-            provider = self._providers.get(profile.provider_id)
+        for account in self._accounts.values():
+            provider = self._providers.get(account.provider_id)
             if provider is None:
                 raise ConfigurationError(
-                    f"profile '{profile.id}' references unknown provider "
-                    f"'{profile.provider_id}'; configure the provider"
+                    f"account '{account.id}' references unknown provider "
+                    f"'{account.provider_id}'; configure the provider"
                 )
-            for model_id in profile.enabled_models:
+            for model_id in account.enabled_models:
                 if not _find_model(provider, model_id):
                     raise ConfigurationError(
-                        f"profile '{profile.id}' enables unknown model; "
+                        f"account '{account.id}' enables unknown model; "
                         f"add the model to provider '{provider.id}'"
                     )
         for alias in self._aliases.values():
             for deployment in alias.deployments:
-                alias_profile = self._profiles.get(deployment.profile_id)
-                if alias_profile is None:
+                alias_account = self._accounts.get(deployment.account_id)
+                if alias_account is None:
                     raise ConfigurationError(
-                        f"alias '{alias.id}' references unknown profile "
-                        f"'{deployment.profile_id}'; configure the profile"
+                        f"alias '{alias.id}' references unknown account "
+                        f"'{deployment.account_id}'; configure the account"
                     )
                 try:
-                    self._validate_model_enabled(alias_profile, deployment.model_id)
+                    self._validate_model_enabled(alias_account, deployment.model_id)
                 except RegistryError as error:
                     raise ConfigurationError(
                         f"alias '{alias.id}' deployment is invalid: {error}"
                     ) from None
 
-    def _validate_model_enabled(self, profile: Profile, model_id: str) -> None:
-        provider = self._providers[profile.provider_id]
+    def _validate_model_enabled(self, account: Account, model_id: str) -> None:
+        provider = self._providers[account.provider_id]
         if not _find_model(provider, model_id):
             raise RegistryError(
                 f"unknown model for provider '{provider.id}'; add it to the provider"
             )
-        if model_id not in profile.enabled_models:
+        if model_id not in account.enabled_models:
             raise RegistryError(
-                f"model is not enabled by profile '{profile.id}'; "
-                "enable it in the profile"
+                f"model is not enabled by account '{account.id}'; "
+                "enable it in the account"
             )
 
 
@@ -344,11 +344,11 @@ def _validation_remediation(label: str, error: ValidationError) -> str:
     return f"fix the {label} fields to match the registry schema"
 
 
-def _load_profiles(sources: Sequence[PathSource]) -> list[Profile]:
-    profiles: list[Profile] = []
+def _load_accounts(sources: Sequence[PathSource]) -> list[Account]:
+    accounts: list[Account] = []
     for source in sources:
-        profiles.extend(load_profile_file(source))
-    return profiles
+        accounts.extend(load_account_file(source))
+    return accounts
 
 
 _PROFILE_ENV = "AI_REGISTRY_PROFILE"

@@ -1,4 +1,4 @@
-profiles:
+accounts:
   - id: deepseek-profile
     provider_id: deepseek
     api_key_env: DEEPSEEK_API_KEY
@@ -34,21 +34,21 @@ profiles:
 aliases:
   - id: deepseek-chat
     deployments:
-      - profile_id: deepseek-profile
+      - account_id: deepseek-profile
         model_id: deepseek-chat
   - id: minimax-coding
     deployments:
-      - profile_id: minimax-profile
+      - account_id: minimax-profile
         model_id: MiniMax-M2.7
   - id: embedding-default
     deployments:
-      - profile_id: uniapi-profile
+      - account_id: uniapi-profile
         model_id: bge-large-zh:latest
   - id: reranking-default
     deployments:
-      - profile_id: reranker-profile
+      - account_id: reranker-profile
         model_id: bge-reranker-v2-m3
   - id: custom-openai-chat
     deployments:
-      - profile_id: custom-openai-profile
+      - account_id: custom-openai-profile
         model_id: deepseek-chat

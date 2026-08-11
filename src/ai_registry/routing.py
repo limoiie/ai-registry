@@ -94,7 +94,7 @@ class DeploymentRouter:
                 {
                     "alias_id": alias.id,
                     "candidate_index": candidate_index,
-                    "profile_id": selected.profile_id,
+                    "account_id": selected.account_id,
                     "model_id": selected.model_id,
                     "priority": selected.routing.priority,
                     "weight": selected.routing.weight,

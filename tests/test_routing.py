@@ -9,7 +9,7 @@ from ai_registry.schemas import Alias, Deployment, RoutingMetadata
 
 
 def deployment(
-    profile_id: str,
+    account_id: str,
     model_id: str = "chat",
     *,
     priority: int = 0,
@@ -17,7 +17,7 @@ def deployment(
     enabled: bool = True,
 ) -> Deployment:
     return Deployment(
-        profile_id=profile_id,
+        account_id=account_id,
         model_id=model_id,
         routing=RoutingMetadata(priority=priority, weight=weight, enabled=enabled),
     )
@@ -38,11 +38,11 @@ def test_selects_enabled_healthy_deployment_with_lowest_priority() -> None:
 
     selected = DeploymentRouter(health).select(alias)
 
-    assert selected.deployment.profile_id == "primary"
+    assert selected.deployment.account_id == "primary"
     assert selected.metadata == {
         "alias_id": "chat",
         "candidate_index": 2,
-        "profile_id": "primary",
+        "account_id": "primary",
         "model_id": "chat",
         "priority": 0,
         "weight": 1,
@@ -59,7 +59,7 @@ def test_equal_priority_deployments_use_injected_weighted_random_source() -> Non
         random_source=lambda: 0.5,
     ).select(alias)
 
-    assert selected.deployment.profile_id == "large"
+    assert selected.deployment.account_id == "large"
     assert selected.metadata["weight"] == 3
 
 
@@ -71,10 +71,10 @@ def test_health_failure_excludes_deployment_until_recovery() -> None:
     router = DeploymentRouter(health, random_source=lambda: 0.0)
 
     health.mark_failure("chat", 0)
-    assert router.select(alias).deployment.profile_id == "backup"
+    assert router.select(alias).deployment.account_id == "backup"
 
     health.mark_success("chat", 0)
-    assert router.select(alias).deployment.profile_id == "primary"
+    assert router.select(alias).deployment.account_id == "primary"
 
 
 def test_no_available_deployment_error_is_safe() -> None:
@@ -110,7 +110,7 @@ def test_health_identity_survives_routing_metadata_mutation() -> None:
     configured.routing.priority = 99
     configured.routing.weight = 20
 
-    assert DeploymentRouter(health).select(alias).deployment.profile_id == "backup"
+    assert DeploymentRouter(health).select(alias).deployment.account_id == "backup"
 
 
 def test_duplicate_deployments_have_independent_health_state() -> None:

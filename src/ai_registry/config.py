@@ -13,7 +13,7 @@ import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
 from ai_registry.errors import ConfigurationError
-from ai_registry.schemas import Profile, Provider, canonical_sdk_type
+from ai_registry.schemas import Account, Provider, canonical_sdk_type
 
 PathSource = str | Path | TextIO
 
@@ -115,22 +115,22 @@ def merge_providers(
     return list(merged.values())
 
 
-def load_profile_file(source: PathSource) -> list[Profile]:
+def load_account_file(source: PathSource) -> list[Account]:
     source_name, _, _ = _source_details(source)
-    return _parse_profiles(load_document(source), source_name)
+    return _parse_accounts(load_document(source), source_name)
 
 
-def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profile]:
-    values = document.get("profiles")
+def _parse_accounts(document: Mapping[str, Any], source_name: str) -> list[Account]:
+    values = document.get("accounts")
     if not isinstance(values, list):
         raise ConfigurationError(
-            f"Profile configuration '{source_name}' must contain a 'profiles' list"
+            f"Account configuration '{source_name}' must contain an 'accounts' list"
         )
-    profiles: list[Profile] = []
+    accounts: list[Account] = []
     for index, value in enumerate(values):
         if not isinstance(value, dict):
             raise ConfigurationError(
-                f"Profile configuration '{source_name}' has an invalid profile "
+                f"Account configuration '{source_name}' has an invalid account "
                 f"at index {index}"
             )
         normalized = dict(value)
@@ -138,12 +138,12 @@ def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profi
         api_key_env = normalized.pop("api_key_env", None)
         if has_api_key_env and "credential" in normalized:
             raise ConfigurationError(
-                f"Profile configuration '{source_name}' at index {index} "
+                f"Account configuration '{source_name}' at index {index} "
                 "cannot define both api_key_env and credential"
             )
         metadata = (
             _require_mapping(
-                normalized.pop("metadata"), "profile metadata", source_name
+                normalized.pop("metadata"), "account metadata", source_name
             )
             if "metadata" in normalized
             else {}
@@ -155,12 +155,12 @@ def _parse_profiles(document: Mapping[str, Any], source_name: str) -> list[Profi
         if api_key_env is not None:
             normalized["credential"] = {"env": api_key_env}
         try:
-            profiles.append(Profile.model_validate(normalized))
+            accounts.append(Account.model_validate(normalized))
         except ValidationError as error:
             raise ConfigurationError(
-                f"Invalid profile in '{source_name}' at index {index}: {error}"
+                f"Invalid account in '{source_name}' at index {index}: {error}"
             ) from None
-    return profiles
+    return accounts
 
 
 def load_alias_file(source: PathSource) -> list[dict[str, Any]]:
@@ -196,7 +196,7 @@ def _parse_aliases(
 
 @dataclass(frozen=True)
 class Deployments:
-    profiles: list[Profile]
+    accounts: list[Account]
     aliases: list[dict[str, Any]]
 
 
@@ -204,7 +204,7 @@ def load_deployments_file(source: PathSource) -> Deployments:
     source_name, _, _ = _source_details(source)
     document = load_document(source)
     return Deployments(
-        profiles=_parse_profiles(document, source_name),
+        accounts=_parse_accounts(document, source_name),
         aliases=_parse_aliases(document, source_name, required=False),
     )
 
