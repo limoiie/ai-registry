@@ -365,7 +365,7 @@ class CredentialRef(SafeModel):
         return self
 
 
-class Profile(SafeModel):
+class Account(SafeModel):
     id: Identifier
     provider_id: Identifier
     endpoint: str | None = Field(
@@ -396,13 +396,13 @@ class RoutingMetadata(SafeModel):
 
 
 class Deployment(SafeModel):
-    profile_id: Identifier = Field(
-        validation_alias=AliasChoices("profile_id", "profile")
+    account_id: Identifier = Field(
+        validation_alias=AliasChoices("account_id", "account")
     )
     model_id: Identifier = Field(validation_alias=AliasChoices("model_id", "model"))
     routing: RoutingMetadata = Field(default_factory=RoutingMetadata)
 
-    _validate_id = field_validator("profile_id")(_check_identifier)
+    _validate_id = field_validator("account_id")(_check_identifier)
     _validate_model_id = field_validator("model_id")(_check_model_id)
 
 
@@ -415,7 +415,7 @@ class Alias(SafeModel):
 
 class RegistryConfig(SafeModel):
     providers: list[Provider] = Field(default_factory=list)
-    profiles: list[Profile] = Field(default_factory=list)
+    accounts: list[Account] = Field(default_factory=list)
     aliases: list[Alias] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -427,7 +427,7 @@ class RegistryConfig(SafeModel):
 
         for values, label in (
             (self.providers, "provider"),
-            (self.profiles, "profile"),
+            (self.accounts, "account"),
             (self.aliases, "alias"),
         ):
             ids = [item.id for item in values]
