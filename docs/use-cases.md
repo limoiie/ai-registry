@@ -13,7 +13,7 @@ provider, or deployment behind an alias can change without code changes.
 aliases:
   - id: sol
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
 ```
 
@@ -22,7 +22,7 @@ aliases:
 aliases:
   - id: sol
     deployments:
-      - profile_id: local-vllm
+      - account_id: local-vllm
         model_id: Qwen/Qwen3-32B
 ```
 
@@ -32,14 +32,14 @@ resolution = registry.resolve("sol")
 
 Application code always calls `registry.resolve("sol")`. Tracing, usage
 accounting, and logging can still read `resolution.model_id` and
-`resolution.profile_id` to report the canonical identifiers behind the alias.
+`resolution.account_id` to report the canonical identifiers behind the alias.
 
 ## 2. Multiple API keys for the same provider
 
-Profile a shared gateway with several keys and let routing balance across them.
+Configure a shared gateway with several keys and let routing balance across them.
 
 ```yaml
-profiles:
+accounts:
   - id: uniapi-primary
     provider_id: uniapi
     credential: {env: UNIAPI_PRIMARY_KEY}
@@ -52,10 +52,10 @@ profiles:
 aliases:
   - id: chat-default
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
         routing: {priority: 0, weight: 3}
-      - profile_id: uniapi-secondary
+      - account_id: uniapi-secondary
         model_id: deepseek-v4-flash
         routing: {priority: 0, weight: 1}
 ```
@@ -73,10 +73,10 @@ while available; the backup is used only when the primary is unhealthy.
 aliases:
   - id: chat-default
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
         routing: {priority: 0, weight: 1}
-      - profile_id: local-vllm
+      - account_id: local-vllm
         model_id: Qwen/Qwen3-32B
         routing: {priority: 1, weight: 1}
 ```
@@ -99,7 +99,7 @@ router = DeploymentRouter(health)
 
 registry = Registry.from_data(
     providers=[...],
-    profiles=[...],
+    accounts=[...],
     aliases=[...],
     router=router,
 )
@@ -117,14 +117,14 @@ The health store is separate from static configuration, so marking a failure
 or recovery never mutates your YAML-defined config. Unknown health state is
 healthy, so the system fails open by default.
 
-## 5. Disabling a deployment or profile
+## 5. Disabling a deployment or account
 
 - `routing.enabled: false` removes a deployment from selection permanently.
-- `enabled: false` on a profile excludes it from both alias routing and direct
+- `enabled: false` on an account excludes it from both alias routing and direct
   references.
 
 ```yaml
-profiles:
+accounts:
   - id: old-key
     provider_id: uniapi
     credential: {env: UNIAPI_OLD_KEY}
@@ -154,12 +154,12 @@ registry.resolve("uniapi-primary/bge-large-zh:latest")
 
 ## 7. Custom OpenAI-compatible endpoints (vLLM, gateways)
 
-Profile an internal vLLM server or a gateway. `endpoint` overrides the
+Configure an internal vLLM server or a gateway. `endpoint` overrides the
 provider default, and arbitrary adapter metadata rides along in
 `endpoint_metadata`.
 
 ```yaml
-profiles:
+accounts:
   - id: local-vllm
     provider_id: vllm-local
     endpoint: http://vllm.internal:8000/v1
@@ -182,7 +182,7 @@ resolution.endpoint  # "https://gateway.example/v1"
 resolution.endpoint_metadata  # {"provider_name": ..., "supports_json_mode": ...}
 ```
 
-Provider `default_base_url` supplies the endpoint when a profile does not set
+Provider `default_base_url` supplies the endpoint when an account does not set
 one.
 
 ## 8. Custom secret resolver
@@ -191,7 +191,7 @@ Integrate Vault, AWS Secrets Manager, Kubernetes, or a local keyring by
 implementing the `SecretResolver` protocol. References use `secret_ref`:
 
 ```yaml
-profiles:
+accounts:
   - id: production
     provider_id: uniapi
     credential:
@@ -218,7 +218,7 @@ class VaultResolver:
 
 registry = Registry.from_files(
     provider_files=["catalog.yaml"],
-    profile_files=["profiles.yaml"],
+    account_files=["accounts.yaml"],
     alias_files=["aliases.yaml"],
     secret_resolver=VaultResolver(),
 )
@@ -232,14 +232,14 @@ Resolvers must return a non-empty string. Failures are wrapped in a safe
 
 ## 9. Direct references as an escape hatch
 
-When no alias matches, `Registry.resolve()` falls back to `profile-id/model-id`.
+When no alias matches, `Registry.resolve()` falls back to `account-id/model-id`.
 This is useful for operational tooling and one-off model access:
 
 ```python
 registry.resolve("uniapi-primary/deepseek-v4-flash")
 ```
 
-References that are neither an alias nor a `profile/model` pair are rejected
+References that are neither an alias nor an `account/model` pair are rejected
 with an actionable error.
 
 ## 10. Programmatic construction
@@ -251,8 +251,8 @@ configurations.
 ```python
 registry = Registry.from_data(
     providers=[provider],
-    profiles=[{"id": "p", "provider_id": "provider", "enabled_models": ["chat"]}],
-    aliases=[{"id": "chat", "deployments": [{"profile_id": "p", "model_id": "chat"}]}],
+    accounts=[{"id": "p", "provider_id": "provider", "enabled_models": ["chat"]}],
+    aliases=[{"id": "chat", "deployments": [{"account_id": "p", "model_id": "chat"}]}],
 )
 ```
 
@@ -263,7 +263,7 @@ registry = Registry.from_data(
 ```python
 resolution.provider.id  # provider family
 resolution.model.id  # canonical model ID for requests/logging
-resolution.profile.id  # which profile/key was used
+resolution.account.id  # which account/key was used
 resolution.endpoint  # base URL
 resolution.endpoint_metadata  # adapter-specific settings
 ```
@@ -300,12 +300,12 @@ project only needs a merged deployments file:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # REQUIRED — merged profiles + aliases
+    └── registry.yaml    # REQUIRED — merged accounts + aliases
 ```
 
 ```yaml
 # .ai-registry/registry.yaml
-profiles:
+accounts:
   - id: uniapi-primary
     provider_id: uniapi
     credential: {env: UNIAPI_PRIMARY_KEY}
@@ -314,7 +314,7 @@ profiles:
 aliases:
   - id: sol
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
 ```
 
@@ -331,3 +331,52 @@ Override a built-in provider by dropping a file with the same `id` under
 omitted fields fall back to schema defaults. Start from
 `examples/registry.example.yaml`, and use `Registry.from_files` (use case 8)
 when you need explicit path control instead.
+
+## 14. Environment switching
+
+Keep one registry per environment under `.ai-registry/` and select it by
+profile, so the same application code runs against dev, staging, and prod
+without edits:
+
+```text
+<project-root>/
+└── .ai-registry/
+    ├── registry.yaml        # default (e.g. local development)
+    ├── registry.dev.yaml    # profile "dev"
+    └── registry.prod.yaml   # profile "prod"
+```
+
+```yaml
+# .ai-registry/registry.prod.yaml
+accounts:
+  - id: uniapi-primary
+    provider_id: uniapi
+    credential: {env: UNIAPI_PROD_KEY}
+    enabled_models: [deepseek-v4-flash]
+
+aliases:
+  - id: sol
+    deployments:
+      - account_id: uniapi-primary
+        model_id: deepseek-v4-flash
+```
+
+Select the profile explicitly, or drive it from the environment:
+
+```python
+from ai_registry import Registry
+
+registry = Registry.from_project(profile="prod")  # loads registry.prod.yaml
+```
+
+```bash
+export AI_REGISTRY_PROFILE=prod
+python -c "from ai_registry import Registry; Registry.from_project()"
+```
+
+Selection precedence is: explicit `profile=` argument, then the
+`AI_REGISTRY_PROFILE` environment variable, then the default `registry.yaml`.
+Profile names are restricted to `[A-Za-z0-9_-]`. A requested but missing
+profile file raises a `ConfigurationError` — it never silently falls back to
+the default. See the profile-selection section in
+[Configuration](configuration.md).

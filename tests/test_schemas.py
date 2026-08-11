@@ -7,13 +7,13 @@ from pydantic import ValidationError
 
 from ai_registry.errors import ConfigurationError, RegistryError
 from ai_registry.schemas import (
+    Account,
     Alias,
     CredentialRef,
     Deployment,
     ModelCapabilities,
     ModelCard,
     ModelType,
-    Profile,
     Provider,
     RegistryConfig,
     RoutingMetadata,
@@ -72,14 +72,14 @@ def test_model_ids_allow_catalog_native_separators() -> None:
     for model_id in catalog_ids:
         assert ModelCard(id=model_id, type=ModelType.CHAT).id == model_id
 
-    profile = Profile(
-        id="catalog-profile",
+    account = Account(
+        id="catalog-account",
         provider_id="provider",
         enabled_models=catalog_ids,
     )
-    assert profile.enabled_models == catalog_ids
+    assert account.enabled_models == catalog_ids
     assert (
-        Deployment(profile_id="catalog-profile", model_id=catalog_ids[1]).model_id
+        Deployment(account_id="catalog-account", model_id=catalog_ids[1]).model_id
         == catalog_ids[1]
     )
 
@@ -89,17 +89,17 @@ def test_logical_ids_retain_strict_constraints() -> None:
         Provider(id="provider/name", name="Provider")
 
     with pytest.raises(ValidationError):
-        Profile(id="profile:name", provider_id="provider")
+        Account(id="account:name", provider_id="provider")
 
     with pytest.raises(ValidationError):
         Alias(
             id="alias/name",
-            deployments=[Deployment(profile_id="profile", model_id="model")],
+            deployments=[Deployment(account_id="account", model_id="model")],
         )
 
 
-def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> None:
-    profile = Profile(
+def test_account_carries_endpoint_enabled_models_and_credential_reference() -> None:
+    account = Account(
         id="primary",
         provider_id="openai-compatible",
         endpoint="https://example.test/v1",
@@ -107,10 +107,10 @@ def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> N
         enabled_models=["chat-model"],
     )
 
-    assert profile.endpoint == "https://example.test/v1"
-    assert profile.enabled_models == ["chat-model"]
-    assert profile.credential is not None
-    assert profile.credential.env == "AI_API_KEY"
+    assert account.endpoint == "https://example.test/v1"
+    assert account.enabled_models == ["chat-model"]
+    assert account.credential is not None
+    assert account.credential.env == "AI_API_KEY"
 
 
 @pytest.mark.parametrize(
@@ -121,11 +121,11 @@ def test_profile_carries_endpoint_enabled_models_and_credential_reference() -> N
         "https://gateway.example.test/v1?access_token=query-secret",
     ],
 )
-def test_profile_rejects_credential_bearing_endpoints_without_echoing_secrets(
+def test_account_rejects_credential_bearing_endpoints_without_echoing_secrets(
     endpoint: str,
 ) -> None:
     with pytest.raises(ValidationError) as caught:
-        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+        Account(id="primary", provider_id="provider", endpoint=endpoint)
 
     rendered = " ".join(
         (str(caught.value), repr(caught.value), str(caught.value.errors()))
@@ -142,9 +142,9 @@ def test_profile_rejects_credential_bearing_endpoints_without_echoing_secrets(
         "https://gateway.example.test/v1?authorizationHeader=query-secret",
     ],
 )
-def test_profile_rejects_camel_case_credential_query_keys(endpoint: str) -> None:
+def test_account_rejects_camel_case_credential_query_keys(endpoint: str) -> None:
     with pytest.raises(ValidationError, match="credential-bearing"):
-        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+        Account(id="primary", provider_id="provider", endpoint=endpoint)
 
 
 @pytest.mark.parametrize(
@@ -154,11 +154,11 @@ def test_profile_rejects_camel_case_credential_query_keys(endpoint: str) -> None
         "https://gateway.example.test/v1#clientToken=fragment-secret",
     ],
 )
-def test_profile_rejects_credential_bearing_fragments_without_echoing_secrets(
+def test_account_rejects_credential_bearing_fragments_without_echoing_secrets(
     endpoint: str,
 ) -> None:
     with pytest.raises(ValidationError, match="credential-bearing") as caught:
-        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+        Account(id="primary", provider_id="provider", endpoint=endpoint)
 
     assert "fragment-secret" not in str(caught.value)
 
@@ -180,7 +180,7 @@ def test_profile_rejects_credential_bearing_fragments_without_echoing_secrets(
 )
 def test_endpoint_rejects_widened_credential_query_keys(endpoint: str) -> None:
     with pytest.raises(ValidationError, match="credential-bearing"):
-        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+        Account(id="primary", provider_id="provider", endpoint=endpoint)
 
 
 @pytest.mark.parametrize(
@@ -204,21 +204,21 @@ def test_endpoint_rejects_cloud_and_oauth_credential_query_keys(
     endpoint: str,
 ) -> None:
     with pytest.raises(ValidationError, match="credential-bearing"):
-        Profile(id="primary", provider_id="provider", endpoint=endpoint)
+        Account(id="primary", provider_id="provider", endpoint=endpoint)
 
 
 def test_endpoint_allows_ordinary_query_keys() -> None:
     endpoint = (
         "https://gateway.example.test/v1?client_id=123&username=user&api-version=1"
     )
-    profile = Profile(id="primary", provider_id="provider", endpoint=endpoint)
+    account = Account(id="primary", provider_id="provider", endpoint=endpoint)
 
-    assert profile.endpoint == endpoint
+    assert account.endpoint == endpoint
 
 
-def test_profile_rejects_empty_query_key_with_clean_validation_error() -> None:
+def test_account_rejects_empty_query_key_with_clean_validation_error() -> None:
     with pytest.raises(ValidationError, match="non-empty"):
-        Profile(
+        Account(
             id="primary",
             provider_id="provider",
             endpoint="https://gateway.example.test/v1?=query-value",
@@ -274,7 +274,7 @@ def test_invalid_credential_errors_do_not_expose_supplied_values() -> None:
         assert literal_value not in repr(error.get("input"))
 
     with pytest.raises(ValidationError) as nested_error:
-        Profile.model_validate(
+        Account.model_validate(
             {
                 "id": "primary",
                 "provider_id": "provider",
@@ -293,7 +293,7 @@ def test_alias_deployments_and_routing_metadata() -> None:
         id="fast-chat",
         deployments=[
             Deployment(
-                profile_id="primary",
+                account_id="primary",
                 model_id="chat-model",
                 routing=RoutingMetadata(priority=2, weight=10, enabled=True),
             )
@@ -301,7 +301,7 @@ def test_alias_deployments_and_routing_metadata() -> None:
     )
 
     deployment = alias.deployments[0]
-    assert deployment.profile_id == "primary"
+    assert deployment.account_id == "primary"
     assert deployment.model_id == "chat-model"
     assert deployment.routing.priority == 2
     assert deployment.routing.weight == 10
@@ -318,16 +318,26 @@ def test_aggregate_rejects_duplicate_ids() -> None:
         RegistryConfig(providers=[provider, provider])
 
 
-def test_aggregate_rejects_duplicate_profile_and_alias_ids() -> None:
-    with pytest.raises(ConfigurationError, match="duplicate profile id"):
+def test_account_accepts_account_yaml_alias_and_registry_uses_accounts() -> None:
+    deployment = Deployment.model_validate(
+        {"account": "primary", "model": "chat-model"}
+    )
+    assert deployment.account_id == "primary"
+
+    config = RegistryConfig(accounts=[Account(id="primary", provider_id="provider")])
+    assert config.accounts[0].id == "primary"
+
+
+def test_aggregate_rejects_duplicate_account_and_alias_ids() -> None:
+    with pytest.raises(ConfigurationError, match="duplicate account id"):
         RegistryConfig(
-            profiles=[
-                Profile(id="profile", provider_id="provider"),
-                Profile(id="profile", provider_id="provider"),
+            accounts=[
+                Account(id="account", provider_id="provider"),
+                Account(id="account", provider_id="provider"),
             ]
         )
 
-    deployment = Deployment(profile_id="profile", model_id="model")
+    deployment = Deployment(account_id="account", model_id="model")
     with pytest.raises(ConfigurationError, match="duplicate alias id"):
         RegistryConfig(
             aliases=[
@@ -354,8 +364,8 @@ def test_aggregate_rejects_duplicate_model_ids_within_provider() -> None:
 def test_repr_and_safe_serialization_do_not_expose_secret_values() -> None:
     secret = "super-secret-api-key"
     config = RegistryConfig(
-        profiles=[
-            Profile(
+        accounts=[
+            Account(
                 id="primary",
                 provider_id="provider",
                 credential=CredentialRef(env=secret),
@@ -364,19 +374,19 @@ def test_repr_and_safe_serialization_do_not_expose_secret_values() -> None:
     )
 
     assert secret not in repr(config)
-    assert secret not in repr(config.profiles[0])
+    assert secret not in repr(config.accounts[0])
     assert secret not in str(config)
     assert secret not in str(config.model_dump())
     assert secret not in config.model_dump_json()
     assert secret not in str(config.safe_dump())
-    assert config.safe_dump()["profiles"][0]["credential"] == {"env": "<redacted>"}
-    assert config._raw_dump()["profiles"][0]["credential"]["env"] == secret
+    assert config.safe_dump()["accounts"][0]["credential"] == {"env": "<redacted>"}
+    assert config._raw_dump()["accounts"][0]["credential"]["env"] == secret
 
 
 def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> None:
     config = RegistryConfig(
-        profiles=[
-            Profile(
+        accounts=[
+            Account(
                 id="primary",
                 provider_id="provider",
                 metadata={
@@ -405,15 +415,15 @@ def test_nested_sensitive_metadata_is_redacted_across_schema_serialization() -> 
         assert "tuple-secret" not in rendered
         assert "set-secret" not in rendered
     assert "'model_token_count': 42" in str(config.model_dump())
-    assert config.model_dump()["profiles"][0]["metadata"]["nested"]["password"] == (
+    assert config.model_dump()["accounts"][0]["metadata"]["nested"]["password"] == (
         "<redacted>"
     )
 
 
 def test_generic_sequence_containers_are_redacted_and_json_safe() -> None:
     config = RegistryConfig(
-        profiles=[
-            Profile(
+        accounts=[
+            Account(
                 id="primary",
                 provider_id="provider",
                 metadata={
@@ -456,8 +466,8 @@ def test_provider_accepts_equivalent_sdk_type_declarations() -> None:
 
 def test_userdict_metadata_is_recursively_redacted() -> None:
     config = RegistryConfig(
-        profiles=[
-            Profile(
+        accounts=[
+            Account(
                 id="primary",
                 provider_id="provider",
                 metadata=cast(
@@ -480,9 +490,9 @@ def test_userdict_metadata_is_recursively_redacted() -> None:
 
 
 def test_credential_none_is_preserved_in_dump() -> None:
-    profile = Profile(id="primary", provider_id="provider")
+    account = Account(id="primary", provider_id="provider")
 
-    dump = profile.model_dump()
+    dump = account.model_dump()
 
     assert dump["credential"] is None
 
@@ -525,8 +535,8 @@ _CREDENTIAL_FAMILY_SECRETS: dict[str, object] = {
 
 def test_credential_family_metadata_keys_are_redacted_across_serializations() -> None:
     config = RegistryConfig(
-        profiles=[
-            Profile(
+        accounts=[
+            Account(
                 id="primary",
                 provider_id="provider",
                 metadata=dict(_CREDENTIAL_FAMILY_SECRETS),
@@ -550,8 +560,8 @@ def test_credential_family_metadata_keys_are_redacted_across_serializations() ->
 
 def test_ordinary_metadata_keys_remain_visible() -> None:
     config = RegistryConfig(
-        profiles=[
-            Profile(
+        accounts=[
+            Account(
                 id="primary",
                 provider_id="provider",
                 metadata={

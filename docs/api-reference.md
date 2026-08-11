@@ -51,7 +51,7 @@ Registry(config: RegistryConfig, secret_resolver: SecretResolver | None, router:
 ```
 
 Direct constructor from a `RegistryConfig`. `secret_resolver` is required
-(positionally) but may be `None` when no profile uses a `secret_ref` credential.
+(positionally) but may be `None` when no account uses a `secret_ref` credential.
 
 #### Class methods
 
@@ -59,7 +59,7 @@ Direct constructor from a `RegistryConfig`. `secret_resolver` is required
 Registry.from_data(
     *,
     providers: Sequence[Provider | Mapping[str, Any]],
-    profiles: Sequence[Profile | Mapping[str, Any]],
+    accounts: Sequence[Account | Mapping[str, Any]],
     aliases: Sequence[Alias | Mapping[str, Any]] = (),
     secret_resolver: SecretResolver | None = None,
     router: DeploymentRouter | None = None,
@@ -67,12 +67,12 @@ Registry.from_data(
 ```
 
 Build from normalized objects or schema-compatible mappings. Inputs are
-revalidated even if they are already `Provider`/`Profile`/`Alias` instances.
+revalidated even if they are already `Provider`/`Account`/`Alias` instances.
 
 ```python
 Registry.from_files(
     provider_files: Sequence[PathSource],
-    profile_files: Sequence[PathSource],
+    account_files: Sequence[PathSource],
     alias_files: Sequence[PathSource] = (),
     *,
     secret_resolver: SecretResolver | None = None,
@@ -80,15 +80,16 @@ Registry.from_files(
 ) -> Registry
 ```
 
-Load providers, profiles, and aliases from YAML/JSON paths or streams. Provider
-files use the single-provider format (one provider per file); profile files
-must contain a `profiles` list; alias files must contain an `aliases` list.
+Load providers, accounts, and aliases from YAML/JSON paths or streams. Provider
+files use the single-provider format (one provider per file); account files
+must contain an `accounts` list; alias files must contain an `aliases` list.
 Raises `ConfigurationError` on any structural problem.
 
 ```python
 Registry.from_project(
     root: str | Path | None = None,
     *,
+    profile: str | None = None,
     secret_resolver: SecretResolver | None = None,
     router: DeploymentRouter | None = None,
 ) -> Registry
@@ -96,11 +97,21 @@ Registry.from_project(
 
 Build a registry from built-in providers plus project configuration discovered
 at `root` (or the current working directory when omitted). Loads the merged
-profiles/aliases from `<root>/.ai-registry/registry.yaml` (required) and
-project providers from `<root>/.ai-registry/providers/` (optional). Project
-providers replace built-ins by `id`; the deployments file may reference any of
-the merged providers. Raises `ConfigurationError` when the deployments file is
-missing or invalid.
+accounts/aliases from `<root>/.ai-registry/registry.yaml` (required as the
+default file) and project providers from `<root>/.ai-registry/providers/`
+(optional). Project providers replace built-ins by `id`; the registry file may
+reference any of the merged providers. Raises `ConfigurationError` when the
+registry file is missing or invalid.
+
+`profile` selects a named registry file. When set, `from_project` loads
+`<root>/.ai-registry/registry.<profile>.yaml` (or `.yml`/`.json`) instead of
+the default `registry.yaml`. If `profile` is omitted, the `AI_REGISTRY_PROFILE`
+environment variable is used. The explicit `profile` argument takes precedence
+over the environment variable. Profile names are restricted to `[A-Za-z0-9_-]`;
+invalid names and missing profile files raise `ConfigurationError`. A requested
+(but missing) profile file never falls back to the default `registry.yaml`. An
+empty or blank profile (argument or environment variable) selects the default
+rather than being rejected.
 
 #### Methods
 
@@ -108,15 +119,15 @@ missing or invalid.
 registry.resolve(reference: str) -> Resolution
 ```
 
-Resolve an alias first, then an explicit `profile-id/model-id`. Selection for
+Resolve an alias first, then an explicit `account-id/model-id`. Selection for
 aliases goes through the configured `DeploymentRouter` (priority, weight,
-health, disabled profiles). Raises:
+health, disabled accounts). Raises:
 
-- `RegistryError` — unknown alias/model reference, or a `profile/model`
-  reference whose profile is unknown or disabled, or whose model is unknown or
+- `RegistryError` — unknown alias/model reference, or an `account/model`
+  reference whose account is unknown or disabled, or whose model is unknown or
   not enabled.
 - `NoAvailableDeploymentError` — the alias exists but every deployment is
-  disabled, unhealthy, or on a disabled profile.
+  disabled, unhealthy, or on a disabled account.
 
 ### `Resolution`
 
@@ -128,19 +139,19 @@ are redacted.
 | --- | --- | --- |
 | `provider` | `Provider` | Deep-copied provider metadata. |
 | `model` | `ModelCard` | The selected model card. |
-| `profile` | `Profile` | Deep-copied profile. |
+| `account` | `Account` | Deep-copied account. |
 | `deployment_id` | `str` | The deployment reference used by the resolution layer. |
-| `endpoint` | `str | None` | `profile.endpoint` or provider `default_base_url`. |
-| `endpoint_metadata` | `dict[str, Any]` | Deep-copied profile metadata for adapters. |
+| `endpoint` | `str | None` | `account.endpoint` or provider `default_base_url`. |
+| `endpoint_metadata` | `dict[str, Any]` | Deep-copied account metadata for adapters. |
 | `model_id` | `str` | Shorthand for `model.id`. |
-| `profile_id` | `str` | Shorthand for `profile.id`. |
+| `account_id` | `str` | Shorthand for `account.id`. |
 
 ```python
 resolution.resolve_credential() -> str | None
 ```
 
-Resolve the profile credential only when an adapter requests it. Returns the
-raw secret value, or `None` when the profile has no credential. Raises
+Resolve the account credential only when an adapter requests it. Returns the
+raw secret value, or `None` when the account has no credential. Raises
 `SecretResolutionError` for missing/empty environment values or resolver
 failures. This is the **only** API that returns a resolved secret.
 
@@ -220,7 +231,7 @@ class SDKType(StrEnum):
 
 Exactly one of `env`/`secret_ref` must be set.
 
-### `Profile`
+### `Account`
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -246,7 +257,7 @@ Exactly one of `env`/`secret_ref` must be set.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `profile_id` | str | Accepts alias `profile`. |
+| `account_id` | str | Accepts alias `account`. |
 | `model_id` | str | Accepts alias `model`. |
 | `routing` | `RoutingMetadata` | Default constructed. |
 
@@ -262,10 +273,10 @@ Exactly one of `env`/`secret_ref` must be set.
 | Field | Type |
 | --- | --- |
 | `providers` | `list[Provider]` |
-| `profiles` | `list[Profile]` |
+| `accounts` | `list[Account]` |
 | `aliases` | `list[Alias]` |
 
-Validates uniqueness of provider/profile/alias IDs and of model-card IDs within
+Validates uniqueness of provider/account/alias IDs and of model-card IDs within
 each provider.
 
 ## Configuration loading (`ai_registry.config`)
@@ -279,9 +290,9 @@ PathSource = str | pathlib.Path | TextIO
 | `load_document(source)` | `PathSource -> dict[str, Any]` — parses one YAML/JSON mapping without resolving secrets. |
 | `load_provider_file(source)` | `PathSource -> Provider` — loads and normalizes one provider document (single provider per file). |
 | `load_provider_files(sources)` | `list[PathSource] -> list[Provider]` — rejects duplicate provider IDs. |
-| `load_profile_file(source)` | `PathSource -> list[Profile]` — requires a `profiles` list. |
+| `load_account_file(source)` | `PathSource -> list[Account]` — requires an `accounts` list. |
 | `load_alias_file(source)` | `PathSource -> list[dict[str, Any]]` — requires an `aliases` list. |
-| `load_deployments_file(source)` | `PathSource -> Deployments` — requires a `profiles` list; `aliases` is optional. |
+| `load_deployments_file(source)` | `PathSource -> Deployments` — requires an `accounts` list; `aliases` is optional. |
 | `discover_builtin_providers()` | `-> list[Provider]` — reads the built-in catalog shipped as package data (`ai_registry/data/providers/*.yml`). |
 | `discover_project_providers(root)` | `str | Path -> list[Provider]` — reads `<root>/.ai-registry/providers/`; returns `[]` when the directory is missing. |
 | `merge_providers(builtin, project)` | `Sequence[Provider] x Sequence[Provider] -> list[Provider]` — project providers replace built-ins by id; rejects duplicate project ids. |
@@ -293,7 +304,7 @@ A frozen dataclass returned by `load_deployments_file`:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `profiles` | `list[Profile]` | Normalized profiles from the `profiles` list. |
+| `accounts` | `list[Account]` | Normalized accounts from the `accounts` list. |
 | `aliases` | `list[dict[str, Any]]` | Raw alias mappings from the `aliases` list (empty when absent). |
 
 Raises `ConfigurationError` for unreadable files, unsupported formats, malformed
@@ -375,7 +386,7 @@ Selection algorithm:
 
 1. Filter out deployments with `routing.enabled == False`, those for which
    `eligible` returns `False` (the registry uses this to exclude disabled
-   profiles), and unhealthy deployments.
+   accounts), and unhealthy deployments.
 2. Take the minimum `priority` among the remaining candidates.
 3. Pick weighted-randomly among equal-priority candidates using `weight` and
    `random_source`.
@@ -391,5 +402,5 @@ never mutated.
 | `alias_id` | str | The alias resolved. |
 | `candidate_index` | int | Position of the deployment within `alias.deployments`. |
 | `deployment` | `Deployment` | Deep copy of the selected deployment. |
-| `metadata` | `dict[str, Any]` | `alias_id`, `candidate_index`, `profile_id`, `model_id`, `priority`, `weight`. |
+| `metadata` | `dict[str, Any]` | `alias_id`, `candidate_index`, `account_id`, `model_id`, `priority`, `weight`. |
 | `deployment_id` | str | Shorthand for `alias_id` (the reference used by the registry resolution layer). |

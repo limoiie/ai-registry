@@ -1,7 +1,7 @@
 # AI Registry
 
 A framework-independent core for registering and resolving AI providers,
-models, profiles, and deployments. Resolve a **stable alias** to a **concrete,
+models, accounts, and deployments. Resolve a **stable alias** to a **concrete,
 healthy deployment** — then build any framework-native client from the result.
 
 ```python
@@ -9,13 +9,13 @@ from ai_registry import Registry
 
 registry = Registry.from_files(
     provider_files=["catalog.yaml"],
-    profile_files=["profiles.yaml"],
+    account_files=["accounts.yaml"],
     alias_files=["aliases.yaml"],
 )
 
 resolution = registry.resolve("sol")  # stable logical name
 
-resolution.profile_id  # which profile/key was selected
+resolution.account_id  # which account/key was selected
 resolution.model_id  # canonical model id (for requests/logging)
 resolution.endpoint  # base URL
 resolution.resolve_credential()  # resolved lazily, only at the adapter boundary
@@ -26,10 +26,10 @@ configuration without any application code changes.
 
 ## Features
 
-- **Alias-first resolution** with an explicit `profile-id/model-id` fallback.
+- **Alias-first resolution** with an explicit `account-id/model-id` fallback.
 - **Health-aware routing**: priority, weight, disabled deployments, and a
   runtime health store with recovery.
-- **Multiple profiles and keys** for the same or different providers.
+- **Multiple accounts and keys** for the same or different providers.
 - **OpenAI-compatible endpoints** out of the box (UniAPI, vLLM, gateways),
   plus support for other SDK families.
 - **Secret references, not secrets**: `env:` / `secret_ref:` credentials,
@@ -39,7 +39,7 @@ configuration without any application code changes.
 - **Built-in provider catalog** ships with the package at
   `ai_registry/data/providers/*.yml`; project providers under
   `.ai-registry/providers/` override them by id.
-- **Compatibility loaders** normalize the legacy catalog and profile formats.
+- **Compatibility loaders** normalize the legacy catalog and account formats.
 - **Framework-independent**: only depends on Pydantic and PyYAML; adapters for
   the OpenAI SDK, Pydantic AI, LangGraph, and LlamaIndex are planned as
   optional extras.
@@ -59,7 +59,7 @@ Requires Python 3.11+.
 ```python
 import os
 from ai_registry import Registry
-from ai_registry.schemas import Alias, Deployment, ModelCard, Profile, Provider
+from ai_registry.schemas import Alias, Deployment, ModelCard, Account, Provider
 
 os.environ["DEEPSEEK_API_KEY"] = "sk-example"
 
@@ -72,8 +72,8 @@ registry = Registry.from_data(
             model_cards=[ModelCard(id="deepseek-chat", type="chat")],
         ),
     ],
-    profiles=[
-        Profile(
+    accounts=[
+        Account(
             id="primary",
             provider_id="deepseek",
             credential={"env": "DEEPSEEK_API_KEY"},
@@ -83,7 +83,7 @@ registry = Registry.from_data(
     aliases=[
         Alias(
             id="chat-default",
-            deployments=[Deployment(profile_id="primary", model_id="deepseek-chat")],
+            deployments=[Deployment(account_id="primary", model_id="deepseek-chat")],
         ),
     ],
 )
@@ -103,7 +103,9 @@ Projects keep configuration in a `.ai-registry/` directory at the root:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # REQUIRED — merged profiles + aliases
+    ├── registry.yaml    # default — used when no profile requested
+    ├── registry.dev.yaml   # OPTIONAL — profile "dev"
+    └── registry.prod.yaml  # OPTIONAL — profile "prod"
 ```
 
 Start from `examples/registry.example.yaml`, which references the built-in
@@ -123,6 +125,10 @@ resolution = registry.resolve("chat-default")
 print(resolution.endpoint)
 print(resolution.resolve_credential())
 ```
+
+Select a profile by environment with `Registry.from_project(profile="prod")`
+or by setting `AI_REGISTRY_PROFILE`, which loads `registry.prod.yaml` instead
+of the default. See [Configuration](docs/configuration.md).
 
 `Registry.from_files(...)` remains available when you want explicit control
 over every configuration file.
