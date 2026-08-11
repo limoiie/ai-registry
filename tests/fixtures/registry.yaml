@@ -1,27 +1,27 @@
 accounts:
-  - id: deepseek-profile
+  - id: deepseek-account
     provider_id: deepseek
     api_key_env: DEEPSEEK_API_KEY
     enabled_models:
       - deepseek-chat
       - deepseek-reasoner
-  - id: uniapi-profile
+  - id: uniapi-account
     provider_id: uniapi
     api_key_env: UNIAPI_API_KEY
     enabled_models:
       - bge-large-zh:latest
       - deepseek-v3:671b
-  - id: minimax-profile
+  - id: minimax-account
     provider_id: minimax
     api_key_env: MINIMAX_API_KEY
     enabled_models:
       - MiniMax-M2.7
-  - id: reranker-profile
+  - id: reranker-account
     provider_id: uniapi-rerankers
     api_key_env: UNIAPI_API_KEY
     enabled_models:
       - bge-reranker-v2-m3
-  - id: custom-openai-profile
+  - id: custom-openai-account
     provider_id: deepseek
     endpoint: https://gateway.example.test/v1
     api_key_env: DEEPSEEK_API_KEY
@@ -34,21 +34,21 @@ accounts:
 aliases:
   - id: deepseek-chat
     deployments:
-      - account_id: deepseek-profile
+      - account_id: deepseek-account
         model_id: deepseek-chat
   - id: minimax-coding
     deployments:
-      - account_id: minimax-profile
+      - account_id: minimax-account
         model_id: MiniMax-M2.7
   - id: embedding-default
     deployments:
-      - account_id: uniapi-profile
+      - account_id: uniapi-account
         model_id: bge-large-zh:latest
   - id: reranking-default
     deployments:
-      - account_id: reranker-profile
+      - account_id: reranker-account
         model_id: bge-reranker-v2-m3
   - id: custom-openai-chat
     deployments:
-      - account_id: custom-openai-profile
+      - account_id: custom-openai-account
         model_id: deepseek-chat

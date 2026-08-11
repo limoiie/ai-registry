@@ -32,16 +32,16 @@ def test_representative_catalog_resolves_aliases_and_preserves_adapter_metadata(
     )
 
     expected_aliases = {
-        "deepseek-chat": ("deepseek-profile", "deepseek-chat"),
-        "minimax-coding": ("minimax-profile", "MiniMax-M2.7"),
-        "embedding-default": ("uniapi-profile", "bge-large-zh:latest"),
-        "reranking-default": ("reranker-profile", "bge-reranker-v2-m3"),
+        "deepseek-chat": ("deepseek-account", "deepseek-chat"),
+        "minimax-coding": ("minimax-account", "MiniMax-M2.7"),
+        "embedding-default": ("uniapi-account", "bge-large-zh:latest"),
+        "reranking-default": ("reranker-account", "bge-reranker-v2-m3"),
     }
     for alias, (account_id, model_id) in expected_aliases.items():
         result = registry.resolve(alias)
         assert (result.account_id, result.model_id) == (account_id, model_id)
 
-    direct = registry.resolve("uniapi-profile/bge-large-zh:latest")
+    direct = registry.resolve("uniapi-account/bge-large-zh:latest")
     assert direct.model.type.value == "embedding"
     assert direct.model.embedding_dimension == 1024
 
