@@ -1,7 +1,7 @@
 # Getting started
 
 This guide walks through installing `ai-registry` and resolving your first
-model. It assumes you already have a small catalog, profile, and alias file.
+model. It assumes you already have a small catalog, account, and alias file.
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ objects. No YAML files are required.
 
 ```python
 from ai_registry import Registry
-from ai_registry.schemas import Alias, Deployment, ModelCard, Profile, Provider
+from ai_registry.schemas import Alias, Deployment, ModelCard, Account, Provider
 
 provider = Provider(
     id="deepseek",
@@ -43,7 +43,7 @@ provider = Provider(
     ],
 )
 
-profile = Profile(
+account = Account(
     id="primary",
     provider_id="deepseek",
     credential={"env": "DEEPSEEK_API_KEY"},
@@ -52,12 +52,12 @@ profile = Profile(
 
 alias = Alias(
     id="chat-default",
-    deployments=[Deployment(profile_id="primary", model_id="deepseek-chat")],
+    deployments=[Deployment(account_id="primary", model_id="deepseek-chat")],
 )
 
 registry = Registry.from_data(
     providers=[provider],
-    profiles=[profile],
+    accounts=[account],
     aliases=[alias],
 )
 ```
@@ -71,7 +71,7 @@ os.environ["DEEPSEEK_API_KEY"] = "sk-example"
 
 resolution = registry.resolve("chat-default")
 
-print(resolution.profile_id)  # "primary"
+print(resolution.account_id)  # "primary"
 print(resolution.model_id)  # "deepseek-chat"
 print(resolution.endpoint)  # "https://api.deepseek.com/v1"
 print(resolution.resolve_credential())  # "sk-example"
@@ -85,7 +85,7 @@ meant for the adapter boundary and is not invoked until you call it (lazy).
 The registry can discover a project's configuration from a `.ai-registry/`
 directory at the project root. Providers are optional there — the built-in
 catalog ships with the package — but a registry file is required and holds
-merged profiles and aliases. By default that is `registry.yaml`; profile-named
+merged accounts and aliases. By default that is `registry.yaml`; profile-named
 files (see [Select by environment](#select-by-environment) below) are also
 accepted:
 
@@ -93,14 +93,14 @@ accepted:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # default — merged profiles + aliases
+    └── registry.yaml    # default — merged accounts + aliases
 ```
 
 Copy `examples/registry.example.yaml`, which references the built-in
 `deepseek`, `uniapi`, and `uniapi-rerankers` providers:
 
 ```yaml
-profiles:
+accounts:
   - id: deepseek-primary
     provider_id: deepseek
     credential: {env: DEEPSEEK_API_KEY}
@@ -109,7 +109,7 @@ profiles:
 aliases:
   - id: chat-default
     deployments:
-      - profile_id: deepseek-primary
+      - account_id: deepseek-primary
         model_id: deepseek-chat
 ```
 
@@ -173,10 +173,10 @@ model_cards:
     type: chat
 ```
 
-`profiles.yaml` — one or more profiles:
+`accounts.yaml` — one or more accounts:
 
 ```yaml
-profiles:
+accounts:
   - id: primary
     provider_id: deepseek
     credential:
@@ -191,7 +191,7 @@ profiles:
 aliases:
   - id: chat-default
     deployments:
-      - profile_id: primary
+      - account_id: primary
         model_id: deepseek-chat
 ```
 
@@ -202,7 +202,7 @@ from ai_registry import Registry
 
 registry = Registry.from_files(
     provider_files=["deepseek.yaml"],
-    profile_files=["profiles.yaml"],
+    account_files=["accounts.yaml"],
     alias_files=["aliases.yaml"],
 )
 
@@ -212,10 +212,10 @@ resolution = registry.resolve("chat-default")
 Notes:
 
 - **One provider per file.** To use several providers, list each provider file
-  in `provider_files`. Profile files, in contrast, contain a `profiles` list.
-- Profile and alias documents may be combined in a single file that has both a
-  `profiles` list and an `aliases` list. Pass that file to both
-  `profile_files` and `alias_files`.
+  in `provider_files`. Account files, in contrast, contain an `accounts` list.
+- Account and alias documents may be combined in a single file that has both an
+  `accounts` list and an `aliases` list. Pass that file to both
+  `account_files` and `alias_files`.
 - If you already have a file shaped like `providers: [...]`, split it into one
   file per provider, or iterate it with `normalize_provider()` and build the
   registry with `Registry.from_data` (see
@@ -239,7 +239,7 @@ providers = discover_builtin_providers()  # -> list[Provider]
 ```
 
 Use `Registry.from_files` with explicit paths when you keep your own provider,
-profile, and alias files instead.
+account, and alias files instead.
 
 See [Configuration](configuration.md) for the full file format reference and
 [Use cases](use-cases.md) for more realistic setups.
@@ -253,7 +253,7 @@ messages. Unknown references fail at resolution time. For example:
 registry.resolve("nope")  # RegistryError: unknown alias or model reference
 ```
 
-Errors identify the logical alias/profile/model and the required remediation.
+Errors identify the logical alias/account/model and the required remediation.
 They never include API keys or resolved secret values. See
 [Security](security.md) for the guarantees.
 

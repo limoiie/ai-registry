@@ -35,7 +35,7 @@ registry**. It owns the parts of integration that are common to every
 framework:
 
 - provider and model metadata,
-- profile and deployment resolution,
+- account and deployment resolution,
 - credential resolution,
 - alias resolution,
 - and health-aware deployment selection.
@@ -48,14 +48,14 @@ from ai_registry import Registry
 
 registry = Registry.from_files(
     provider_files=["catalog.yaml"],
-    profile_files=["profiles.yaml"],
+    account_files=["accounts.yaml"],
     alias_files=["aliases.yaml"],
     secret_resolver=secret_resolver,
 )
 
 resolution = registry.resolve("sol")
 
-resolution.profile_id  # -> "uniapi-primary"
+resolution.account_id  # -> "uniapi-primary"
 resolution.model_id  # -> "deepseek-v4-flash"
 resolution.endpoint  # -> "https://uni-api.cstcloud.cn/v1"
 resolution.resolve_credential()  # -> resolves the key lazily
@@ -71,11 +71,11 @@ without any application code changes.
 | --- | --- |
 | **Provider** | A provider family or endpoint type plus its model catalog. Contains metadata and safe defaults, never secrets. |
 | **Model card** | Describes one model independently of any deployment: type, context limits, capabilities, pricing, embedding dimension. |
-| **Profile** | A named deployment configuration: binds a provider to an endpoint and a credential reference, and enables a set of models. |
-| **Alias** | A global, stable logical model name pointing to one or more profile/model deployments. |
-| **Deployment** | A single `profile_id` + `model_id` pair inside an alias, with routing metadata (priority, weight, enabled). |
+| **Account** | A named deployment configuration: binds a provider to an endpoint and a credential reference, and enables a set of models. |
+| **Alias** | A global, stable logical model name pointing to one or more account/model deployments. |
+| **Deployment** | A single `account_id` + `model_id` pair inside an alias, with routing metadata (priority, weight, enabled). |
 | **Credential reference** | A pointer to a secret — an environment variable name or an external `secret_ref` — never a literal key. |
-| **Resolution** | The safe result of looking up an alias or direct reference: provider, model, profile, endpoint, and metadata. |
+| **Resolution** | The safe result of looking up an alias or direct reference: provider, model, account, endpoint, and metadata. |
 
 ## How resolution works
 
@@ -83,7 +83,7 @@ without any application code changes.
 
 1. **Try the complete input as a global alias.** If an alias with that name
    exists, the deployment router picks one eligible deployment from it.
-2. **Otherwise parse it as `profile-id/model-id`.** This explicit form is an
+2. **Otherwise parse it as `account-id/model-id`.** This explicit form is an
    escape hatch only when no alias with that name exists.
 3. **Reject unknown references** with an actionable error that never echoes the
    caller's input or any secret.
@@ -107,7 +107,7 @@ Providers come from two scopes, merged by provider `id`:
   replaces the built-in provider **entirely**; unique ids add to the catalog.
   There is no field-level merge.
 
-Profiles and aliases are configured in one merged file:
+Accounts and aliases are configured in one merged file:
 
 ```text
 <project-root>/
@@ -157,8 +157,8 @@ adapters are built on.
    in separate stores so routing never mutates your configuration.
 5. **Built-in catalog, project overrides.** The provider catalog ships with
    the package; project providers under `.ai-registry/providers/` replace
-   built-ins by id, and profiles and aliases live in one merged
-   `.ai-registry/registry.yaml`. Legacy catalog and profile formats still
+   built-ins by id, and accounts and aliases live in one merged
+   `.ai-registry/registry.yaml`. Legacy catalog and account formats still
    load and normalize without migration.
 6. **Profile-based selection.** `registry.<profile>.yaml` files are chosen by an
    explicit `profile=` argument or the `AI_REGISTRY_PROFILE` environment
@@ -209,6 +209,6 @@ The core modules are:
 - The initial focus is OpenAI-compatible providers (`sdk_type: openai`,
   including UniAPI, vLLM, and gateways). Native Anthropic, Cohere, Gemini, and
   other provider adapters can be added later without changing the registry,
-  profile, alias, or credential model.
+  account, alias, or credential model.
 - OpenAI SDK, Pydantic AI, LangGraph, and LlamaIndex adapters are planned as
   optional extras on top of this core.

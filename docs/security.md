@@ -9,7 +9,7 @@ follow when using the library.
 1. **No literal keys in configuration.** A `CredentialRef` requires exactly one
    of `env` or `secret_ref`. A literal `api_key` value is rejected at
    validation time. There is no supported path to store a raw key in a
-   catalog/profile/alias document.
+   catalog/account/alias document.
 2. **Resolved secrets are transient.** `Resolution.resolve_credential()` is the
    only API that returns a raw secret, and it is invoked lazily — only when an
    adapter asks. Resolved values are never stored on objects, never serialized,
@@ -68,13 +68,13 @@ Ordinary metadata such as `model_token_count`, `client_id`, `username`, and
 
 ### `Resolution`
 
-`Resolution.__repr__`/`__str__` render the selected provider/model/profile and
+`Resolution.__repr__`/`__str__` render the selected provider/model/account and
 a redacted view of `endpoint_metadata`. The secret resolver object is excluded
 from the representation.
 
 ## Endpoint validation
 
-`default_base_url` (provider) and `endpoint`/`base_url` (profile) reject:
+`default_base_url` (provider) and `endpoint`/`base_url` (account) reject:
 
 - userinfo components, including percent-encoded credentials;
 - query or fragment parameter names that are sensitive (see above), including
@@ -132,7 +132,7 @@ Adapters are the intended consumers of `Resolution`. When building them:
 - Redaction is key-name heuristics. A secret stored under an unusual key name
   (for example `description`) is not detected by generic redaction. The
   endpoint validator is a denylist, not a parameter allowlist.
-- `Provider.settings` and `Profile.metadata` are free-form and forwarded
+- `Provider.settings` and `Account.metadata` are free-form and forwarded
   verbatim to adapters; redaction applies at serialization boundaries only.
 - The health store is an in-memory map without synchronization and grows with
   use. Concurrent routers should use their own store per process.

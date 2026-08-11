@@ -49,7 +49,7 @@ uv run pytest -q && uv run ruff check . && uv run ruff format --check . && uv ru
 │   ├── errors.py               # public exceptions
 │   └── data/providers/         # built-in provider catalog (package data)
 ├── tests/
-│   ├── fixtures/               # provider/profile/alias examples
+│   ├── fixtures/               # provider/account/alias examples
 │   └── test_*.py               # one module per source module
 ├── examples/                   # config templates (registry.example.yaml)
 └── docs/                       # this documentation set
@@ -68,10 +68,10 @@ uv run pytest -q && uv run ruff check . && uv run ruff format --check . && uv ru
 
 These invariants are enforced and must be preserved by changes:
 
-- Every profile `provider_id` resolves to a configured provider.
+- Every account `provider_id` resolves to a configured provider.
 - Every enabled model and alias deployment `model_id` exists in the provider's
-  catalog and is listed in the profile's `enabled_models`.
-- Provider, profile, alias, and per-provider model IDs are unique.
+  catalog and is listed in the account's `enabled_models`.
+- Provider, account, alias, and per-provider model IDs are unique.
 - Credential references hold exactly one of `env`/`secret_ref`; literal keys
   are rejected.
 - Endpoint fields reject credential-bearing URLs.

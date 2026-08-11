@@ -11,17 +11,17 @@ Configuration is plain YAML or JSON. There are four document kinds:
 | Document | Contents | Loaded by |
 | --- | --- | --- |
 | Provider document | **One provider mapping** per file. | `load_provider_file`, `load_provider_files`, `Registry.from_files(provider_files=...)`, `Registry.from_project` |
-| Profile document | A top-level `profiles` list. | `load_profile_file`, `Registry.from_files(profile_files=...)` |
+| Account document | A top-level `accounts` list. | `load_account_file`, `Registry.from_files(account_files=...)` |
 | Alias document | A top-level `aliases` list. | `load_alias_file`, `Registry.from_files(alias_files=...)` |
-| Deployments document | A top-level `profiles` list plus optional `aliases` list. | `load_deployments_file`, `Registry.from_project` |
+| Deployments document | A top-level `accounts` list plus optional `aliases` list. | `load_deployments_file`, `Registry.from_project` |
 
 Notes:
 
 - **Providers are one-per-file.** `Registry.from_files` treats each entry of
   `provider_files` as a single provider document (see below). To use several
-  providers, list several files. Profile and alias files, by contrast, contain
+  providers, list several files. Account and alias files, by contrast, contain
   lists of many entries.
-- Profile and alias documents can be the same file when it contains both lists;
+- Account and alias documents can be the same file when it contains both lists;
   that is exactly the merged deployments document (see
   [Project layout](#project-layout)).
 - A file shaped like `providers: [...]` is **not** accepted directly by
@@ -44,11 +44,11 @@ Projects keep configuration under a `.ai-registry/` directory:
 <project-root>/
 └── .ai-registry/
     ├── providers/          # OPTIONAL — override or add providers
-    └── registry.yaml    # default — merged profiles + aliases (no profile)
+    └── registry.yaml    # default — merged accounts + aliases (no profile)
 ```
 
 - `registry.yaml` is the default registry file, used when no profile is
-  requested. It is a single document with a required `profiles` list and an
+  requested. It is a single document with a required `accounts` list and an
   optional `aliases` list (see [Registry file](#registry-file)). Profile-named
   files (`registry.<env>.yaml`) follow the same shape; see
   [Profile selection](#profile-selection).
@@ -191,10 +191,10 @@ model_cards:
 
 ## Registry file
 
-`registry.yaml` merges profiles and aliases into one document:
+`registry.yaml` merges accounts and aliases into one document:
 
 ```yaml
-profiles:
+accounts:
   - id: uniapi-primary
     provider_id: uniapi
     credential: {env: UNIAPI_PRIMARY_KEY}
@@ -203,26 +203,26 @@ profiles:
 aliases:
   - id: sol
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
 ```
 
-`profiles` is required; `aliases` is optional and defaults to empty. Legacy
-profile fields (`api_key_env`, `remark`, `description`) are normalized inside
-this file exactly as in a standalone profile document. Loaded by
+`accounts` is required; `aliases` is optional and defaults to empty. Legacy
+account fields (`api_key_env`, `remark`, `description`) are normalized inside
+this file exactly as in a standalone account document. Loaded by
 `load_deployments_file` and `Registry.from_project`.
 
-## Profile
+## Account
 
-A profile is a named deployment configuration. It binds a provider to an
+An account is a named deployment configuration. It binds a provider to an
 endpoint and a credential reference, and enables a set of models. Multiple
-profiles may point to the same provider and model with different API keys or
+accounts may point to the same provider and model with different API keys or
 base URLs.
 
 ### Normalized form
 
 ```yaml
-profiles:
+accounts:
   - id: uniapi-primary
     provider_id: uniapi
     endpoint: https://uni-api.cstcloud.cn/v1   # optional override
@@ -240,31 +240,31 @@ profiles:
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `id` | identifier | yes | Unique across profiles. |
+| `id` | identifier | yes | Unique across accounts. |
 | `provider_id` | identifier | yes | Must reference a configured provider. |
 | `endpoint` | URL string | no | Overrides the provider `default_base_url`. Also accepted as `base_url`. |
 | `credential` | credential ref | no | Exactly one of `env` or `secret_ref` (see [Credentials](#credentials)). Also accepted as `api_key` for the shape, but literal keys are rejected. |
-| `enabled_models` | list of model ids | no | The models this profile exposes. Resolution rejects models not listed here. |
-| `enabled` | bool | no | Default `true`. Disabled profiles are excluded from aliases and direct resolution. |
+| `enabled_models` | list of model ids | no | The models this account exposes. Resolution rejects models not listed here. |
+| `enabled` | bool | no | Default `true`. Disabled accounts are excluded from aliases and direct resolution. |
 | `timeout_seconds` | positive number | no | Adapter-facing metadata. |
 | `metadata` | mapping | no | Arbitrary adapter metadata, e.g. `provider_name`, `supports_json_mode`. |
 
 ## Alias
 
 Aliases are the primary public API. They are **global** logical model names and
-are not scoped to a profile. An alias points to one or more profile/model
+are not scoped to an account. An alias points to one or more account/model
 deployments; the router selects one when the alias is resolved.
 
 ```yaml
 aliases:
   - id: sol
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
         routing:
           priority: 0
           weight: 3
-      - profile_id: uniapi-secondary
+      - account_id: uniapi-secondary
         model_id: deepseek-v4-flash
         routing:
           priority: 1
@@ -280,7 +280,7 @@ aliases:
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `profile_id` | identifier | yes | Also accepted as `profile`. |
+| `account_id` | identifier | yes | Also accepted as `account`. |
 | `model_id` | model id | yes | Also accepted as `model`. |
 | `routing` | routing metadata | no | Defaults to priority `0`, weight `1`, enabled `true`. |
 
@@ -295,7 +295,7 @@ aliases:
 
 ## Credentials
 
-Profiles contain **references** rather than secret values:
+Accounts contain **references** rather than secret values:
 
 ```yaml
 credential:
@@ -321,7 +321,7 @@ resolution time. See [Security](security.md).
 
 ## Endpoint validation
 
-`default_base_url` (provider) and `endpoint`/`base_url` (profile) are validated
+`default_base_url` (provider) and `endpoint`/`base_url` (account) are validated
 at load time. The following are rejected:
 
 - URLs with userinfo, e.g. `https://user:pass@host/v1`;
@@ -337,15 +337,15 @@ Use a `credential` reference instead of embedding secrets in URLs.
 
 `Registry` construction validates the whole configuration graph:
 
-- **Duplicate IDs** are rejected: provider IDs, profile IDs, alias IDs, and
+- **Duplicate IDs** are rejected: provider IDs, account IDs, alias IDs, and
   model-card IDs within a provider.
-- **Unknown providers**: every profile `provider_id` must exist.
+- **Unknown providers**: every account `provider_id` must exist.
 - **Unknown models**: every `enabled_models` entry and every alias deployment
   `model_id` must exist in the referenced provider's catalog.
 - **Models not enabled**: resolution rejects a model that is not listed in the
-  profile's `enabled_models`.
+  account's `enabled_models`.
 - **Invalid alias deployments**: alias deployments must reference existing
-  profiles and enabled models.
+  accounts and enabled models.
 - **Unsupported SDK types**: values outside `openai`/`anthropic`/`google`/`custom`
   are rejected.
 - **Invalid routing metadata**: negative priority, zero weight, and so on are
@@ -357,7 +357,7 @@ instead of at request time.
 ## Legacy compatibility format
 
 The built-in provider catalog (`ai_registry/data/providers/*.yml`) and legacy
-profile documents use an older shape. The loader normalizes it to the schema
+account documents use an older shape. The loader normalizes it to the schema
 above automatically. **New configuration should prefer the normalized shape.**
 
 ### Provider catalog compatibility
@@ -397,14 +397,14 @@ Normalization rules:
 - A `context_window_tokens` of `0` (unknown) is recorded in metadata and the
   schema field is left unset.
 
-### Profile compatibility
+### Account compatibility
 
 ```yaml
-profiles:
+accounts:
   - id: builtin-uniapi
     provider_id: uniapi
     remark: builtin                     # preserved in metadata.remark
-    description: Built-in Uni API profile  # preserved in metadata.description
+    description: Built-in Uni API account  # preserved in metadata.description
     api_key_env: UNIAPI_API_KEY         # converted to credential: {env: UNIAPI_API_KEY}
     enabled_models:
       - deepseek-v4-flash
@@ -439,8 +439,8 @@ model_cards:
 ```
 
 ```yaml
-# profiles.yaml
-profiles:
+# accounts.yaml
+accounts:
   - id: uniapi-primary
     provider_id: uniapi
     credential: {env: UNIAPI_PRIMARY_KEY}
@@ -456,26 +456,26 @@ profiles:
 aliases:
   - id: chat-default
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: deepseek-v4-flash
         routing: {priority: 0, weight: 3}
-      - profile_id: uniapi-secondary
+      - account_id: uniapi-secondary
         model_id: deepseek-v4-flash
         routing: {priority: 0, weight: 1}
   - id: embed-default
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: bge-large-zh:latest
   - id: rerank-default
     deployments:
-      - profile_id: uniapi-primary
+      - account_id: uniapi-primary
         model_id: bge-reranker-v2-m3
 ```
 
 ```python
 registry = Registry.from_files(
     provider_files=["uniapi.yaml"],
-    profile_files=["profiles.yaml"],
+    account_files=["accounts.yaml"],
     alias_files=["aliases.yaml"],
 )
 ```

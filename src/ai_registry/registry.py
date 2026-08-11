@@ -150,7 +150,7 @@ class Registry:
 
         Discovery starts at ``root`` or the current working directory when
         omitted, and requires a ``<root>/.ai-registry/registry.yaml`` (or
-        ``.yml``/``.json``) file containing profiles and optional aliases.
+        ``.yml``/``.json``) file containing accounts and optional aliases.
         Pass ``profile`` (or set ``AI_REGISTRY_PROFILE``) to select a
         ``registry.<profile>.yaml`` file instead of the default.
         """
