@@ -110,33 +110,31 @@ Select a profile with `Registry.from_project(profile="prod")` or
 Build a client yourself, or use an optional adapter:
 
 ```python
-from ai_registry import Registry
-from ai_registry.adapters.openai import create_client_for
-from ai_registry.adapters.pydantic_ai import create_model_for, create_fallback_model_for
+from ai_registry import ClientFactory
 
-registry = Registry.from_project()
+factory = ClientFactory.from_project()
 
 # An openai.OpenAI client, pointed at the resolved endpoint and key:
-client = create_client_for(registry, "chat-default")
+client = factory.openai_client("chat-default")
 
 # A Pydantic AI model — a framework with no config-file registry of its own:
-model = create_model_for(registry, "chat-default")
+model = factory.pydantic_ai_model("chat-default")
 
 # Registry routing becomes Pydantic AI request-time failover:
-model = create_fallback_model_for(registry, "chat-default")
+model = factory.pydantic_ai_fallback_model("chat-default")
 ```
 
 Or drive failover yourself — `candidates()` returns every healthy deployment in
 preference order:
 
 ```python
-for resolution in registry.candidates("chat-default"):
+for resolution in factory.registry.candidates("chat-default"):
     try:
         response = call(resolution)
     except TransientError:
-        registry.record_failure(resolution)  # cools this target down everywhere
+        factory.registry.record_failure(resolution)  # cools this target down everywhere
         continue
-    registry.record_success(resolution)
+    factory.registry.record_success(resolution)
     break
 ```
 

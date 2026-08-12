@@ -548,31 +548,43 @@ Adapters are optional extras and are never imported by the core.
 client_kwargs(resolution) -> dict[str, Any]      # no openai import required
 create_client(resolution, **overrides) -> openai.OpenAI
 create_async_client(resolution, **overrides) -> openai.AsyncOpenAI
-create_client_for(registry, reference, **overrides) -> openai.OpenAI
-create_async_client_for(registry, reference, **overrides) -> openai.AsyncOpenAI
 ```
 
 `client_kwargs` returns `base_url`, `api_key` and `timeout` when configured.
 It resolves the credential, so treat the result as secret. Raises
 `UnsupportedProviderError` for a non-`openai` `sdk_type`, and
-`MissingDependencyError` when the extra is not installed. The `create_*_for`
-helpers resolve the reference with the registry first, so one import and one
-call produces a client.
+`MissingDependencyError` when the extra is not installed.
 
 ### `ai_registry.adapters.pydantic_ai`
 
 ```python
 create_model(resolution, **overrides) -> pydantic_ai.models.Model
 create_fallback_model(resolutions, **overrides) -> pydantic_ai.models.Model
-create_model_for(registry, reference, **overrides) -> pydantic_ai.models.Model
-create_fallback_model_for(registry, reference, **overrides) -> pydantic_ai.models.Model
 ```
 
 Builds `OpenAIChatModel` + `OpenAIProvider` for `sdk_type: openai`, and
 `AnthropicModel` + `AnthropicProvider` for `sdk_type: anthropic`. Pair
 `create_fallback_model` with `Registry.candidates()` to turn registry routing into
-Pydantic AI request-time failover; `create_fallback_model_for` does that
-resolution for you.
+Pydantic AI request-time failover.
+
+### `ai_registry.ClientFactory`
+
+```python
+ClientFactory(registry)
+ClientFactory.from_data(*args, **kwargs)
+ClientFactory.from_files(*args, **kwargs)
+ClientFactory.from_project(*args, **kwargs)
+factory.registry -> Registry
+factory.openai_client(reference, **overrides) -> openai.OpenAI
+factory.openai_async_client(reference, **overrides) -> openai.AsyncOpenAI
+factory.pydantic_ai_model(reference, **overrides) -> pydantic_ai.models.Model
+factory.pydantic_ai_fallback_model(reference, **overrides) -> pydantic_ai.models.Model
+```
+
+The `from_*` classmethods delegate to the matching `Registry` builders and
+accept the same arguments, so construction parameters are passed once. Build
+methods resolve the reference and delegate to the adapter functions; the
+adapter extras are imported lazily on first use.
 
 ## Command line (`ai-registry`)
 
