@@ -6,7 +6,7 @@ settings:
   sdk_type: custom
   proxy_url: https://proxy.example.test
   show_model_fetcher: true
-model_cards:
+models:
   - id: alpha-chat
     display_name: Alpha Chat
     type: chat

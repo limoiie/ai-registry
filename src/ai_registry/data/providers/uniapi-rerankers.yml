@@ -3,13 +3,18 @@ name: Uni API for Rerankers Only
 description: OpenAI-compatible reranking models served through the Uni API gateway.
 sdk_type: openai
 default_base_url: https://uni-api.cstcloud.cn/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://uni-api.cstcloud.cn/v1
+    mode: chat
 settings:
   url: https://www.cstcloud.cn
   check_model: bge-reranker-v2-m3
   models_url: https://uni-api.cstcloud.cn/doc/llm/models
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: bge-reranker-v2-m3
   display_name: BGE Reranker V2 M3
   type: reranking

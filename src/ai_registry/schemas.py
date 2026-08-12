@@ -352,7 +352,7 @@ def normalize_capabilities(abilities: Mapping[str, Any]) -> dict[str, bool]:
     return normalized
 
 
-class ModelCard(SafeModel):
+class Model(SafeModel):
     id: Identifier
     type: ModelType
     display_name: str | None = None
@@ -387,7 +387,10 @@ class Provider(SafeModel):
     default_base_url: str | None = None
     endpoints: Mapping[str, ProviderEndpoint] = Field(default_factory=dict)
     settings: dict[str, Any] = Field(default_factory=dict)
-    model_cards: list[ModelCard] = Field(default_factory=list)
+    models: list[Model] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("models", "model_cards"),
+    )
 
     _validate_id = field_validator("id")(_check_identifier)
     _validate_endpoint = field_validator("default_base_url")(_validate_endpoint)
@@ -525,7 +528,7 @@ class RegistryConfig(SafeModel):
     @model_validator(mode="after")
     def validate_unique_ids(self) -> RegistryConfig:
         for provider in self.providers:
-            model_ids = [card.id for card in provider.model_cards]
+            model_ids = [model.id for model in provider.models]
             if len(model_ids) != len(set(model_ids)):
                 raise ConfigurationError("duplicate model id")
 

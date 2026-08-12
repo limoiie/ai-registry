@@ -138,7 +138,7 @@ are redacted.
 | Attribute / property | Type | Meaning |
 | --- | --- | --- |
 | `provider` | `Provider` | Deep-copied provider metadata. |
-| `model` | `ModelCard` | The selected model card. |
+| `model` | `Model` | The selected model. |
 | `account` | `Account` | Deep-copied account. |
 | `deployment_id` | `str` | The deployment reference used by the resolution layer. |
 | `endpoint` | `str | None` | `account.endpoint` or provider `default_base_url` (or the selected endpoint's `base_url` when `endpoint_ref` is set). |
@@ -201,7 +201,7 @@ class ModelMode(StrEnum):
 | `vision` | bool | `False` |
 | `reasoning` | bool | `False` |
 
-### `ModelCard`
+### `Model`
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -236,7 +236,7 @@ class ModelMode(StrEnum):
 | `default_base_url` | `str | None` | Endpoint-validated. |
 | `endpoints` | `dict[str, ProviderEndpoint]` | Named endpoints selectable per account. |
 | `settings` | `dict[str, Any]` | Adapter settings. |
-| `model_cards` | `list[ModelCard]` | |
+| `models` | `list[Model]` | |
 
 ### `CredentialRef`
 
@@ -487,7 +487,7 @@ build_registry(
     aliases: Mapping[str, Sequence[str]] | None = None,
     *,
     provider_id: str = "test-provider",
-    models: Sequence[str | ModelCard] = ("test-model",),
+    models: Sequence[str | Model] = ("test-model",),
     accounts: Sequence[str] = ("test-account",),
     model_type: ModelType | str = ModelType.CHAT,
     sdk_type: SDKType | str = SDKType.OPENAI,

@@ -122,7 +122,7 @@ sdk_type: openai            # openai | anthropic | google | custom
 default_base_url: https://uni-api.cstcloud.cn/v1
 settings:
   region: cn-east
-model_cards:
+models:
   - id: deepseek-v4-flash
     type: chat
 ```
@@ -148,7 +148,7 @@ endpoints:
     sdk_type: anthropic
     base_url: https://api.deepseek.com/anthropic
     mode: chat
-model_cards:
+models:
   - id: deepseek-v4-flash
     type: chat
     endpoints: [openai-chat, openai-responses, anthropic]
@@ -188,7 +188,7 @@ behavior: `sdk_type` and `default_base_url` apply to every account. When an
 | `default_base_url` | URL string | no | Validated endpoint (see [Endpoint validation](#endpoint-validation)). Used when no `endpoints` map is declared. |
 | `endpoints` | mapping | no | Named endpoint map (see [Endpoints](#endpoints)). |
 | `settings` | mapping | no | Provider-specific adapter settings; forwarded as-is. |
-| `model_cards` | list | no | The provider's model catalog. |
+| `models` | list | no | The provider's model catalog. |
 
 ### SDK types
 
@@ -203,12 +203,12 @@ so adapters can be chosen later:
 | `google` | Gemini/Google endpoints. |
 | `custom` | Anything else; adapter-specific handling. |
 
-### Model cards
+### Models
 
-A model card describes a model independently of any deployment.
+A model describes one model independently of any deployment.
 
 ```yaml
-model_cards:
+models:
   - id: deepseek-v4-flash
     display_name: DeepSeek V4 Flash
     type: chat                    # chat | embedding | reranking
@@ -450,7 +450,7 @@ models_url: https://uni-api.cstcloud.cn/doc/llm/models  # moved into settings.mo
 settings:
   sdk_type: openai
   show_model_fetcher: true
-model_cards:
+model_cards:                     # legacy key; the normalized key is `models`
   - id: deepseek-r1:32b
     type: chat
     abilities:                       # mapped to capabilities
@@ -464,6 +464,7 @@ model_cards:
 Normalization rules:
 
 - `url`, `check_model`, `models_url` are copied into `settings`.
+- `model_cards` (legacy) maps to the normalized `models` key; both are accepted.
 - `sdk_type` may appear at top level or inside `settings`. Legacy `uniapi` is
   normalized to `openai`. Conflicting `sdk_type` declarations are rejected.
 - `abilities` maps known capability keys (`reasoning`, `structured_output`,
@@ -505,7 +506,7 @@ id: uniapi
 name: Uni API
 sdk_type: openai
 default_base_url: https://uni-api.cstcloud.cn/v1
-model_cards:
+models:
   - id: deepseek-v4-flash
     type: chat
     context_window_tokens: 1000000

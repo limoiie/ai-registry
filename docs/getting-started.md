@@ -32,14 +32,14 @@ objects. No YAML files are required.
 
 ```python
 from ai_registry import Registry
-from ai_registry.schemas import Alias, Deployment, ModelCard, Account, Provider
+from ai_registry.schemas import Alias, Deployment, Model, Account, Provider
 
 provider = Provider(
     id="deepseek",
     name="DeepSeek",
     default_base_url="https://api.deepseek.com/v1",
-    model_cards=[
-        ModelCard(id="deepseek-chat", type="chat"),
+    models=[
+        Model(id="deepseek-chat", type="chat"),
     ],
 )
 
@@ -168,7 +168,7 @@ Given these three documents:
 id: deepseek
 name: DeepSeek
 default_base_url: https://api.deepseek.com/v1
-model_cards:
+models:
   - id: deepseek-chat
     type: chat
 ```
@@ -232,9 +232,9 @@ The package ships a built-in provider catalog at
 `ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
 `uniapi-rerankers`, `openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
 `qwen`, `xai`). These use the normalized provider-catalog format
-(`default_base_url`, `capabilities`, and `metadata.pricing` on model cards);
+(`default_base_url`, `capabilities`, and `metadata.pricing` on models);
 the loader also accepts the legacy format (`url`, `settings.sdk_type`, and
-`abilities` on model cards) and normalizes it automatically.
+`abilities` and `model_cards` on models) and normalizes it automatically.
 
 `Registry.from_project` loads the built-ins automatically and lets project
 providers override them by id, so most projects never list a provider file:

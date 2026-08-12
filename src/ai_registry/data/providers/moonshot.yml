@@ -4,13 +4,18 @@ description: Moonshot AI develops the Kimi family of large language models with 
   context windows and strong agentic tool use.
 sdk_type: openai
 default_base_url: https://api.moonshot.ai/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://api.moonshot.ai/v1
+    mode: chat
 settings:
   url: https://www.moonshot.ai
   check_model: kimi-k3
   models_url: https://platform.moonshot.ai/docs/pricing
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: kimi-k3
   display_name: Kimi K3
   type: chat

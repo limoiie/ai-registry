@@ -254,54 +254,54 @@ def normalize_provider(
             value["sdk_type"] = "openai"
     elif nested_sdk_type == "uniapi":
         value["sdk_type"] = "openai"
-    raw_model_cards = value.get("model_cards")
-    if raw_model_cards is None:
-        raw_model_cards = []
-    if not isinstance(raw_model_cards, list):
-        raise ConfigurationError(
-            f"Invalid model cards in '{source_name}': expected a list"
-        )
-    model_cards = []
-    for index, card in enumerate(raw_model_cards):
-        if not isinstance(card, Mapping):
+    raw_models = value.get("models")
+    if raw_models is None:
+        raw_models = value.get("model_cards")
+    if raw_models is None:
+        raw_models = []
+    if not isinstance(raw_models, list):
+        raise ConfigurationError(f"Invalid models in '{source_name}': expected a list")
+    models = []
+    for index, model in enumerate(raw_models):
+        if not isinstance(model, Mapping):
             raise ConfigurationError(
-                f"Invalid model card in '{source_name}' at index {index}: "
-                "expected a mapping"
+                f"Invalid model in '{source_name}' at index {index}: expected a mapping"
             )
-        card_value = dict(card)
+        model_value = dict(model)
         abilities = (
-            _require_mapping(card_value["abilities"], "abilities", source_name)
-            if "abilities" in card_value
+            _require_mapping(model_value["abilities"], "abilities", source_name)
+            if "abilities" in model_value
             else {}
         )
         known_capabilities = normalize_capabilities(abilities)
         if known_capabilities:
-            card_value["capabilities"] = known_capabilities
+            model_value["capabilities"] = known_capabilities
         metadata = (
-            _require_mapping(card_value.pop("metadata"), "metadata", source_name)
-            if "metadata" in card_value
+            _require_mapping(model_value.pop("metadata"), "metadata", source_name)
+            if "metadata" in model_value
             else {}
         )
         for key in ("abilities", "pricing", "deprecated", "settings"):
-            if key in card_value:
-                metadata[key] = card_value.pop(key)
-        if "max_dimension" in card_value:
-            max_dimension = card_value.pop("max_dimension")
-            card_value.setdefault("embedding_dimension", max_dimension)
+            if key in model_value:
+                metadata[key] = model_value.pop(key)
+        if "max_dimension" in model_value:
+            max_dimension = model_value.pop("max_dimension")
+            model_value.setdefault("embedding_dimension", max_dimension)
             metadata["max_dimension"] = max_dimension
-        if card_value.get("context_window_tokens") == 0:
-            metadata["context_window_tokens"] = card_value["context_window_tokens"]
-            card_value["context_window_tokens"] = None
-        card_value["metadata"] = metadata
-        model_cards.append(card_value)
-    value["model_cards"] = model_cards
+        if model_value.get("context_window_tokens") == 0:
+            metadata["context_window_tokens"] = model_value["context_window_tokens"]
+            model_value["context_window_tokens"] = None
+        model_value["metadata"] = metadata
+        models.append(model_value)
+    value["models"] = models
+    value.pop("model_cards", None)
     try:
         provider = Provider.model_validate(value)
     except ValidationError as error:
         raise ConfigurationError(
             f"Invalid provider in '{source_name}': {error}"
         ) from None
-    model_ids = [card.id for card in provider.model_cards]
+    model_ids = [model.id for model in provider.models]
     duplicates = sorted(
         {model_id for model_id in model_ids if model_ids.count(model_id) > 1}
     )

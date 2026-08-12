@@ -22,7 +22,7 @@ settings:
   models_url: https://platform.deepseek.com/api-docs/quick_start/pricing
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: deepseek-v4-flash
   display_name: DeepSeek V4 Flash
   type: chat

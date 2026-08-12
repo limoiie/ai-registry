@@ -7,7 +7,7 @@
 [![Checked with mypy](https://img.shields.io/badge/mypy-strict-2a6db2.svg)](https://mypy-lang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**Resolve a stable alias to a concrete AI deployment — provider, model card,
+**Resolve a stable alias to a concrete AI deployment — provider, model,
 account, endpoint — and stop there.**
 
 `ai-registry` is the configuration layer under your AI stack, not another client.
@@ -52,7 +52,7 @@ deployment names:
 > about model capabilities.
 
 That is exactly the split this library enforces. A **deployment** is where you
-send the request. A **model card** is what the model can do. They are different
+send the request. A **model** is what the model can do. They are different
 objects, and `Resolution` gives you both.
 
 ## Install

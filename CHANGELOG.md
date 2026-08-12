@@ -63,6 +63,21 @@ are always listed under **Changed** with a migration note.
   subdirectory. Pass `search_parents=False` for the previous behavior.
 - The package root re-exports the schema, error, and secret-resolver types that
   the documentation already treated as public.
+- Providers can declare multiple named upstream endpoints (`endpoints` map),
+  each bundling `sdk_type`, `base_url`, and `mode` (`chat` vs `responses`).
+  Accounts select one by name with `endpoint_ref`; `Resolution` surfaces the
+  effective `sdk_type`/`mode`/`endpoint`, and adapters route on them. Model
+  cards can declare which endpoints support them, and resolution validates the
+  selection. Providers without `endpoints` keep the legacy single-endpoint
+  behavior.
+- **Model cards are now called `Model`, and the provider `model_cards` list is
+  now `models` in both the schema and the YAML catalog files.** The legacy
+  `model_cards` key is still accepted by the loader.
+  *Migration*: rename `model_cards:` → `models:` in provider files and use
+  `Model`/`Provider.models` in code; the old names still load.
+- The built-in provider catalog now declares explicit `endpoints` maps for every
+  provider, and DeepSeek's `openai-responses` endpoint is marked as supporting
+  only `deepseek-v4-flash`.
 
 ### Fixed
 

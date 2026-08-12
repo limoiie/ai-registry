@@ -4,13 +4,18 @@ description: Alibaba Cloud's Qwen family of open-weight and API models, includin
   chat, vision-language, and embedding models.
 sdk_type: openai
 default_base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    mode: chat
 settings:
   url: https://qwenlm.github.io
   check_model: qwen3.8-max
   models_url: https://help.aliyun.com/zh/model-studio/models
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: qwen3.8-max
   display_name: Qwen3.8 Max
   type: chat

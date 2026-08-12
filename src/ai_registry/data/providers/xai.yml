@@ -4,13 +4,18 @@ description: xAI develops the Grok family of frontier models with very large con
   windows and strong reasoning and coding performance.
 sdk_type: openai
 default_base_url: https://api.x.ai/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://api.x.ai/v1
+    mode: chat
 settings:
   url: https://x.ai
   check_model: grok-4.5
   models_url: https://docs.x.ai/docs/models
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: grok-4.5
   display_name: Grok 4.5
   type: chat

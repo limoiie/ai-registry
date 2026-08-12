@@ -162,7 +162,7 @@ def test_openai_adapter_uses_effective_endpoint_sdk_type(
                     "base_url": "https://api.deepseek.com",
                 },
             },
-            "model_cards": [{"id": "deepseek-v4-flash", "type": "chat"}],
+            "models": [{"id": "deepseek-v4-flash", "type": "chat"}],
         }
     )
     account = Account.model_validate(

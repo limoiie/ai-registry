@@ -4,6 +4,11 @@ description: Founded in 2021, MiniMax builds general-purpose AI models and produ
   spanning text, speech, and vision.
 sdk_type: openai
 default_base_url: https://api.minimaxi.com/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://api.minimaxi.com/v1
+    mode: chat
 settings:
   url: https://www.minimaxi.com
   check_model: MiniMax-M3
@@ -14,7 +19,7 @@ settings:
     speed: 2
     text: smooth
 
-model_cards:
+models:
 - id: MiniMax-M3
   display_name: MiniMax M3
   type: chat

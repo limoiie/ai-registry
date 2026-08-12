@@ -12,8 +12,8 @@ from ai_registry.schemas import (
     Alias,
     CredentialRef,
     Deployment,
+    Model,
     ModelCapabilities,
-    ModelCard,
     ModelType,
     Provider,
     RegistryConfig,
@@ -29,9 +29,9 @@ def provider() -> Provider:
         id="openai",
         name="OpenAI",
         default_base_url="https://api.example.test",
-        model_cards=[
-            ModelCard(id="chat", type=ModelType.CHAT, display_name="Chat Model"),
-            ModelCard(id="other", type=ModelType.CHAT),
+        models=[
+            Model(id="chat", type=ModelType.CHAT, display_name="Chat Model"),
+            Model(id="other", type=ModelType.CHAT),
         ],
     )
 
@@ -218,7 +218,7 @@ def test_alias_resolution_uses_injected_router_and_health_recovery() -> None:
 def test_registry_isolated_from_mutations_to_input_configuration() -> None:
     source_provider = provider()
     source_account = account()
-    source_provider.model_cards[0].metadata["limits"] = {"regions": ["us"]}
+    source_provider.models[0].metadata["limits"] = {"regions": ["us"]}
     source_account.metadata["limits"] = {"regions": ["us"]}
     source_alias = Alias(
         id="fast",
@@ -230,7 +230,7 @@ def test_registry_isolated_from_mutations_to_input_configuration() -> None:
         aliases=[source_alias],
     )
 
-    source_provider.model_cards[0].id = "changed"
+    source_provider.models[0].id = "changed"
     source_account.enabled_models.clear()
     source_alias.deployments[0].model_id = "other"
 
@@ -242,7 +242,7 @@ def test_registry_isolated_from_mutations_to_input_configuration() -> None:
 
 def test_resolution_isolated_from_nested_result_mutations() -> None:
     source_provider = provider()
-    source_provider.model_cards[0].metadata["limits"] = {"regions": ["us"]}
+    source_provider.models[0].metadata["limits"] = {"regions": ["us"]}
     source_account = account()
     source_account.metadata["limits"] = {"regions": ["us"]}
     registry = Registry.from_data(
@@ -257,7 +257,7 @@ def test_resolution_isolated_from_nested_result_mutations() -> None:
     )
 
     result = registry.resolve("fast")
-    result.provider.model_cards[0].metadata["limits"]["regions"].append("eu")
+    result.provider.models[0].metadata["limits"]["regions"].append("eu")
     result.model.metadata["limits"]["regions"].append("ap")
     result.account.metadata["limits"]["regions"].append("ca")
     result.endpoint_metadata["limits"]["regions"].append("au")
@@ -534,7 +534,7 @@ def test_aggregate_validation_reports_unknown_model_card_endpoint() -> None:
                         "id": "openai",
                         "name": "OpenAI",
                         "endpoints": {"chat": {"sdk_type": "openai"}},
-                        "model_cards": [
+                        "models": [
                             {"id": "chat", "type": "chat", "endpoints": ["bogus"]}
                         ],
                     }
@@ -576,7 +576,7 @@ def test_from_data_preserves_context_for_malformed_normalized_input() -> None:
                 {
                     "id": "openai",
                     "name": "OpenAI",
-                    "model_cards": [{"id": "chat", "type": "invalid"}],
+                    "models": [{"id": "chat", "type": "invalid"}],
                 }
             ],
             accounts=[],
@@ -592,7 +592,7 @@ def test_validation_error_redacts_invalid_secret_like_identifier() -> None:
                 {
                     "id": secret_like_id,
                     "name": "OpenAI",
-                    "model_cards": [{"id": "chat", "type": "invalid"}],
+                    "models": [{"id": "chat", "type": "invalid"}],
                 }
             ],
             accounts=[],
@@ -604,7 +604,7 @@ def test_validation_error_redacts_invalid_secret_like_identifier() -> None:
     assert secret_like_id not in str(error.args)
     assert secret_like_id not in str(error.__dict__)
     assert "provider at index 0" in str(error)
-    assert "model_cards.0.type" in str(error)
+    assert "models.0.type" in str(error)
     assert "use a valid model type" in str(error)
 
 
@@ -651,7 +651,7 @@ def test_credentials_are_resolved_lazily_at_adapter_boundary(
 def test_from_files_loads_existing_config_shapes(tmp_path: Path) -> None:
     provider_path = tmp_path / "provider.yaml"
     provider_path.write_text(
-        "id: openai\nname: OpenAI\nmodel_cards:\n  - id: chat\n    type: chat\n",
+        "id: openai\nname: OpenAI\nmodels:\n  - id: chat\n    type: chat\n",
         encoding="utf-8",
     )
     account_path = tmp_path / "accounts.yaml"
@@ -669,7 +669,7 @@ def test_from_files_loads_existing_config_shapes(tmp_path: Path) -> None:
 def test_from_files_preserves_context_for_malformed_alias(tmp_path: Path) -> None:
     provider_path = tmp_path / "provider.yaml"
     provider_path.write_text(
-        "id: openai\nname: OpenAI\nmodel_cards:\n  - id: chat\n    type: chat\n",
+        "id: openai\nname: OpenAI\nmodels:\n  - id: chat\n    type: chat\n",
         encoding="utf-8",
     )
     account_path = tmp_path / "accounts.yaml"
@@ -716,19 +716,19 @@ def catalog_registry() -> Registry:
                 id="openai",
                 name="OpenAI",
                 default_base_url="https://api.openai.com/v1",
-                model_cards=[
-                    ModelCard(
+                models=[
+                    Model(
                         id="chat",
                         type=ModelType.CHAT,
                         context_window_tokens=128_000,
                         capabilities=ModelCapabilities(tools=True),
                     ),
-                    ModelCard(
+                    Model(
                         id="small",
                         type=ModelType.CHAT,
                         context_window_tokens=8_000,
                     ),
-                    ModelCard(id="embed", type=ModelType.EMBEDDING),
+                    Model(id="embed", type=ModelType.EMBEDDING),
                 ],
             )
         ],
@@ -895,7 +895,7 @@ def test_otel_provider_name_falls_back_to_the_sdk_family() -> None:
                 id="internal-gateway",
                 name="Internal gateway",
                 sdk_type=SDKType.OPENAI,
-                model_cards=[ModelCard(id="chat", type=ModelType.CHAT)],
+                models=[Model(id="chat", type=ModelType.CHAT)],
             )
         ],
         accounts=[
@@ -917,7 +917,7 @@ def test_otel_attributes_omit_the_operation_for_reranking_models() -> None:
             Provider(
                 id="openai",
                 name="OpenAI",
-                model_cards=[ModelCard(id="rerank", type=ModelType.RERANKING)],
+                models=[Model(id="rerank", type=ModelType.RERANKING)],
             )
         ],
         accounts=[
@@ -952,7 +952,7 @@ def test_resolution_exposes_selected_endpoint_and_mode() -> None:
                     "base_url": "https://api.deepseek.com/anthropic",
                 },
             },
-            "model_cards": [
+            "models": [
                 {"id": "deepseek-v4-flash", "type": "chat"},
                 {
                     "id": "deepseek-chat",
@@ -998,7 +998,7 @@ def test_model_not_supported_by_endpoint_is_rejected() -> None:
                 "chat": {"sdk_type": "openai"},
                 "responses": {"sdk_type": "openai", "mode": "responses"},
             },
-            "model_cards": [{"id": "m", "type": "chat", "endpoints": ["chat"]}],
+            "models": [{"id": "m", "type": "chat", "endpoints": ["chat"]}],
         }
     )
     account = Account.model_validate(

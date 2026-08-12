@@ -21,7 +21,7 @@ from ai_registry.schemas import (
     Alias,
     CredentialRef,
     Deployment,
-    ModelCard,
+    Model,
     ModelType,
     Provider,
     SDKType,
@@ -115,7 +115,7 @@ def build_registry(
     aliases: Mapping[str, Sequence[str]] | None = None,
     *,
     provider_id: str = "test-provider",
-    models: Sequence[str | ModelCard] = ("test-model",),
+    models: Sequence[str | Model] = ("test-model",),
     accounts: Sequence[str] = ("test-account",),
     model_type: ModelType | str = ModelType.CHAT,
     sdk_type: SDKType | str = SDKType.OPENAI,
@@ -136,13 +136,13 @@ def build_registry(
     'test-model'
     """
     resolved_type = ModelType(model_type)
-    cards = [
-        card if isinstance(card, ModelCard) else ModelCard(id=card, type=resolved_type)
-        for card in models
+    built_models = [
+        model if isinstance(model, Model) else Model(id=model, type=resolved_type)
+        for model in models
     ]
-    if not cards:
+    if not built_models:
         raise ValueError("build_registry requires at least one model")
-    model_ids = [card.id for card in cards]
+    model_ids = [model.id for model in built_models]
     credential_ref = (
         None if credential is None else CredentialRef.model_validate(credential)
     )
@@ -152,7 +152,7 @@ def build_registry(
         name=provider_id,
         sdk_type=SDKType(sdk_type),
         default_base_url=endpoint,
-        model_cards=cards,
+        models=built_models,
     )
     built_accounts = [
         Account(
