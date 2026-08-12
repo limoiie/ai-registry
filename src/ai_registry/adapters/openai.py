@@ -49,10 +49,10 @@ def build_async_client(resolution: Resolution, **overrides: Any) -> AsyncOpenAI:
 
 
 def _import_openai(resolution: Resolution) -> Any:
-    if resolution.provider.sdk_type is not SDKType.OPENAI:
+    if resolution.sdk_type is not SDKType.OPENAI:
         raise UnsupportedProviderError(
-            f"provider '{resolution.provider.id}' declares sdk_type "
-            f"'{resolution.provider.sdk_type.value}'; use the matching adapter "
+            f"provider '{resolution.provider.id}' resolves to sdk_type "
+            f"'{resolution.sdk_type.value}'; use the matching adapter "
             "or set sdk_type: openai for an OpenAI-compatible endpoint"
         )
     try:

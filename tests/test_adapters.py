@@ -14,7 +14,13 @@ from typing import Any
 
 import pytest
 
-from ai_registry import MissingDependencyError, UnsupportedProviderError
+from ai_registry import (
+    Account,
+    MissingDependencyError,
+    Provider,
+    Registry,
+    UnsupportedProviderError,
+)
 from ai_registry.adapters import openai as openai_adapter
 from ai_registry.adapters import pydantic_ai as pydantic_ai_adapter
 from ai_registry.testing import build_registry, constant_secret_resolver
@@ -140,6 +146,50 @@ def test_openai_adapter_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_openai_adapter_refuses_a_non_openai_sdk_type() -> None:
     with pytest.raises(UnsupportedProviderError, match=r"anthropic"):
         openai_adapter.build_client(resolution(sdk_type="anthropic"))
+
+
+def test_openai_adapter_uses_effective_endpoint_sdk_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "sdk_type": "anthropic",
+            "endpoints": {
+                "openai": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                },
+            },
+            "model_cards": [{"id": "deepseek-v4-flash", "type": "chat"}],
+        }
+    )
+    account = Account.model_validate(
+        {
+            "id": "test-account",
+            "provider_id": "deepseek",
+            "endpoint_ref": "openai",
+            "credential": "secret_ref:key",
+            "enabled_models": ["deepseek-v4-flash"],
+        }
+    )
+    registry = Registry.from_data(
+        providers=[provider],
+        accounts=[account],
+        secret_resolver=constant_secret_resolver("sk-adapter"),
+    )
+    resolution = registry.resolve("test-account/deepseek-v4-flash")
+
+    assert resolution.sdk_type.value == "openai"
+    assert openai_adapter.client_kwargs(resolution) == {
+        "base_url": "https://api.deepseek.com",
+        "api_key": "sk-adapter",
+    }
+
+    install_openai_stub(monkeypatch)
+    client = openai_adapter.build_client(resolution)
+    assert client.kwargs["base_url"] == "https://api.deepseek.com"
 
 
 def test_pydantic_ai_adapter_reports_the_missing_extra() -> None:
