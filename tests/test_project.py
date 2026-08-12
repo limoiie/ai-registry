@@ -230,7 +230,7 @@ def test_from_project_adds_new_project_provider(tmp_path: Path) -> None:
 
 
 def test_from_project_missing_deployments_file_is_actionable(tmp_path: Path) -> None:
-    with pytest.raises(ConfigurationError, match="examples/registry.example.yaml"):
+    with pytest.raises(ConfigurationError, match=r"examples/registry.example.yaml"):
         Registry.from_project(tmp_path)
 
 
@@ -281,7 +281,7 @@ def test_from_project_invalid_alias_fails_at_construction(tmp_path: Path) -> Non
 
     with pytest.raises(
         ConfigurationError,
-        match="alias 'chat-default'.*index 0.*model_id.*define a deployment model",
+        match=r"alias 'chat-default'.*index 0.*model_id.*define a deployment model",
     ):
         Registry.from_project(tmp_path)
 
@@ -369,6 +369,54 @@ def test_from_project_deployment_references_unknown_account(tmp_path: Path) -> N
     )
 
     with pytest.raises(
-        ConfigurationError, match="alias 'chat-default'.*unknown account"
+        ConfigurationError, match=r"alias 'chat-default'.*unknown account"
     ):
         Registry.from_project(tmp_path)
+
+
+def test_from_project_discovers_the_registry_from_a_subdirectory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AI_REGISTRY_PROFILE", raising=False)
+    _write_registry(tmp_path, "registry.yaml")
+    nested = tmp_path / "services" / "api" / "src"
+    nested.mkdir(parents=True)
+
+    registry = Registry.from_project(nested)
+
+    assert registry.resolve("chat-default").account_id == "primary"
+
+
+def test_from_project_can_require_the_directory_at_the_given_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AI_REGISTRY_PROFILE", raising=False)
+    _write_registry(tmp_path, "registry.yaml")
+    nested = tmp_path / "services"
+    nested.mkdir()
+
+    with pytest.raises(ConfigurationError, match=r"Missing project registry file"):
+        Registry.from_project(nested, search_parents=False)
+
+
+def test_from_project_defaults_to_the_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AI_REGISTRY_PROFILE", raising=False)
+    _write_registry(tmp_path, "registry.yaml")
+    nested = tmp_path / "deep" / "nested"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+
+    assert Registry.from_project().resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_builtin_provider_endpoints_come_from_the_catalog(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AI_REGISTRY_PROFILE", raising=False)
+    _write_registry(tmp_path, "registry.yaml")
+
+    resolution = Registry.from_project(tmp_path).resolve("chat-default")
+
+    assert resolution.endpoint == "https://api.deepseek.com/anthropic"

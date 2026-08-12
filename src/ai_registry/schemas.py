@@ -304,6 +304,49 @@ class ModelCapabilities(SafeModel):
     reasoning: bool = False
 
 
+#: Catalog spellings accepted for each :class:`ModelCapabilities` field.
+#:
+#: Provider catalogs disagree on names for the same capability: this project's
+#: own files use ``function_call``, models.dev uses ``tool_call``, and LiteLLM
+#: uses ``supports_function_calling``. Normalizing here keeps the mapping in one
+#: place instead of silently dropping unrecognized spellings.
+CAPABILITY_SYNONYMS: dict[str, str] = {
+    "tools": "tools",
+    "tool_call": "tools",
+    "tool_calls": "tools",
+    "function_call": "tools",
+    "function_calling": "tools",
+    "supports_function_calling": "tools",
+    "structured_output": "structured_output",
+    "json_schema_output": "structured_output",
+    "response_schema": "structured_output",
+    "supports_response_schema": "structured_output",
+    "vision": "vision",
+    "image_input": "vision",
+    "supports_vision": "vision",
+    "reasoning": "reasoning",
+    "thinking": "reasoning",
+    "supports_reasoning": "reasoning",
+}
+
+
+def normalize_capabilities(abilities: Mapping[str, Any]) -> dict[str, bool]:
+    """Map catalog ability spellings onto ``ModelCapabilities`` fields.
+
+    Unknown keys and non-boolean values are ignored; when several spellings map
+    to the same field, the capability is enabled if any of them is true.
+    """
+    normalized: dict[str, bool] = {}
+    for key, value in abilities.items():
+        if not isinstance(key, str):
+            continue
+        field = CAPABILITY_SYNONYMS.get(key)
+        if field is None or not isinstance(value, bool):
+            continue
+        normalized[field] = normalized.get(field, False) or value
+    return normalized
+
+
 class ModelCard(SafeModel):
     id: Identifier
     type: ModelType
@@ -349,11 +392,50 @@ class Provider(SafeModel):
         return data
 
 
+_LITERAL_CREDENTIAL_MESSAGE = "literal API keys are rejected; use env or secret_ref"
+
+
+def _parse_credential_shorthand(value: str) -> dict[str, str]:
+    """Parse the string spellings of a credential reference.
+
+    Accepted forms, all equivalent to ``{"env": "NAME"}``: ``env:NAME``,
+    ``env.NAME``, ``${env:NAME}``, ``${NAME}`` and LiteLLM's
+    ``os.environ/NAME``. External references use ``secret_ref:REF`` or
+    ``${secret_ref:REF}``. Anything else is treated as a literal key and
+    rejected.
+    """
+    inner = value.strip()
+    braced = re.fullmatch(r"\$\{(.*)\}", inner, flags=re.DOTALL)
+    if braced is not None:
+        inner = braced.group(1).strip()
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", inner):
+            return {"env": inner}
+    for prefix, field in (
+        ("env:", "env"),
+        ("env.", "env"),
+        ("os.environ/", "env"),
+        ("secret_ref:", "secret_ref"),
+    ):
+        if inner.startswith(prefix):
+            reference = inner[len(prefix) :].strip()
+            if not reference:
+                raise ValueError(f"credential reference '{prefix}' is missing a name")
+            return {field: reference}
+    raise ValueError(_LITERAL_CREDENTIAL_MESSAGE)
+
+
 class CredentialRef(SafeModel):
     env: StrictStr | None = Field(default=None, min_length=1)
     secret_ref: StrictStr | None = Field(default=None, min_length=1)
     api_key: StrictStr | None = None
     _secret_fields = {"env", "secret_ref", "api_key"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_shorthand(cls, data: Any) -> Any:
+        if isinstance(data, str):
+            return _parse_credential_shorthand(data)
+        return data
 
     @model_validator(mode="after")
     def validate_reference(self) -> CredentialRef:
@@ -361,7 +443,7 @@ class CredentialRef(SafeModel):
         if sum(value is not None for value in references) != 1:
             raise ValueError("credential must contain exactly one env or secret_ref")
         if self.api_key is not None:
-            raise ValueError("literal API keys are rejected; use env or secret_ref")
+            raise ValueError(_LITERAL_CREDENTIAL_MESSAGE)
         return self
 
 

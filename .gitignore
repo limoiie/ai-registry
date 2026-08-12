@@ -8,3 +8,15 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Docs build
+site/
+
+# Local registry configuration should never be committed by accident
+.ai-registry/registry.local.yaml

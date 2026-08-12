@@ -12,10 +12,12 @@ from ai_registry.schemas import (
     Alias,
     CredentialRef,
     Deployment,
+    ModelCapabilities,
     ModelCard,
     ModelType,
     Provider,
     RegistryConfig,
+    RoutingMetadata,
     SDKType,
 )
 from ai_registry.secrets import SecretResolver
@@ -78,7 +80,7 @@ def test_from_data_revalidates_model_instances_with_updated_endpoints() -> None:
 
 
 def test_from_data_rejects_conflicting_provider_sdk_type_mappings() -> None:
-    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+    with pytest.raises(ConfigurationError, match=r"conflicting sdk_type"):
         Registry.from_data(
             providers=[
                 {
@@ -113,7 +115,7 @@ def test_registry_constructor_revalidates_conflicting_sdk_types() -> None:
         update={"sdk_type": SDKType.ANTHROPIC, "settings": {"sdk_type": "openai"}}
     )
 
-    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+    with pytest.raises(ConfigurationError, match=r"conflicting sdk_type"):
         Registry(RegistryConfig(providers=[smuggled], accounts=[]), None)
 
 
@@ -199,10 +201,17 @@ def test_alias_resolution_uses_injected_router_and_health_recovery() -> None:
         router=router,
     )
 
-    health.mark_failure("fast", 0)
-    assert registry.resolve("fast").account_id == "backup"
-    health.mark_success("fast", 0)
+    primary = registry.resolve("fast")
+    assert primary.account_id == "primary"
+
+    registry.record_failure(primary)
+    fallback = registry.resolve("fast")
+    assert fallback.account_id == "backup"
+
+    registry.record_success(primary)
     assert registry.resolve("fast").account_id == "primary"
+
+    assert health.cooldown_remaining(primary.target) == 0.0
 
 
 def test_registry_isolated_from_mutations_to_input_configuration() -> None:
@@ -388,7 +397,7 @@ def test_disabled_account_is_not_resolvable_directly() -> None:
         accounts=[account().model_copy(update={"enabled": False})],
     )
 
-    with pytest.raises(RegistryError, match="account 'primary' is disabled"):
+    with pytest.raises(RegistryError, match=r"account 'primary' is disabled"):
         registry.resolve("primary/chat")
 
 
@@ -459,7 +468,7 @@ def test_unknown_reference_errors_never_echo_caller_input(
 
 
 def test_aggregate_validation_reports_invalid_alias_deployment() -> None:
-    with pytest.raises(ConfigurationError, match="alias 'fast'.*unknown model"):
+    with pytest.raises(ConfigurationError, match=r"alias 'fast'.*unknown model"):
         Registry.from_data(
             providers=[provider()],
             accounts=[account()],
@@ -474,14 +483,14 @@ def test_aggregate_validation_reports_invalid_alias_deployment() -> None:
 
 def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
     with pytest.raises(
-        ConfigurationError, match="account 'orphan'.*provider 'missing'"
+        ConfigurationError, match=r"account 'orphan'.*provider 'missing'"
     ):
         Registry.from_data(
             providers=[provider()],
             accounts=[Account(id="orphan", provider_id="missing")],
         )
 
-    with pytest.raises(ConfigurationError, match="account 'primary'.*unknown model"):
+    with pytest.raises(ConfigurationError, match=r"account 'primary'.*unknown model"):
         Registry.from_data(
             providers=[provider()],
             accounts=[
@@ -519,7 +528,7 @@ def test_validation_redacts_untrusted_model_id() -> None:
 def test_from_data_preserves_context_for_malformed_normalized_input() -> None:
     with pytest.raises(
         ConfigurationError,
-        match="provider 'openai'.*index 0.*type.*valid model type",
+        match=r"provider 'openai'.*index 0.*type.*valid model type",
     ):
         Registry.from_data(
             providers=[
@@ -561,7 +570,7 @@ def test_validation_error_redacts_invalid_secret_like_identifier() -> None:
 def test_from_data_preserves_context_for_malformed_alias() -> None:
     with pytest.raises(
         ConfigurationError,
-        match="alias 'fast'.*index 0.*model_id.*define a deployment model",
+        match=r"alias 'fast'.*index 0.*model_id.*define a deployment model",
     ):
         Registry.from_data(
             providers=[provider()],
@@ -636,7 +645,7 @@ def test_from_files_preserves_context_for_malformed_alias(tmp_path: Path) -> Non
 
     with pytest.raises(
         ConfigurationError,
-        match="alias 'fast'.*index 0.*model_id.*define a deployment model",
+        match=r"alias 'fast'.*index 0.*model_id.*define a deployment model",
     ):
         Registry.from_files([provider_path], [account_path], [alias_path])
 
@@ -654,6 +663,227 @@ def test_from_files_requires_aliases_list(tmp_path: Path) -> None:
 
     with pytest.raises(
         ConfigurationError,
-        match="Alias configuration .*must contain an 'aliases' list",
+        match=r"Alias configuration .*must contain an 'aliases' list",
     ):
         Registry.from_files([provider_path], [account_path], [alias_path])
+
+
+def catalog_registry() -> Registry:
+    return Registry.from_data(
+        providers=[
+            Provider(
+                id="openai",
+                name="OpenAI",
+                default_base_url="https://api.openai.com/v1",
+                model_cards=[
+                    ModelCard(
+                        id="chat",
+                        type=ModelType.CHAT,
+                        context_window_tokens=128_000,
+                        capabilities=ModelCapabilities(tools=True),
+                    ),
+                    ModelCard(
+                        id="small",
+                        type=ModelType.CHAT,
+                        context_window_tokens=8_000,
+                    ),
+                    ModelCard(id="embed", type=ModelType.EMBEDDING),
+                ],
+            )
+        ],
+        accounts=[
+            Account(id="primary", provider_id="openai", enabled_models=["chat"]),
+            Account(
+                id="retired",
+                provider_id="openai",
+                enabled_models=["small"],
+                enabled=False,
+            ),
+        ],
+    )
+
+
+def test_list_models_filters_by_type_capability_and_context() -> None:
+    registry = catalog_registry()
+
+    # Providers are sorted by id; models keep their catalog order, which the
+    # provider author controls and often uses to express preference.
+    assert [entry.model_id for entry in registry.list_models()] == [
+        "chat",
+        "small",
+        "embed",
+    ]
+    assert [
+        entry.model_id for entry in registry.list_models(model_type=ModelType.EMBEDDING)
+    ] == ["embed"]
+    assert [
+        entry.model_id for entry in registry.list_models(requires={"tools": True})
+    ] == ["chat"]
+    assert [
+        entry.model_id for entry in registry.list_models(min_context_tokens=100_000)
+    ] == ["chat"]
+
+
+def test_list_models_enabled_only_ignores_disabled_accounts() -> None:
+    registry = catalog_registry()
+
+    assert [entry.model_id for entry in registry.list_models(enabled_only=True)] == [
+        "chat"
+    ]
+
+
+def test_list_models_accepts_a_capabilities_object() -> None:
+    registry = catalog_registry()
+
+    entries = registry.list_models(requires=ModelCapabilities(tools=True))
+
+    assert [entry.model_id for entry in entries] == ["chat"]
+
+
+def test_list_models_rejects_an_unknown_capability() -> None:
+    with pytest.raises(RegistryError, match=r"unknown capability"):
+        catalog_registry().list_models(requires={"telepathy": True})
+
+
+def test_list_models_returns_copies_that_cannot_corrupt_the_registry() -> None:
+    registry = catalog_registry()
+
+    registry.list_models()[0].model.metadata["injected"] = True
+
+    assert registry.list_models()[0].model.metadata == {}
+
+
+def test_registry_exposes_providers_accounts_and_aliases() -> None:
+    registry = catalog_registry()
+
+    assert [provider.id for provider in registry.list_providers()] == ["openai"]
+    assert [account.id for account in registry.list_accounts()] == [
+        "primary",
+        "retired",
+    ]
+    assert registry.list_aliases() == []
+    assert registry.get_provider("openai").name == "OpenAI"
+    assert registry.get_account("primary").provider_id == "openai"
+
+
+def test_registry_lookups_report_unknown_identifiers_safely() -> None:
+    registry = catalog_registry()
+
+    with pytest.raises(RegistryError, match=r"unknown provider"):
+        registry.get_provider("nope")
+    with pytest.raises(RegistryError, match=r"unknown account"):
+        registry.get_account("nope")
+
+
+def test_candidates_list_every_deployment_in_routing_order() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        accounts=[
+            account(),
+            Account(id="backup", provider_id="openai", enabled_models=["other"]),
+        ],
+        aliases=[
+            Alias(
+                id="fast",
+                deployments=[
+                    Deployment(account_id="primary", model_id="chat"),
+                    Deployment(
+                        account_id="backup",
+                        model_id="other",
+                        routing=RoutingMetadata(priority=1),
+                    ),
+                ],
+            )
+        ],
+    )
+
+    assert [item.account_id for item in registry.candidates("fast")] == [
+        "primary",
+        "backup",
+    ]
+
+
+def test_candidates_return_the_direct_reference_for_a_non_alias() -> None:
+    registry = Registry.from_data(providers=[provider()], accounts=[account()])
+
+    candidates = registry.candidates("primary/chat")
+
+    assert [item.model_id for item in candidates] == ["chat"]
+
+
+def test_candidates_are_empty_when_every_deployment_is_unavailable() -> None:
+    registry = Registry.from_data(
+        providers=[provider()],
+        accounts=[account()],
+        aliases=[
+            Alias(
+                id="fast",
+                deployments=[
+                    Deployment(
+                        account_id="primary",
+                        model_id="chat",
+                        routing=RoutingMetadata(enabled=False),
+                    )
+                ],
+            )
+        ],
+    )
+
+    assert registry.candidates("fast") == []
+
+
+def test_otel_attributes_describe_the_resolution_without_secrets() -> None:
+    registry = Registry.from_data(providers=[provider()], accounts=[account()])
+
+    attributes = registry.resolve("primary/chat").otel_attributes()
+
+    assert attributes == {
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "chat",
+        "gen_ai.operation.name": "chat",
+        "ai_registry.deployment_id": "primary",
+        "ai_registry.provider_id": "openai",
+        "ai_registry.account_id": "primary",
+    }
+
+
+def test_otel_provider_name_falls_back_to_the_sdk_family() -> None:
+    registry = Registry.from_data(
+        providers=[
+            Provider(
+                id="internal-gateway",
+                name="Internal gateway",
+                sdk_type=SDKType.OPENAI,
+                model_cards=[ModelCard(id="chat", type=ModelType.CHAT)],
+            )
+        ],
+        accounts=[
+            Account(
+                id="primary", provider_id="internal-gateway", enabled_models=["chat"]
+            )
+        ],
+    )
+
+    attributes = registry.resolve("primary/chat").otel_attributes()
+
+    assert attributes["gen_ai.provider.name"] == "openai"
+    assert attributes["ai_registry.provider_id"] == "internal-gateway"
+
+
+def test_otel_attributes_omit_the_operation_for_reranking_models() -> None:
+    registry = Registry.from_data(
+        providers=[
+            Provider(
+                id="openai",
+                name="OpenAI",
+                model_cards=[ModelCard(id="rerank", type=ModelType.RERANKING)],
+            )
+        ],
+        accounts=[
+            Account(id="primary", provider_id="openai", enabled_models=["rerank"])
+        ],
+    )
+
+    attributes = registry.resolve("primary/rerank").otel_attributes()
+
+    assert "gen_ai.operation.name" not in attributes

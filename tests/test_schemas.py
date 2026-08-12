@@ -18,6 +18,7 @@ from ai_registry.schemas import (
     RegistryConfig,
     RoutingMetadata,
     SDKType,
+    normalize_capabilities,
 )
 
 
@@ -143,7 +144,7 @@ def test_account_rejects_credential_bearing_endpoints_without_echoing_secrets(
     ],
 )
 def test_account_rejects_camel_case_credential_query_keys(endpoint: str) -> None:
-    with pytest.raises(ValidationError, match="credential-bearing"):
+    with pytest.raises(ValidationError, match=r"credential-bearing"):
         Account(id="primary", provider_id="provider", endpoint=endpoint)
 
 
@@ -157,7 +158,7 @@ def test_account_rejects_camel_case_credential_query_keys(endpoint: str) -> None
 def test_account_rejects_credential_bearing_fragments_without_echoing_secrets(
     endpoint: str,
 ) -> None:
-    with pytest.raises(ValidationError, match="credential-bearing") as caught:
+    with pytest.raises(ValidationError, match=r"credential-bearing") as caught:
         Account(id="primary", provider_id="provider", endpoint=endpoint)
 
     assert "fragment-secret" not in str(caught.value)
@@ -179,7 +180,7 @@ def test_account_rejects_credential_bearing_fragments_without_echoing_secrets(
     ],
 )
 def test_endpoint_rejects_widened_credential_query_keys(endpoint: str) -> None:
-    with pytest.raises(ValidationError, match="credential-bearing"):
+    with pytest.raises(ValidationError, match=r"credential-bearing"):
         Account(id="primary", provider_id="provider", endpoint=endpoint)
 
 
@@ -203,7 +204,7 @@ def test_endpoint_rejects_widened_credential_query_keys(endpoint: str) -> None:
 def test_endpoint_rejects_cloud_and_oauth_credential_query_keys(
     endpoint: str,
 ) -> None:
-    with pytest.raises(ValidationError, match="credential-bearing"):
+    with pytest.raises(ValidationError, match=r"credential-bearing"):
         Account(id="primary", provider_id="provider", endpoint=endpoint)
 
 
@@ -217,7 +218,7 @@ def test_endpoint_allows_ordinary_query_keys() -> None:
 
 
 def test_account_rejects_empty_query_key_with_clean_validation_error() -> None:
-    with pytest.raises(ValidationError, match="non-empty"):
+    with pytest.raises(ValidationError, match=r"non-empty"):
         Account(
             id="primary",
             provider_id="provider",
@@ -226,7 +227,7 @@ def test_account_rejects_empty_query_key_with_clean_validation_error() -> None:
 
 
 def test_provider_rejects_credential_bearing_default_endpoint() -> None:
-    with pytest.raises(ValidationError, match="credential-bearing"):
+    with pytest.raises(ValidationError, match=r"credential-bearing"):
         Provider(
             id="provider",
             name="Provider",
@@ -314,7 +315,7 @@ def test_routing_metadata_rejects_invalid_values() -> None:
 
 def test_aggregate_rejects_duplicate_ids() -> None:
     provider = Provider(id="provider", name="Provider")
-    with pytest.raises(ConfigurationError, match="duplicate provider id"):
+    with pytest.raises(ConfigurationError, match=r"duplicate provider id"):
         RegistryConfig(providers=[provider, provider])
 
 
@@ -329,7 +330,7 @@ def test_account_accepts_account_yaml_alias_and_registry_uses_accounts() -> None
 
 
 def test_aggregate_rejects_duplicate_account_and_alias_ids() -> None:
-    with pytest.raises(ConfigurationError, match="duplicate account id"):
+    with pytest.raises(ConfigurationError, match=r"duplicate account id"):
         RegistryConfig(
             accounts=[
                 Account(id="account", provider_id="provider"),
@@ -338,7 +339,7 @@ def test_aggregate_rejects_duplicate_account_and_alias_ids() -> None:
         )
 
     deployment = Deployment(account_id="account", model_id="model")
-    with pytest.raises(ConfigurationError, match="duplicate alias id"):
+    with pytest.raises(ConfigurationError, match=r"duplicate alias id"):
         RegistryConfig(
             aliases=[
                 Alias(id="alias", deployments=[deployment]),
@@ -357,7 +358,7 @@ def test_aggregate_rejects_duplicate_model_ids_within_provider() -> None:
         ],
     )
 
-    with pytest.raises(ConfigurationError, match="duplicate model id"):
+    with pytest.raises(ConfigurationError, match=r"duplicate model id"):
         RegistryConfig(providers=[provider])
 
 
@@ -444,7 +445,7 @@ def test_generic_sequence_containers_are_redacted_and_json_safe() -> None:
 
 
 def test_provider_rejects_conflicting_sdk_type_declarations() -> None:
-    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+    with pytest.raises(ConfigurationError, match=r"conflicting sdk_type"):
         Provider.model_validate(
             {"id": "provider", "name": "Provider", "sdk_type": "anthropic"}
             | {"settings": {"sdk_type": "openai"}}
@@ -581,3 +582,77 @@ def test_ordinary_metadata_keys_remain_visible() -> None:
 
 def test_errors_have_stable_base_type() -> None:
     assert issubclass(ConfigurationError, RegistryError)
+
+
+def test_credential_shorthand_strings_normalize_to_env_references() -> None:
+    for form in (
+        "env:OPENAI_API_KEY",
+        "env.OPENAI_API_KEY",
+        "${env:OPENAI_API_KEY}",
+        "${OPENAI_API_KEY}",
+        "os.environ/OPENAI_API_KEY",
+        "  env:OPENAI_API_KEY  ",
+    ):
+        reference = CredentialRef.model_validate(form)
+        assert reference.env == "OPENAI_API_KEY", form
+        assert reference.secret_ref is None
+
+
+def test_credential_shorthand_supports_external_references() -> None:
+    for form in ("secret_ref:vault/prod#key", "${secret_ref:vault/prod#key}"):
+        reference = CredentialRef.model_validate(form)
+        assert reference.secret_ref == "vault/prod#key", form
+        assert reference.env is None
+
+
+def test_credential_shorthand_still_rejects_literal_keys() -> None:
+    for form in ("sk-live-abcdef", "OPENAI_API_KEY", "${}", "environment:FOO"):
+        with pytest.raises(ValidationError):
+            CredentialRef.model_validate(form)
+
+
+def test_credential_shorthand_rejects_an_empty_reference_name() -> None:
+    with pytest.raises(ValidationError):
+        CredentialRef.model_validate("env:")
+
+
+def test_credential_shorthand_error_does_not_echo_the_literal() -> None:
+    with pytest.raises(ValidationError) as caught:
+        CredentialRef.model_validate("sk-super-secret-value")
+
+    assert "sk-super-secret-value" not in str(caught.value)
+
+
+def test_accounts_accept_the_shorthand_credential_form() -> None:
+    account = Account.model_validate(
+        {
+            "id": "primary",
+            "provider_id": "openai",
+            "credential": "env:OPENAI_API_KEY",
+            "enabled_models": ["chat"],
+        }
+    )
+
+    assert account.credential is not None
+    assert account.credential.env == "OPENAI_API_KEY"
+
+
+def test_capability_synonyms_cover_the_common_catalog_spellings() -> None:
+    assert normalize_capabilities({"function_call": True}) == {"tools": True}
+    assert normalize_capabilities({"tool_call": True}) == {"tools": True}
+    assert normalize_capabilities({"supports_function_calling": True}) == {
+        "tools": True
+    }
+    assert normalize_capabilities({"supports_vision": True}) == {"vision": True}
+    assert normalize_capabilities({"thinking": True}) == {"reasoning": True}
+
+
+def test_capability_synonyms_ignore_unknown_and_non_boolean_values() -> None:
+    assert normalize_capabilities({"telepathy": True, "tools": "yes"}) == {}
+    assert normalize_capabilities({}) == {}
+
+
+def test_capability_synonyms_combine_with_or_semantics() -> None:
+    assert normalize_capabilities({"tools": False, "function_call": True}) == {
+        "tools": True
+    }
