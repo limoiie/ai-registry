@@ -490,6 +490,17 @@ class Registry:
                     f"'{account.endpoint_ref}'; add it to provider "
                     f"'{provider.id}' endpoints"
                 )
+        for provider in self._providers.values():
+            for card in provider.model_cards:
+                if card.endpoints is None:
+                    continue
+                for endpoint in card.endpoints:
+                    if endpoint not in provider.endpoints:
+                        raise ConfigurationError(
+                            f"model '{card.id}' references unknown endpoint "
+                            f"'{endpoint}'; add it to provider "
+                            f"'{provider.id}' endpoints"
+                        )
         for alias in self._aliases.values():
             for deployment in alias.deployments:
                 alias_account = self._accounts.get(deployment.account_id)

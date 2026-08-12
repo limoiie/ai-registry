@@ -522,6 +522,28 @@ def test_aggregate_validation_reports_unknown_endpoint_ref() -> None:
         )
 
 
+def test_aggregate_validation_reports_unknown_model_card_endpoint() -> None:
+    with pytest.raises(
+        ConfigurationError,
+        match=r"model 'chat'.*unknown endpoint.*'bogus'.*provider 'openai'",
+    ):
+        Registry.from_data(
+            providers=[
+                Provider.model_validate(
+                    {
+                        "id": "openai",
+                        "name": "OpenAI",
+                        "endpoints": {"chat": {"sdk_type": "openai"}},
+                        "model_cards": [
+                            {"id": "chat", "type": "chat", "endpoints": ["bogus"]}
+                        ],
+                    }
+                )
+            ],
+            accounts=[],
+        )
+
+
 def test_validation_redacts_untrusted_model_id() -> None:
     secret_like_model_id = "sk-live-secret/model"
 
@@ -972,7 +994,10 @@ def test_model_not_supported_by_endpoint_is_rejected() -> None:
         {
             "id": "deepseek",
             "name": "DeepSeek",
-            "endpoints": {"responses": {"sdk_type": "openai", "mode": "responses"}},
+            "endpoints": {
+                "chat": {"sdk_type": "openai"},
+                "responses": {"sdk_type": "openai", "mode": "responses"},
+            },
             "model_cards": [{"id": "m", "type": "chat", "endpoints": ["chat"]}],
         }
     )
