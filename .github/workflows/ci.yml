@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_COLOR: "1"
+
+jobs:
+  test:
+    name: test (py${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest]
+        include:
+          # Path handling and project discovery are OS-sensitive; cover the
+          # other two platforms once rather than across the whole matrix.
+          - python-version: "3.13"
+            os: macos-latest
+          - python-version: "3.13"
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install the project
+        run: uv sync --frozen --all-extras
+
+      - name: Run tests
+        run: uv run --frozen pytest -q --cov --cov-report=term-missing
+
+  lint:
+    name: lint and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - run: uv sync --frozen
+
+      - name: Ruff (lint)
+        run: uv run --frozen ruff check --output-format=github .
+
+      - name: Ruff (format)
+        run: uv run --frozen ruff format --check .
+
+      - name: mypy (strict)
+        run: uv run --frozen mypy src tests
+
+      - name: Lockfile is current
+        run: uv lock --check
+
+  minimal:
+    # The core promise is that the package works with only pydantic and pyyaml
+    # installed. Nothing else in the matrix proves that, because the dev group
+    # installs typer.
+    name: core install has no extras
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install only the runtime dependencies
+        run: uv pip install --system .
+
+      - name: Assert the dependency closure stays small
+        run: |
+          python - <<'PY'
+          import importlib.metadata as md
+          installed = {d.metadata["Name"].lower() for d in md.distributions()}
+          unexpected = installed & {"openai", "typer", "litellm", "pydantic-ai-slim"}
+          assert not unexpected, f"core install pulled extras: {sorted(unexpected)}"
+          import ai_registry
+          print("ai_registry", ai_registry.__version__, "imported cleanly")
+          PY
+
+  build:
+    name: build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - run: uv build
+
+      - name: Check package data is included
+        run: |
+          python -m zipfile -l dist/*.whl | grep -q "ai_registry/py.typed"
+          python -m zipfile -l dist/*.whl | grep -q "ai_registry/data/providers/deepseek.yml"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

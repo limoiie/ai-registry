@@ -1,37 +1,60 @@
-# Project deployments template.
+# Project registry template.
 #
-# Copy this file to .ai-registry/registry.yaml in your project root and set
-# the referenced environment variables. The built-in providers (deepseek,
-# uniapi, uniapi-rerankers) ship with the package, so no provider file is
-# needed unless you override or add a provider in .ai-registry/providers/.
+# Copy this file to .ai-registry/registry.yaml in your project root and set the
+# referenced environment variables. The built-in providers (deepseek, minimax,
+# uniapi, uniapi-rerankers) ship with the package, so no provider file is needed
+# unless you override or add one under .ai-registry/providers/.
+#
+# Credentials are always references. A literal key here is a validation error.
+# These spellings are equivalent:
+#
+#   credential: env:DEEPSEEK_API_KEY
+#   credential: {env: DEEPSEEK_API_KEY}
+#   credential: ${env:DEEPSEEK_API_KEY}
+#   credential: os.environ/DEEPSEEK_API_KEY
+#
+# Use secret_ref: for anything resolved by an external store, and pass a
+# SecretResolver when building the registry:
+#
+#   credential: secret_ref:kv/data/ai#deepseek
+
 accounts:
   - id: deepseek-primary
     provider_id: deepseek
-    credential: {env: DEEPSEEK_API_KEY}
+    credential: env:DEEPSEEK_API_KEY
     enabled_models: [deepseek-chat, deepseek-reasoner]
+
   - id: uniapi-chat
     provider_id: uniapi
-    credential: {env: UNIAPI_API_KEY}
+    credential: env:UNIAPI_API_KEY
     enabled_models: [deepseek-v4-flash, qwen3.5]
+
   - id: uniapi-embedding
     provider_id: uniapi
-    credential: {env: UNIAPI_API_KEY}
-    enabled_models: [bge-large-zh:latest]
+    credential: env:UNIAPI_API_KEY
+    enabled_models: ["bge-large-zh:latest"]
+
   - id: uniapi-rerankers
     provider_id: uniapi-rerankers
-    credential: {env: UNIAPI_API_KEY}
-    enabled_models: [bge-reranker-v2-m3, qwen3-reranker:8b]
+    credential: env:UNIAPI_API_KEY
+    enabled_models: [bge-reranker-v2-m3, "qwen3-reranker:8b"]
+
 aliases:
+  # Application code refers to these names, never to a provider or model id.
   - id: chat-default
     deployments:
+      # Lower priority wins. Same priority splits traffic by weight.
       - account_id: deepseek-primary
         model_id: deepseek-chat
       - account_id: uniapi-chat
         model_id: deepseek-v4-flash
+        routing: {priority: 1}
+
   - id: embed-default
     deployments:
       - account_id: uniapi-embedding
-        model_id: bge-large-zh:latest
+        model_id: "bge-large-zh:latest"
+
   - id: rerank-default
     deployments:
       - account_id: uniapi-rerankers

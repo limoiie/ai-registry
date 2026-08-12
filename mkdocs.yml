@@ -1,0 +1,64 @@
+site_name: ai-registry
+site_description: Resolve a stable alias to a concrete AI provider deployment.
+repo_url: https://github.com/limoiie/ai-registry
+repo_name: limoiie/ai-registry
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Getting started: getting-started.md
+  - Configuration: configuration.md
+  - Use cases: use-cases.md
+  - API reference: api-reference.md
+  - Security: security.md
+  - Development: development.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
+            show_source: false
+            show_root_heading: true
+            members_order: source
+            separate_signature: true
+            signature_crossrefs: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+watch:
+  - src/ai_registry

@@ -345,19 +345,61 @@ The resolved value is returned transiently and never stored or serialized.
 
 ## Routing (`ai_registry.routing`)
 
-### `DeploymentHealthStore`
+### `DeploymentTarget`
 
-Mutable runtime health state kept separate from static configuration. Health
-identity is `(alias_id, candidate_index)`, which is stable even if routing
-fields mutate and distinguishes duplicate deployments. Unknown health state is
-healthy (fail-open).
+The identity a deployment is tracked by, independent of the alias referencing
+it.
 
 ```python
-store = DeploymentHealthStore()
-store.mark_failure(alias_id, candidate_index)
-store.mark_success(alias_id, candidate_index)
-store.is_healthy(alias_id, candidate_index)  # -> bool
+DeploymentTarget(account_id: str, model_id: str)
 ```
+
+Health is keyed by this value, which has two consequences worth knowing:
+
+- A target that fails is withheld from **every** alias that references it. An
+  account whose quota is exhausted is not "healthy" merely because a different
+  alias points at it.
+- Reordering deployments in configuration never reassigns health state to a
+  different deployment.
+
+`Resolution.target` and `SelectedDeployment.target` both return this value.
+
+### `HealthStore`
+
+A runtime-checkable `Protocol`. Implement it to share health across processes
+(for example in Redis) or to hold it fixed in tests.
+
+```python
+class HealthStore(Protocol):
+    def is_available(self, target: DeploymentTarget) -> bool: ...
+    def record_success(self, target: DeploymentTarget) -> None: ...
+    def record_failure(self, target: DeploymentTarget) -> None: ...
+```
+
+### `DeploymentHealthStore`
+
+The default in-memory, thread-safe implementation, with time-based recovery.
+
+```python
+DeploymentHealthStore(
+    *,
+    cooldown_seconds: float = 60.0,
+    max_cooldown_seconds: float = 600.0,
+    failure_threshold: int = 1,
+    clock: Callable[[], float] = time.monotonic,
+)
+```
+
+- Unknown state is available (fail-open).
+- `record_failure` counts consecutive failures; once `failure_threshold` is
+  reached the target is withheld for `cooldown_seconds`.
+- When the window elapses the target becomes available again for one half-open
+  trial. A success clears the state; a failure cools it down again, doubling the
+  window up to `max_cooldown_seconds`.
+- `record_success` clears the state immediately.
+- `cooldown_remaining(target) -> float` reports seconds until recovery, or `0.0`.
+
+Inject `clock` to test recovery without waiting.
 
 ### `DeploymentRouter`
 
@@ -365,7 +407,7 @@ Selects an available deployment from an alias according to priority and weight.
 
 ```python
 DeploymentRouter(
-    health_store: DeploymentHealthStore | None = None,
+    health_store: HealthStore | None = None,
     *,
     random_source: Callable[[], float] = random.random,
 )
@@ -395,6 +437,19 @@ Selection algorithm:
 The selected deployment is deep-copied; the alias's static configuration is
 never mutated.
 
+```python
+router.candidates(
+    alias: Alias,
+    *,
+    eligible: Callable[[Deployment], bool] | None = None,
+) -> list[SelectedDeployment]
+```
+
+Returns every available deployment in preference order — ascending priority,
+and within a priority a weighted shuffle drawn from `random_source`. Returns an
+empty list rather than raising when nothing is available, because "nothing to
+try" is a normal branch in a retry loop.
+
 ### `SelectedDeployment`
 
 | Attribute / property | Type | Meaning |
@@ -403,4 +458,110 @@ never mutated.
 | `candidate_index` | int | Position of the deployment within `alias.deployments`. |
 | `deployment` | `Deployment` | Deep copy of the selected deployment. |
 | `metadata` | `dict[str, Any]` | `alias_id`, `candidate_index`, `account_id`, `model_id`, `priority`, `weight`. |
+| `target` | `DeploymentTarget` | Health identity of the selection. |
+
+## Testing (`ai_registry.testing`)
+
+Supported test doubles. Importing this module adds no dependency.
+
+```python
+build_registry(
+    aliases: Mapping[str, Sequence[str]] | None = None,
+    *,
+    provider_id: str = "test-provider",
+    models: Sequence[str | ModelCard] = ("test-model",),
+    accounts: Sequence[str] = ("test-account",),
+    model_type: ModelType | str = ModelType.CHAT,
+    sdk_type: SDKType | str = SDKType.OPENAI,
+    endpoint: str | None = "https://provider.test/v1",
+    credential: Mapping[str, str] | str | None = "env:TEST_API_KEY",
+    timeout_seconds: float | None = None,
+    secret_resolver: SecretResolver | None = None,
+    router: DeploymentRouter | None = None,
+) -> Registry
+```
+
+`aliases` maps an alias id to deployments written as `"account-id/model-id"`.
+
+| Helper | Purpose |
+| --- | --- |
+| `FakeSecretResolver(secrets)` | Dict-backed resolver; records lookups in `.requested`, so you can assert credentials resolve lazily. |
+| `constant_secret_resolver(value)` | Answers every reference with one value. The supported way to use a concrete secret in a test without weakening the schema. |
+| `ManualHealthStore(unavailable)` | Clock-free health store; records `.successes` and `.failures`. |
+| `deterministic_router(pick=0.0, health_store=None)` | Router with a fixed weighted-selection value. |
+
+## Catalog import (`ai_registry.catalog`)
+
+```python
+load_models_dev(
+    source: PathSource | Mapping[str, Any],
+    *,
+    provider_ids: Callable[[str], bool] | None = None,
+    default_base_url: Mapping[str, str] | None = None,
+) -> list[Provider]
+
+models_dev_provider(
+    provider_id: str,
+    entry: Mapping[str, Any],
+    *,
+    default_base_url: str | None = None,
+) -> Provider
+```
+
+Converts a [models.dev](https://models.dev) `api.json` document into providers.
+`limit.context` and `limit.output` become the context and output token fields;
+`tool_call`, `reasoning` and `structured_output` become capabilities; an `image`
+input modality implies `vision`; an `embedding` output modality selects
+`ModelType.EMBEDDING`; and `cost`, `modalities`, `knowledge` and related keys are
+preserved under the card's `metadata`.
+
+No network access is performed. Vendor the document and refresh it deliberately —
+a resolution layer should not change behavior because an upstream file changed
+under it.
+
+## Adapters (`ai_registry.adapters`)
+
+Adapters are optional extras and are never imported by the core.
+
+### `ai_registry.adapters.openai`
+
+```python
+client_kwargs(resolution) -> dict[str, Any]      # no openai import required
+build_client(resolution, **overrides) -> openai.OpenAI
+build_async_client(resolution, **overrides) -> openai.AsyncOpenAI
+```
+
+`client_kwargs` returns `base_url`, `api_key` and `timeout` when configured.
+It resolves the credential, so treat the result as secret. Raises
+`UnsupportedProviderError` for a non-`openai` `sdk_type`, and
+`MissingDependencyError` when the extra is not installed.
+
+### `ai_registry.adapters.pydantic_ai`
+
+```python
+build_model(resolution, **overrides) -> pydantic_ai.models.Model
+build_fallback_model(resolutions, **overrides) -> pydantic_ai.models.Model
+```
+
+Builds `OpenAIChatModel` + `OpenAIProvider` for `sdk_type: openai`, and
+`AnthropicModel` + `AnthropicProvider` for `sdk_type: anthropic`. Pair
+`build_fallback_model` with `Registry.candidates()` to turn registry routing into
+Pydantic AI request-time failover.
+
+## Command line (`ai-registry`)
+
+Requires the `cli` extra.
+
+| Command | Purpose |
+| --- | --- |
+| `ai-registry validate` | Load the project configuration and report any problem. |
+| `ai-registry aliases` | List aliases and the deployments behind them. |
+| `ai-registry models` | List catalog models; `--type`, `--tools`, `--min-context`, `--enabled`. |
+| `ai-registry resolve REF` | Resolve a reference and print the selected deployment. |
+| `ai-registry explain REF` | Show every candidate in the order routing would try them. |
+
+All commands accept `--root`, `--profile` and `--json`. No command prints a
+credential: `resolve` and `explain` report `none`, `env (ok)`,
+`env (unresolved)`, or the `secret_ref` equivalent — never the variable name or
+the value.
 | `deployment_id` | str | Shorthand for `alias_id` (the reference used by the registry resolution layer). |

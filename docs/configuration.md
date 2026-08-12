@@ -315,6 +315,29 @@ credential:
 | `secret_ref` | Resolved by an application-provided `SecretResolver` (Vault, AWS Secrets Manager, Kubernetes, ...). |
 | `api_key` | Schema field exists for shape compatibility but **literal API keys are always rejected**. |
 
+### String shorthands
+
+A credential may also be written as a single string. These are all equivalent to
+`{env: UNIAPI_PRIMARY_KEY}`:
+
+```yaml
+credential: env:UNIAPI_PRIMARY_KEY        # canonical shorthand
+credential: env.UNIAPI_PRIMARY_KEY        # BAML / Bifrost spelling
+credential: ${env:UNIAPI_PRIMARY_KEY}     # VS Code / MCP spelling
+credential: ${UNIAPI_PRIMARY_KEY}         # Docker Compose spelling
+credential: os.environ/UNIAPI_PRIMARY_KEY # LiteLLM spelling
+```
+
+External references use `secret_ref:REF` or `${secret_ref:REF}`.
+
+The point of accepting several spellings is to remove a migration papercut, not
+to weaken the rule: a string that matches none of these prefixes is treated as a
+literal key and rejected. The error never echoes the value.
+
+```yaml
+credential: sk-live-abcdef   # ConfigurationError: literal API keys are rejected
+```
+
 Empty `env` or `secret_ref` strings are invalid. Missing or empty environment
 variables and empty resolver results raise a safe `SecretResolutionError` at
 resolution time. See [Security](security.md).
