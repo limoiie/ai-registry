@@ -17,6 +17,7 @@ Public names exported from the package root:
 | Name | Defined in | Kind |
 | --- | --- | --- |
 | `Registry` | `ai_registry.registry` | class |
+| `ClientFactory` | `ai_registry.factory` | class |
 | `DeploymentRouter` | `ai_registry.routing` | class |
 | `DeploymentHealthStore` | `ai_registry.routing` | class |
 | `SelectedDeployment` | `ai_registry.routing` | dataclass |
@@ -567,7 +568,9 @@ Builds `OpenAIChatModel` + `OpenAIProvider` for `sdk_type: openai`, and
 `create_fallback_model` with `Registry.candidates()` to turn registry routing into
 Pydantic AI request-time failover.
 
-### `ai_registry.ClientFactory`
+## `ai_registry.factory`
+
+### `ClientFactory`
 
 ```python
 ClientFactory(registry)
@@ -582,8 +585,9 @@ factory.pydantic_ai_fallback_model(reference, **overrides) -> pydantic_ai.models
 ```
 
 The `from_*` classmethods delegate to the matching `Registry` builders and
-accept the same arguments, so construction parameters are passed once. Build
-methods resolve the reference and delegate to the adapter functions; the
+accept the same arguments, so construction parameters are passed once.
+`from_data`'s parameters are keyword-only, mirroring `Registry.from_data`.
+Build methods resolve the reference and delegate to the adapter functions; the
 adapter extras are imported lazily on first use.
 
 ## Command line (`ai-registry`)
