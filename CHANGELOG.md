@@ -29,10 +29,11 @@ are always listed under **Changed** with a migration note.
 - `ai_registry.catalog.load_models_dev()` imports a models.dev `api.json`
   document into providers, so context windows, pricing and capabilities need not
   be maintained by hand. No network access is performed.
-- Optional adapters: `ai_registry.adapters.openai` (`build_client`,
-  `build_async_client`, `client_kwargs`) and `ai_registry.adapters.pydantic_ai`
-  (`build_model`, `build_fallback_model`). Install with the `openai` or
-  `pydantic-ai` extras.
+- Optional adapters: `ai_registry.adapters.openai` (`create_client`,
+  `create_async_client`, `client_kwargs`) and `ai_registry.adapters.pydantic_ai`
+  (`create_model`, `create_fallback_model`). Each adapter also ships a
+  `create_*_for(registry, reference)` helper that resolves the reference and
+  builds in one call. Install with the `openai` or `pydantic-ai` extras.
 - Optional CLI (`pip install "ai-registry[cli]"`): `ai-registry validate`,
   `aliases`, `models`, `resolve`, and `explain`. No command prints a credential.
 - Credential references accept string shorthands: `env:NAME`, `env.NAME`,

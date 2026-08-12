@@ -111,19 +111,19 @@ Build a client yourself, or use an optional adapter:
 
 ```python
 from ai_registry import Registry
-from ai_registry.adapters.openai import build_client
-from ai_registry.adapters.pydantic_ai import build_model, build_fallback_model
+from ai_registry.adapters.openai import create_client_for
+from ai_registry.adapters.pydantic_ai import create_model_for, create_fallback_model_for
 
 registry = Registry.from_project()
 
 # An openai.OpenAI client, pointed at the resolved endpoint and key:
-client = build_client(registry.resolve("chat-default"))
+client = create_client_for(registry, "chat-default")
 
 # A Pydantic AI model — a framework with no config-file registry of its own:
-model = build_model(registry.resolve("chat-default"))
+model = create_model_for(registry, "chat-default")
 
 # Registry routing becomes Pydantic AI request-time failover:
-model = build_fallback_model(registry.candidates("chat-default"))
+model = create_fallback_model_for(registry, "chat-default")
 ```
 
 Or drive failover yourself — `candidates()` returns every healthy deployment in

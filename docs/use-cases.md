@@ -306,7 +306,7 @@ and builds a framework-native object from the `Resolution`:
 ```python
 # Conceptual — adapters are not yet shipped.
 resolution = registry.resolve("sol")
-client = openai_adapter.build_client(resolution)  # AsyncOpenAI / OpenAI
+client = openai_adapter.create_client(resolution)  # AsyncOpenAI / OpenAI
 model = pydantic_ai_adapter.chat_model(resolution)  # PydanticAIModel
 chat = langchain_adapter.chat_model(resolution)  # BaseChatModel
 llm = llama_index_adapter.llm(resolution)  # LLM

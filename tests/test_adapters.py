@@ -115,7 +115,7 @@ def test_client_kwargs_omit_absent_values() -> None:
 
 def test_openai_adapter_reports_the_missing_extra() -> None:
     with pytest.raises(MissingDependencyError) as caught:
-        openai_adapter.build_client(resolution())
+        openai_adapter.create_client(resolution())
 
     assert 'pip install "ai-registry[openai]"' in str(caught.value)
     assert caught.value.extra == "openai"
@@ -126,18 +126,18 @@ def test_openai_adapter_builds_sync_and_async_clients(
 ) -> None:
     install_openai_stub(monkeypatch)
 
-    client = openai_adapter.build_client(resolution())
+    client = openai_adapter.create_client(resolution())
     assert client.kwargs["base_url"] == "https://provider.test/v1"
     assert client.kwargs["api_key"] == "sk-adapter"
 
-    async_client = openai_adapter.build_async_client(resolution())
+    async_client = openai_adapter.create_async_client(resolution())
     assert async_client.kwargs["api_key"] == "sk-adapter"
 
 
 def test_openai_adapter_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
     install_openai_stub(monkeypatch)
 
-    client = openai_adapter.build_client(resolution(), max_retries=7, timeout=1.0)
+    client = openai_adapter.create_client(resolution(), max_retries=7, timeout=1.0)
 
     assert client.kwargs["max_retries"] == 7
     assert client.kwargs["timeout"] == 1.0
@@ -145,7 +145,7 @@ def test_openai_adapter_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_openai_adapter_refuses_a_non_openai_sdk_type() -> None:
     with pytest.raises(UnsupportedProviderError, match=r"anthropic"):
-        openai_adapter.build_client(resolution(sdk_type="anthropic"))
+        openai_adapter.create_client(resolution(sdk_type="anthropic"))
 
 
 def test_openai_adapter_uses_effective_endpoint_sdk_type(
@@ -188,13 +188,13 @@ def test_openai_adapter_uses_effective_endpoint_sdk_type(
     }
 
     install_openai_stub(monkeypatch)
-    client = openai_adapter.build_client(resolution)
+    client = openai_adapter.create_client(resolution)
     assert client.kwargs["base_url"] == "https://api.deepseek.com"
 
 
 def test_pydantic_ai_adapter_reports_the_missing_extra() -> None:
     with pytest.raises(MissingDependencyError) as caught:
-        pydantic_ai_adapter.build_model(resolution())
+        pydantic_ai_adapter.create_model(resolution())
 
     assert 'pip install "ai-registry[pydantic-ai]"' in str(caught.value)
 
@@ -204,7 +204,7 @@ def test_pydantic_ai_adapter_builds_an_openai_chat_model(
 ) -> None:
     install_pydantic_ai_stub(monkeypatch)
 
-    model = pydantic_ai_adapter.build_model(resolution())
+    model = pydantic_ai_adapter.create_model(resolution())
 
     assert model.args == ("test-model",)
     provider = model.kwargs["provider"]
@@ -219,7 +219,7 @@ def test_pydantic_ai_adapter_builds_an_anthropic_model(
 ) -> None:
     install_pydantic_ai_stub(monkeypatch)
 
-    model = pydantic_ai_adapter.build_model(resolution(sdk_type="anthropic"))
+    model = pydantic_ai_adapter.create_model(resolution(sdk_type="anthropic"))
 
     assert model.kwargs["provider"].kwargs["api_key"] == "sk-adapter"
 
@@ -230,7 +230,7 @@ def test_pydantic_ai_adapter_rejects_non_chat_models(
     install_pydantic_ai_stub(monkeypatch)
 
     with pytest.raises(UnsupportedProviderError, match=r"embedding"):
-        pydantic_ai_adapter.build_model(resolution(model_type="embedding"))
+        pydantic_ai_adapter.create_model(resolution(model_type="embedding"))
 
 
 def test_pydantic_ai_adapter_rejects_unsupported_sdk_types(
@@ -239,7 +239,7 @@ def test_pydantic_ai_adapter_rejects_unsupported_sdk_types(
     install_pydantic_ai_stub(monkeypatch)
 
     with pytest.raises(UnsupportedProviderError, match=r"google"):
-        pydantic_ai_adapter.build_model(resolution(sdk_type="google"))
+        pydantic_ai_adapter.create_model(resolution(sdk_type="google"))
 
 
 def test_fallback_model_is_built_from_registry_candidates(
@@ -253,7 +253,7 @@ def test_fallback_model_is_built_from_registry_candidates(
         secret_resolver=constant_secret_resolver("sk-adapter"),
     )
 
-    model = pydantic_ai_adapter.build_fallback_model(
+    model = pydantic_ai_adapter.create_fallback_model(
         registry.candidates("chat-default")
     )
 
@@ -265,11 +265,83 @@ def test_single_candidate_needs_no_fallback_wrapper(
 ) -> None:
     install_pydantic_ai_stub(monkeypatch)
 
-    model = pydantic_ai_adapter.build_fallback_model([resolution()])
+    model = pydantic_ai_adapter.create_fallback_model([resolution()])
 
     assert model.args == ("test-model",)
 
 
 def test_fallback_model_rejects_an_empty_candidate_list() -> None:
     with pytest.raises(UnsupportedProviderError, match=r"no resolutions"):
-        pydantic_ai_adapter.build_fallback_model([])
+        pydantic_ai_adapter.create_fallback_model([])
+
+
+def registered_registry() -> Any:
+    return build_registry(
+        {"chat-default": ["test-account/test-model"]},
+        credential="secret_ref:key",
+        secret_resolver=constant_secret_resolver("sk-adapter"),
+    )
+
+
+def test_create_client_for_resolves_alias_then_builds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_openai_stub(monkeypatch)
+
+    client = openai_adapter.create_client_for(registered_registry(), "chat-default")
+
+    assert client.kwargs["base_url"] == "https://provider.test/v1"
+    assert client.kwargs["api_key"] == "sk-adapter"
+
+
+def test_create_async_client_for_resolves_alias_then_builds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_openai_stub(monkeypatch)
+
+    client = openai_adapter.create_async_client_for(
+        registered_registry(), "chat-default"
+    )
+
+    assert client.kwargs["api_key"] == "sk-adapter"
+
+
+def test_create_client_for_forwards_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_openai_stub(monkeypatch)
+
+    client = openai_adapter.create_client_for(
+        registered_registry(), "chat-default", max_retries=4
+    )
+
+    assert client.kwargs["max_retries"] == 4
+
+
+def test_create_model_for_resolves_alias_then_builds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_pydantic_ai_stub(monkeypatch)
+
+    model = pydantic_ai_adapter.create_model_for(
+        registered_registry(), "chat-default"
+    )
+
+    assert model.args == ("test-model",)
+    assert model.kwargs["provider"].kwargs["api_key"] == "sk-adapter"
+
+
+def test_create_fallback_model_for_resolves_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_pydantic_ai_stub(monkeypatch)
+    registry = build_registry(
+        {"chat-default": ["primary/test-model", "backup/test-model"]},
+        accounts=["primary", "backup"],
+        credential="secret_ref:key",
+        secret_resolver=constant_secret_resolver("sk-adapter"),
+    )
+
+    model = pydantic_ai_adapter.create_fallback_model_for(registry, "chat-default")
+
+    assert len(model.args) == 2
