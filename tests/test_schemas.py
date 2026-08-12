@@ -664,7 +664,10 @@ def test_provider_endpoint_and_mode_parsed() -> None:
             "id": "deepseek",
             "name": "DeepSeek",
             "endpoints": {
-                "openai-chat": {"sdk_type": "openai", "base_url": "https://api.deepseek.com"},
+                "openai-chat": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                },
                 "openai-responses": {
                     "sdk_type": "openai",
                     "base_url": "https://api.deepseek.com",

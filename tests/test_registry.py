@@ -518,9 +518,7 @@ def test_aggregate_validation_reports_unknown_endpoint_ref() -> None:
                     }
                 )
             ],
-            accounts=[
-                Account(id="orphan", provider_id="openai", endpoint_ref="bogus")
-            ],
+            accounts=[Account(id="orphan", provider_id="openai", endpoint_ref="bogus")],
         )
 
 
@@ -975,9 +973,7 @@ def test_model_not_supported_by_endpoint_is_rejected() -> None:
             "id": "deepseek",
             "name": "DeepSeek",
             "endpoints": {"responses": {"sdk_type": "openai", "mode": "responses"}},
-            "model_cards": [
-                {"id": "m", "type": "chat", "endpoints": ["chat"]}
-            ],
+            "model_cards": [{"id": "m", "type": "chat", "endpoints": ["chat"]}],
         }
     )
     account = Account.model_validate(

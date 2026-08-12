@@ -371,9 +371,7 @@ def test_loads_actual_catalog_normalized_model_fields() -> None:
     embedding = next(
         card for card in uniapi.model_cards if card.id == "bge-large-zh:latest"
     )
-    vision = next(
-        card for card in uniapi.model_cards if card.id == "qwen2.5-vl:72b"
-    )
+    vision = next(card for card in uniapi.model_cards if card.id == "qwen2.5-vl:72b")
     deprecated = next(
         card for card in minimax.model_cards if card.id == "MiniMax-M2-Stable"
     )
@@ -448,6 +446,13 @@ def test_provider_endpoints_parse_from_file(tmp_path: Path) -> None:
     assert provider.endpoints["openai-responses"].mode.value == "responses"
 
 
+def test_multi_endpoint_fixture_loads() -> None:
+    provider = load_provider_file(FIXTURES / "deepseek-endpoints.yml")
+    assert set(provider.endpoints) == {"openai-chat", "openai-responses", "anthropic"}
+    flash = next(c for c in provider.model_cards if c.id == "deepseek-v4-flash")
+    assert flash.endpoints == ["openai-chat", "openai-responses", "anthropic"]
+
+
 def test_proxy_placeholder_skipped_when_endpoints_declared(tmp_path: Path) -> None:
     path = tmp_path / "multi-endpoint.yml"
     path.write_text(
@@ -464,7 +469,9 @@ def test_proxy_placeholder_skipped_when_endpoints_declared(tmp_path: Path) -> No
     )
     provider = load_provider_file(path)
     assert provider.default_base_url is None
-    assert provider.settings["proxy_url"] == {"placeholder": "https://proxy.example.test"}
+    assert provider.settings["proxy_url"] == {
+        "placeholder": "https://proxy.example.test"
+    }
 
 
 def test_proxy_placeholder_backfill_when_no_endpoints(tmp_path: Path) -> None:

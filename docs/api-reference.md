@@ -141,7 +141,9 @@ are redacted.
 | `model` | `ModelCard` | The selected model card. |
 | `account` | `Account` | Deep-copied account. |
 | `deployment_id` | `str` | The deployment reference used by the resolution layer. |
-| `endpoint` | `str | None` | `account.endpoint` or provider `default_base_url`. |
+| `endpoint` | `str | None` | `account.endpoint` or provider `default_base_url` (or the selected endpoint's `base_url` when `endpoint_ref` is set). |
+| `sdk_type` | `SDKType` | The resolved SDK type: the provider's, or the selected endpoint's. |
+| `mode` | `ModelMode` | The resolved API mode: the selected endpoint's, else `chat`. |
 | `endpoint_metadata` | `dict[str, Any]` | Deep-copied account metadata for adapters. |
 | `model_id` | `str` | Shorthand for `model.id`. |
 | `account_id` | `str` | Shorthand for `account.id`. |
@@ -183,6 +185,11 @@ class SDKType(StrEnum):
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
     CUSTOM = "custom"
+
+
+class ModelMode(StrEnum):
+    CHAT = "chat"
+    RESPONSES = "responses"
 ```
 
 ### `ModelCapabilities`
@@ -206,8 +213,17 @@ class SDKType(StrEnum):
 | `context_window_tokens` | `int | None` | Must be `>= 1`. |
 | `max_output_tokens` | `int | None` | Must be `>= 1`. |
 | `embedding_dimension` | `int | None` | Must be `>= 1`. |
+| `endpoints` | `list[str] | None` | Endpoint names supporting this model. |
 | `capabilities` | `ModelCapabilities` | Accepts alias `abilities`. |
 | `metadata` | `dict[str, Any]` | |
+
+### `ProviderEndpoint`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `sdk_type` | `SDKType` | Default `openai`. |
+| `base_url` | `str | None` | Endpoint-validated. |
+| `mode` | `ModelMode` | Default `chat`. |
 
 ### `Provider`
 
@@ -218,6 +234,7 @@ class SDKType(StrEnum):
 | `description` | `str | None` | |
 | `sdk_type` | `SDKType` | Default `openai`. |
 | `default_base_url` | `str | None` | Endpoint-validated. |
+| `endpoints` | `dict[str, ProviderEndpoint]` | Named endpoints selectable per account. |
 | `settings` | `dict[str, Any]` | Adapter settings. |
 | `model_cards` | `list[ModelCard]` | |
 
@@ -238,6 +255,7 @@ Exactly one of `env`/`secret_ref` must be set.
 | `id` | str | Identifier. |
 | `provider_id` | str | Identifier. |
 | `endpoint` | `str | None` | Accepts alias `base_url`. Endpoint-validated. |
+| `endpoint_ref` | `str | None` | Selects a named provider endpoint; mutually exclusive with `endpoint`. |
 | `credential` | `CredentialRef | None` | Accepts alias `api_key`. |
 | `enabled_models` | `list[str]` | Model IDs. |
 | `enabled` | bool | Default `True`. |

@@ -127,6 +127,56 @@ model_cards:
     type: chat
 ```
 
+### Endpoints
+
+Some providers expose several protocols or HTTP endpoints. Declare them in an
+`endpoints` map, and each account selects one by name with `endpoint_ref`:
+
+```yaml
+id: deepseek
+name: DeepSeek
+endpoints:
+  openai-chat:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+    mode: chat
+  openai-responses:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+    mode: responses
+  anthropic:
+    sdk_type: anthropic
+    base_url: https://api.deepseek.com/anthropic
+    mode: chat
+model_cards:
+  - id: deepseek-v4-flash
+    type: chat
+    endpoints: [openai-chat, openai-responses, anthropic]
+    context_window_tokens: 1000000
+  - id: deepseek-v4-pro
+    type: chat
+    endpoints: [openai-chat, anthropic]
+    context_window_tokens: 1000000
+```
+
+Each endpoint entry is a `ProviderEndpoint`:
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `sdk_type` | enum | no | `openai` (default), `anthropic`, `google`, `custom`. |
+| `base_url` | URL string | no | Validated endpoint (see [Endpoint validation](#endpoint-validation)). |
+| `mode` | enum | no | `chat` (default) or `responses`. |
+
+`mode` records the API shape an endpoint speaks. `mode: chat` is the default and
+can be omitted; `mode: responses` selects the OpenAI Responses API where the
+endpoint provides it.
+
+Providers **without** an `endpoints` map keep the legacy single-endpoint
+behavior: `sdk_type` and `default_base_url` apply to every account. When an
+`endpoints` map is present, accounts select an endpoint by name with
+`endpoint_ref` (see [Account](#account)), and resolution uses that endpoint's
+`base_url`, `sdk_type`, and `mode`.
+
 ### Field reference
 
 | Field | Type | Required | Notes |
@@ -134,8 +184,9 @@ model_cards:
 | `id` | identifier | yes | `[A-Za-z0-9_.-]`, no spaces. |
 | `name` | string | yes | Display name. |
 | `description` | string | no | Free text. |
-| `sdk_type` | enum | no | `openai` (default), `anthropic`, `google`, `custom`. |
-| `default_base_url` | URL string | no | Validated endpoint (see [Endpoint validation](#endpoint-validation)). |
+| `sdk_type` | enum | no | `openai` (default), `anthropic`, `google`, `custom`. Used when no `endpoints` map is declared. |
+| `default_base_url` | URL string | no | Validated endpoint (see [Endpoint validation](#endpoint-validation)). Used when no `endpoints` map is declared. |
+| `endpoints` | mapping | no | Named endpoint map (see [Endpoints](#endpoints)). |
 | `settings` | mapping | no | Provider-specific adapter settings; forwarded as-is. |
 | `model_cards` | list | no | The provider's model catalog. |
 
@@ -184,6 +235,7 @@ model_cards:
 | `context_window_tokens` | positive int | no | Context limit. |
 | `max_output_tokens` | positive int | no | Output limit. |
 | `embedding_dimension` | positive int | no | For embedding models. |
+| `endpoints` | list of endpoint ids | no | Endpoint names on which this model is available; resolution rejects endpoint selections not listed here. |
 | `capabilities` | mapping | no | Also accepted as `abilities` (see [legacy compatibility](#provider-catalog-compatibility)). |
 | `metadata` | mapping | no | Arbitrary adapter metadata. |
 
@@ -225,10 +277,10 @@ base URLs.
 ```yaml
 accounts:
   - id: uniapi-primary
-    provider_id: uniapi
-    endpoint: https://uni-api.cstcloud.cn/v1   # optional override
+    provider_id: deepseek
+    endpoint_ref: openai-responses            # selects a provider endpoint by name
     credential:
-      env: UNIAPI_PRIMARY_KEY
+      env: DEEPSEEK_API_KEY
     enabled_models:
       - deepseek-v4-flash
     enabled: true
@@ -244,6 +296,7 @@ accounts:
 | `id` | identifier | yes | Unique across accounts. |
 | `provider_id` | identifier | yes | Must reference a configured provider. |
 | `endpoint` | URL string | no | Overrides the provider `default_base_url`. Also accepted as `base_url`. |
+| `endpoint_ref` | identifier | no | Selects a named provider `endpoints` entry (see [Endpoints](#endpoints)). Cannot be combined with `endpoint`. |
 | `credential` | credential ref | no | Exactly one of `env` or `secret_ref` (see [Credentials](#credentials)). Also accepted as `api_key` for the shape, but literal keys are rejected. |
 | `enabled_models` | list of model ids | no | The models this account exposes. Resolution rejects models not listed here. |
 | `enabled` | bool | no | Default `true`. Disabled accounts are excluded from aliases and direct resolution. |
@@ -345,8 +398,9 @@ resolution time. See [Security](security.md).
 
 ## Endpoint validation
 
-`default_base_url` (provider) and `endpoint`/`base_url` (account) are validated
-at load time. The following are rejected:
+`default_base_url` (provider), `base_url` (provider `endpoints` entry), and
+`endpoint`/`base_url` (account) are validated at load time. The following are
+rejected:
 
 - URLs with userinfo, e.g. `https://user:pass@host/v1`;
 - query or fragment parameters whose names look credential-bearing, e.g.
