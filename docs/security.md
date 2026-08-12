@@ -163,4 +163,5 @@ and the adapters are optional extras that the core never imports, so a
 dependency you have not installed cannot be part of your attack surface. This is
 a deliberate property of a component that sits next to every API key you own.
 
-See [SECURITY.md](../SECURITY.md) for reporting and release provenance.
+See [SECURITY.md](https://github.com/limoiie/ai-registry/blob/main/SECURITY.md)
+for reporting and release provenance.

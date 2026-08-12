@@ -24,6 +24,11 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
 
+# docs/plans/ holds internal design and implementation notes. They are kept in
+# the repo for history but are not part of the published documentation.
+exclude_docs: |
+  plans/
+
 nav:
   - Home: index.md
   - Overview: overview.md

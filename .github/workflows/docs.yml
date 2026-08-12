@@ -30,7 +30,12 @@ jobs:
 
       - name: Stage docs entry points
         run: |
-          cp README.md docs/index.md
+          # README links are repo-relative ("docs/overview.md"). Once the file
+          # is copied *into* docs/, strip the prefix so the links resolve.
+          # LICENSE has no docs page, so point it at the file on GitHub.
+          sed -e 's|](docs/|](|g' \
+              -e 's|](LICENSE)|](https://github.com/limoiie/ai-registry/blob/main/LICENSE)|g' \
+              README.md > docs/index.md
           cp CHANGELOG.md docs/changelog.md
 
       - run: uv run --frozen mkdocs build --strict

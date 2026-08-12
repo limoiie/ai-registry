@@ -226,4 +226,4 @@ The core modules are:
   (retries, request translation, spend tracking), and any form of context-aware
   selection that would require inspecting the request.
 - While the version is `0.x`, minor releases may contain breaking changes; see
-  the [changelog](../CHANGELOG.md).
+  the [changelog](changelog.md).
