@@ -30,6 +30,7 @@ from ai_registry.schemas import (
     Deployment,
     ModelCapabilities,
     ModelCard,
+    ModelMode,
     ModelType,
     Provider,
     RegistryConfig,
@@ -86,7 +87,9 @@ class Resolution:
     account: Account
     deployment_id: str
     endpoint: str | None
+    sdk_type: SDKType
     endpoint_metadata: dict[str, Any]
+    mode: ModelMode = ModelMode.CHAT
     _secret_resolver: SecretResolver | None = None
 
     @property
@@ -125,7 +128,7 @@ class Resolution:
             "gen_ai.provider.name": (
                 self.provider.id
                 if self.provider.id in _OTEL_PROVIDER_NAMES
-                else _OTEL_PROVIDER_BY_SDK.get(self.provider.sdk_type, self.provider.id)
+                else _OTEL_PROVIDER_BY_SDK.get(self.sdk_type, self.provider.id)
             ),
             "gen_ai.request.model": self.model.id,
             "ai_registry.deployment_id": self.deployment_id,
@@ -444,12 +447,22 @@ class Registry:
             for card in result_provider.model_cards
             if card.id == deployment.model_id
         )
+        endpoint = result_account.endpoint or result_provider.default_base_url
+        sdk_type = result_provider.sdk_type
+        mode = ModelMode.CHAT
+        if result_account.endpoint_ref is not None:
+            selected = result_provider.endpoints[result_account.endpoint_ref]
+            endpoint = selected.base_url
+            sdk_type = selected.sdk_type
+            mode = selected.mode
         return Resolution(
             provider=result_provider,
             model=result_model,
             account=result_account,
             deployment_id=deployment_id,
-            endpoint=result_account.endpoint or result_provider.default_base_url,
+            endpoint=endpoint,
+            sdk_type=sdk_type,
+            mode=mode,
             endpoint_metadata=deepcopy(result_account.metadata),
             _secret_resolver=self._secret_resolver,
         )
@@ -485,7 +498,8 @@ class Registry:
 
     def _validate_model_enabled(self, account: Account, model_id: str) -> None:
         provider = self._providers[account.provider_id]
-        if not _find_model(provider, model_id):
+        card = _find_model(provider, model_id)
+        if card is None:
             raise RegistryError(
                 f"unknown model for provider '{provider.id}'; add it to the provider"
             )
@@ -493,6 +507,16 @@ class Registry:
             raise RegistryError(
                 f"model is not enabled by account '{account.id}'; "
                 "enable it in the account"
+            )
+        if (
+            account.endpoint_ref is not None
+            and card.endpoints is not None
+            and account.endpoint_ref not in card.endpoints
+        ):
+            raise RegistryError(
+                f"model '{model_id}' is not supported by endpoint "
+                f"'{account.endpoint_ref}'; the model card declares "
+                f"endpoints {sorted(card.endpoints)}"
             )
 
 

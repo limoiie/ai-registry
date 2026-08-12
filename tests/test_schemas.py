@@ -715,3 +715,10 @@ def test_account_rejects_endpoint_and_endpoint_ref() -> None:
                 "endpoint_ref": "chat",
             }
         )
+
+
+def test_model_card_endpoint_support_set() -> None:
+    card = ModelCard.model_validate(
+        {"id": "m", "type": "chat", "endpoints": ["openai-chat", "anthropic"]}
+    )
+    assert card.endpoints == ["openai-chat", "anthropic"]

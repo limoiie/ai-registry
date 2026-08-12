@@ -365,6 +365,7 @@ class ModelCard(SafeModel):
         default_factory=ModelCapabilities,
         validation_alias=AliasChoices("capabilities", "abilities"),
     )
+    endpoints: list[str] | None = Field(default=None, min_length=1)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     _validate_id = field_validator("id")(_check_model_id)
