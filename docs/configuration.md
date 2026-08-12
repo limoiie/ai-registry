@@ -183,7 +183,7 @@ model_cards:
 | `context_window_tokens` | positive int | no | Context limit. |
 | `max_output_tokens` | positive int | no | Output limit. |
 | `embedding_dimension` | positive int | no | For embedding models. |
-| `capabilities` | mapping | no | Also accepted as `abilities` (see [legacy compatibility](#model-card-compatibility)). |
+| `capabilities` | mapping | no | Also accepted as `abilities` (see [legacy compatibility](#provider-catalog-compatibility)). |
 | `metadata` | mapping | no | Arbitrary adapter metadata. |
 
 `capabilities` supports the keys `tools`, `structured_output`, `vision`, and
