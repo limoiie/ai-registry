@@ -428,6 +428,73 @@ def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> N
         load_provider_file(path)
 
 
+def test_provider_endpoints_parse_from_file(tmp_path: Path) -> None:
+    path = tmp_path / "deepseek-multi.yml"
+    path.write_text(
+        "id: deepseek\n"
+        "name: DeepSeek\n"
+        "endpoints:\n"
+        "  openai-chat:\n"
+        "    sdk_type: openai\n"
+        "    base_url: https://api.deepseek.com\n"
+        "  openai-responses:\n"
+        "    sdk_type: openai\n"
+        "    base_url: https://api.deepseek.com\n"
+        "    mode: responses\n",
+        encoding="utf-8",
+    )
+    provider = load_provider_file(path)
+    assert "openai-responses" in provider.endpoints
+    assert provider.endpoints["openai-responses"].mode.value == "responses"
+
+
+def test_proxy_placeholder_skipped_when_endpoints_declared(tmp_path: Path) -> None:
+    path = tmp_path / "multi-endpoint.yml"
+    path.write_text(
+        "id: deepseek\n"
+        "name: DeepSeek\n"
+        "endpoints:\n"
+        "  openai-chat:\n"
+        "    sdk_type: openai\n"
+        "    base_url: https://api.deepseek.com\n"
+        "settings:\n"
+        "  proxy_url:\n"
+        "    placeholder: https://proxy.example.test\n",
+        encoding="utf-8",
+    )
+    provider = load_provider_file(path)
+    assert provider.default_base_url is None
+    assert provider.settings["proxy_url"] == {"placeholder": "https://proxy.example.test"}
+
+
+def test_proxy_placeholder_backfill_when_no_endpoints(tmp_path: Path) -> None:
+    path = tmp_path / "single-endpoint.yml"
+    path.write_text(
+        "id: deepseek\n"
+        "name: DeepSeek\n"
+        "settings:\n"
+        "  proxy_url:\n"
+        "    placeholder: https://proxy.example.test\n",
+        encoding="utf-8",
+    )
+    provider = load_provider_file(path)
+    assert provider.default_base_url == "https://proxy.example.test"
+
+
+def test_account_endpoint_ref_is_kept(tmp_path: Path) -> None:
+    path = tmp_path / "accounts.yml"
+    path.write_text(
+        "accounts:\n"
+        "  - id: a\n"
+        "    provider_id: deepseek\n"
+        "    endpoint_ref: anthropic\n"
+        "    api_key_env: KEY\n",
+        encoding="utf-8",
+    )
+    accounts = load_account_file(path)
+    assert accounts[0].endpoint_ref == "anthropic"
+
+
 def test_loads_legacy_account_fields_into_metadata(tmp_path: Path) -> None:
     path = tmp_path / "legacy-account.yaml"
     path.write_text(

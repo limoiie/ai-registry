@@ -233,10 +233,13 @@ def normalize_provider(
         # The catalog format carries the provider's base URL under
         # settings.proxy_url.placeholder. Without this, providers that only
         # declare it there resolve to a null endpoint and adapters silently fall
-        # back to their own default host.
-        placeholder = _proxy_url_placeholder(settings)
-        if placeholder is not None:
-            value["default_base_url"] = placeholder
+        # back to their own default host. Only backfill for single-endpoint
+        # providers that declare no explicit endpoints map.
+        endpoints = value.get("endpoints") or {}
+        if not endpoints:
+            placeholder = _proxy_url_placeholder(settings)
+            if placeholder is not None:
+                value["default_base_url"] = placeholder
     top_sdk_type = value.get("sdk_type")
     nested_sdk_type = settings.get("sdk_type")
     try:
