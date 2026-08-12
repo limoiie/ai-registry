@@ -38,6 +38,11 @@ class SDKType(StrEnum):
     CUSTOM = "custom"
 
 
+class ModelMode(StrEnum):
+    CHAT = "chat"
+    RESPONSES = "responses"
+
+
 def canonical_sdk_type(top_sdk_type: Any, nested_sdk_type: Any) -> Any:
     """Validate equivalent SDK declarations and return the canonical value."""
     if top_sdk_type is not None and nested_sdk_type is not None:
@@ -365,12 +370,21 @@ class ModelCard(SafeModel):
     _validate_id = field_validator("id")(_check_model_id)
 
 
+class ProviderEndpoint(SafeModel):
+    sdk_type: SDKType = SDKType.OPENAI
+    base_url: str | None = None
+    mode: ModelMode = ModelMode.CHAT
+
+    _validate_endpoint = field_validator("base_url")(_validate_endpoint)
+
+
 class Provider(SafeModel):
     id: Identifier
     name: str
     description: str | None = None
     sdk_type: SDKType = SDKType.OPENAI
     default_base_url: str | None = None
+    endpoints: Mapping[str, ProviderEndpoint] = Field(default_factory=dict)
     settings: dict[str, Any] = Field(default_factory=dict)
     model_cards: list[ModelCard] = Field(default_factory=list)
 
@@ -453,6 +467,7 @@ class Account(SafeModel):
     endpoint: str | None = Field(
         default=None, validation_alias=AliasChoices("endpoint", "base_url")
     )
+    endpoint_ref: Identifier | None = None
     credential: CredentialRef | None = Field(
         default=None, validation_alias=AliasChoices("credential", "api_key")
     )
@@ -468,6 +483,12 @@ class Account(SafeModel):
     @classmethod
     def validate_enabled_models(cls, values: list[str]) -> list[str]:
         return [_check_model_id(value) for value in values]
+
+    @model_validator(mode="after")
+    def validate_endpoint_ref(self) -> Account:
+        if self.endpoint_ref is not None and self.endpoint is not None:
+            raise ValueError("cannot set both endpoint and endpoint_ref; use one")
+        return self
 
 
 class RoutingMetadata(SafeModel):
