@@ -187,3 +187,37 @@ def test_from_files_builds_a_registry(tmp_path: Path) -> None:
     factory = ClientFactory.from_files([provider_path], [account_path])
 
     assert factory.registry.resolve("primary/chat").model.id == "chat"
+
+
+def test_from_project_builds_a_registry_from_a_project_directory(
+    tmp_path: Path,
+) -> None:
+    deployments_dir = tmp_path / ".ai-registry"
+    deployments_dir.mkdir(exist_ok=True)
+    (deployments_dir / "registry.yaml").write_text(
+        "accounts:\n"
+        "  - id: primary\n"
+        "    provider_id: deepseek\n"
+        "    credential: {env: DEEPSEEK_API_KEY}\n"
+        "    enabled_models: [deepseek-chat]\n"
+        "aliases:\n"
+        "  - id: chat-default\n"
+        "    deployments:\n"
+        "      - account_id: primary\n"
+        "        model_id: deepseek-chat\n",
+        encoding="utf-8",
+    )
+
+    factory = ClientFactory.from_project(tmp_path)
+
+    assert factory.registry.resolve("chat-default").model_id == "deepseek-chat"
+
+
+def test_pydantic_ai_model_forwards_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_pydantic_ai_stub(monkeypatch)
+
+    model = registered_factory().pydantic_ai_model("chat-default", settings={})
+
+    assert model.kwargs["settings"] == {}

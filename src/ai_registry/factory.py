@@ -39,7 +39,10 @@ class ClientFactory:
 
     @classmethod
     def from_data(cls, *args: Any, **kwargs: Any) -> ClientFactory:
-        """Build a factory over :meth:`Registry.from_data`."""
+        """Build a factory over :meth:`Registry.from_data`.
+
+        All parameters are keyword-only, mirroring :meth:`Registry.from_data`.
+        """
         return cls(Registry.from_data(*args, **kwargs))
 
     @classmethod
