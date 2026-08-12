@@ -440,7 +440,8 @@ def test_provider_endpoints_parse_from_file(tmp_path: Path) -> None:
         "  openai-responses:\n"
         "    sdk_type: openai\n"
         "    base_url: https://api.deepseek.com\n"
-        "    mode: responses\n",
+        "    mode: responses\n"
+        "default_endpoint: openai-chat\n",
         encoding="utf-8",
     )
     provider = load_provider_file(path)

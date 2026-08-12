@@ -2,8 +2,6 @@ id: xai
 name: xAI (Grok)
 description: xAI develops the Grok family of frontier models with very large context
   windows and strong reasoning and coding performance.
-sdk_type: openai
-default_base_url: https://api.x.ai/v1
 endpoints:
   openai:
     sdk_type: openai

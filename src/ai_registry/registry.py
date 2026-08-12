@@ -445,14 +445,23 @@ class Registry:
         result_model = next(
             model for model in result_provider.models if model.id == deployment.model_id
         )
-        endpoint = result_account.endpoint or result_provider.default_base_url
-        sdk_type = result_provider.sdk_type
-        mode = ModelMode.CHAT
+        selected = None
         if result_account.endpoint_ref is not None:
             selected = result_provider.endpoints[result_account.endpoint_ref]
-            endpoint = selected.base_url
+        elif result_provider.endpoints:
+            name = result_provider.default_endpoint
+            if name is None and len(result_provider.endpoints) == 1:
+                name = next(iter(result_provider.endpoints))
+            if name is not None:
+                selected = result_provider.endpoints[name]
+        if selected is not None:
+            endpoint = result_account.endpoint or selected.base_url
             sdk_type = selected.sdk_type
             mode = selected.mode
+        else:
+            endpoint = result_account.endpoint or result_provider.default_base_url
+            sdk_type = result_provider.sdk_type
+            mode = ModelMode.CHAT
         return Resolution(
             provider=result_provider,
             model=result_model,

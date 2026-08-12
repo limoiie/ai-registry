@@ -13,6 +13,7 @@ endpoints:
     sdk_type: anthropic
     base_url: https://api.deepseek.com/anthropic
     mode: chat
+default_endpoint: anthropic
 models:
   - id: deepseek-v4-flash
     display_name: DeepSeek V4 Flash

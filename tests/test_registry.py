@@ -935,8 +935,6 @@ def test_resolution_exposes_selected_endpoint_and_mode() -> None:
         {
             "id": "deepseek",
             "name": "DeepSeek",
-            "sdk_type": "anthropic",
-            "default_base_url": "https://api.deepseek.com/anthropic",
             "endpoints": {
                 "openai-chat": {
                     "sdk_type": "openai",
@@ -952,6 +950,7 @@ def test_resolution_exposes_selected_endpoint_and_mode() -> None:
                     "base_url": "https://api.deepseek.com/anthropic",
                 },
             },
+            "default_endpoint": "anthropic",
             "models": [
                 {"id": "deepseek-v4-flash", "type": "chat"},
                 {
@@ -982,6 +981,67 @@ def test_resolution_exposes_selected_endpoint_and_mode() -> None:
     assert resolution.endpoint == "https://api.deepseek.com"
 
 
+def test_resolution_uses_the_provider_default_endpoint() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "endpoints": {
+                "openai-chat": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                },
+                "anthropic": {
+                    "sdk_type": "anthropic",
+                    "base_url": "https://api.deepseek.com/anthropic",
+                },
+            },
+            "default_endpoint": "anthropic",
+            "models": [{"id": "deepseek-chat", "type": "chat"}],
+        }
+    )
+    account = Account.model_validate(
+        {"id": "a", "provider_id": "deepseek", "enabled_models": ["deepseek-chat"]}
+    )
+    registry = Registry.from_data(
+        providers=[provider],
+        accounts=[account],
+        secret_resolver=constant_secret_resolver("sk"),
+    )
+    resolution = registry.resolve("a/deepseek-chat")
+    assert resolution.sdk_type.value == "anthropic"
+    assert resolution.mode.value == "chat"
+    assert resolution.endpoint == "https://api.deepseek.com/anthropic"
+
+
+def test_resolution_uses_the_only_endpoint_when_no_default_declared() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "openai",
+            "name": "OpenAI",
+            "endpoints": {
+                "openai": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.openai.com/v1",
+                },
+            },
+            "models": [{"id": "gpt-5.6", "type": "chat"}],
+        }
+    )
+    account = Account.model_validate(
+        {"id": "a", "provider_id": "openai", "enabled_models": ["gpt-5.6"]}
+    )
+    registry = Registry.from_data(
+        providers=[provider],
+        accounts=[account],
+        secret_resolver=constant_secret_resolver("sk"),
+    )
+    resolution = registry.resolve("a/gpt-5.6")
+    assert resolution.sdk_type.value == "openai"
+    assert resolution.mode.value == "chat"
+    assert resolution.endpoint == "https://api.openai.com/v1"
+
+
 def test_resolution_legacy_single_endpoint_defaults() -> None:
     registry = build_registry({"chat": ["test-account/test-model"]})
     resolution = registry.resolve("chat")
@@ -998,6 +1058,7 @@ def test_model_not_supported_by_endpoint_is_rejected() -> None:
                 "chat": {"sdk_type": "openai"},
                 "responses": {"sdk_type": "openai", "mode": "responses"},
             },
+            "default_endpoint": "chat",
             "models": [{"id": "m", "type": "chat", "endpoints": ["chat"]}],
         }
     )

@@ -678,6 +678,7 @@ def test_provider_endpoint_and_mode_parsed() -> None:
                     "base_url": "https://api.deepseek.com/anthropic",
                 },
             },
+            "default_endpoint": "anthropic",
         }
     )
     assert provider.endpoints["openai-chat"].sdk_type is SDKType.OPENAI
@@ -692,6 +693,47 @@ def test_provider_endpoint_rejects_unknown_mode() -> None:
                 "id": "p",
                 "name": "P",
                 "endpoints": {"x": {"sdk_type": "openai", "mode": "bogus"}},
+            }
+        )
+
+
+def test_provider_default_endpoint_must_be_declared() -> None:
+    with pytest.raises(ValidationError, match="not a declared endpoint"):
+        Provider.model_validate(
+            {
+                "id": "p",
+                "name": "P",
+                "endpoints": {"chat": {"sdk_type": "openai"}},
+                "default_endpoint": "bogus",
+            }
+        )
+
+
+def test_provider_default_endpoint_is_accepted() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "p",
+            "name": "P",
+            "endpoints": {
+                "chat": {"sdk_type": "openai"},
+                "responses": {"sdk_type": "openai", "mode": "responses"},
+            },
+            "default_endpoint": "responses",
+        }
+    )
+    assert provider.default_endpoint == "responses"
+
+
+def test_provider_with_multiple_endpoints_requires_default_endpoint() -> None:
+    with pytest.raises(ValidationError, match="must declare default_endpoint"):
+        Provider.model_validate(
+            {
+                "id": "p",
+                "name": "P",
+                "endpoints": {
+                    "chat": {"sdk_type": "openai"},
+                    "responses": {"sdk_type": "openai", "mode": "responses"},
+                },
             }
         )
 

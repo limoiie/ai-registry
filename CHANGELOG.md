@@ -68,8 +68,10 @@ are always listed under **Changed** with a migration note.
   Accounts select one by name with `endpoint_ref`; `Resolution` surfaces the
   effective `sdk_type`/`mode`/`endpoint`, and adapters route on them. Model
   cards can declare which endpoints support them, and resolution validates the
-  selection. Providers without `endpoints` keep the legacy single-endpoint
-  behavior.
+  selection. The `endpoints` map is the single source of truth: a provider
+  designates its default endpoint with `default_endpoint` (or uses its only
+  endpoint), and the top-level `sdk_type`/`default_base_url` are honored only
+  for legacy providers that declare no `endpoints`.
 - **Model cards are now called `Model`, and the provider `model_cards` list is
   now `models` in both the schema and the YAML catalog files.** The legacy
   `model_cards` key is still accepted by the loader.

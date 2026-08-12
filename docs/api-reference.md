@@ -232,9 +232,10 @@ class ModelMode(StrEnum):
 | `id` | str | Identifier. |
 | `name` | str | Required. |
 | `description` | `str | None` | |
-| `sdk_type` | `SDKType` | Default `openai`. |
-| `default_base_url` | `str | None` | Endpoint-validated. |
+| `sdk_type` | `SDKType` | Default `openai`. Legacy; used only when `endpoints` is empty. |
+| `default_base_url` | `str | None` | Endpoint-validated. Legacy; used only when `endpoints` is empty. |
 | `endpoints` | `dict[str, ProviderEndpoint]` | Named endpoints selectable per account. |
+| `default_endpoint` | `str | None` | Names the default endpoint; must be a declared endpoint. |
 | `settings` | `dict[str, Any]` | Adapter settings. |
 | `models` | `list[Model]` | |
 

@@ -386,6 +386,7 @@ class Provider(SafeModel):
     sdk_type: SDKType = SDKType.OPENAI
     default_base_url: str | None = None
     endpoints: Mapping[str, ProviderEndpoint] = Field(default_factory=dict)
+    default_endpoint: Identifier | None = None
     settings: dict[str, Any] = Field(default_factory=dict)
     models: list[Model] = Field(
         default_factory=list,
@@ -394,6 +395,23 @@ class Provider(SafeModel):
 
     _validate_id = field_validator("id")(_check_identifier)
     _validate_endpoint = field_validator("default_base_url")(_validate_endpoint)
+
+    @model_validator(mode="after")
+    def validate_default_endpoint(self) -> Provider:
+        if (
+            self.default_endpoint is not None
+            and self.default_endpoint not in self.endpoints
+        ):
+            raise ValueError(
+                f"default_endpoint '{self.default_endpoint}' is not a "
+                "declared endpoint; declare it in endpoints"
+            )
+        if len(self.endpoints) > 1 and self.default_endpoint is None:
+            raise ValueError(
+                "a provider with multiple endpoints must declare "
+                "default_endpoint to pick the default"
+            )
+        return self
 
     @model_validator(mode="before")
     @classmethod

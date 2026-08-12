@@ -2,8 +2,6 @@ id: qwen
 name: Qwen (Alibaba Cloud)
 description: Alibaba Cloud's Qwen family of open-weight and API models, including
   chat, vision-language, and embedding models.
-sdk_type: openai
-default_base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
 endpoints:
   openai:
     sdk_type: openai

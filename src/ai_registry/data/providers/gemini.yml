@@ -2,8 +2,6 @@ id: gemini
 name: Google Gemini
 description: Google DeepMind's Gemini family of multimodal models, including fast flash
   models and text embeddings.
-sdk_type: google
-default_base_url: https://generativelanguage.googleapis.com
 endpoints:
   google:
     sdk_type: google

@@ -1,8 +1,6 @@
 id: uniapi-rerankers
 name: Uni API for Rerankers Only
 description: OpenAI-compatible reranking models served through the Uni API gateway.
-sdk_type: openai
-default_base_url: https://uni-api.cstcloud.cn/v1
 endpoints:
   openai:
     sdk_type: openai

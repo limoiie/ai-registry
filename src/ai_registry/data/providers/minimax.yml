@@ -2,8 +2,6 @@ id: minimax
 name: MiniMax
 description: Founded in 2021, MiniMax builds general-purpose AI models and products
   spanning text, speech, and vision.
-sdk_type: openai
-default_base_url: https://api.minimaxi.com/v1
 endpoints:
   openai:
     sdk_type: openai

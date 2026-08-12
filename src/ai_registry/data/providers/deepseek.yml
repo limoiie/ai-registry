@@ -1,8 +1,6 @@
 id: deepseek
 name: DeepSeek
 description: DeepSeek focuses on AI research and applications.
-sdk_type: anthropic
-default_base_url: https://api.deepseek.com/anthropic
 endpoints:
   openai-chat:
     sdk_type: openai
@@ -16,6 +14,7 @@ endpoints:
     sdk_type: anthropic
     base_url: https://api.deepseek.com/anthropic
     mode: chat
+default_endpoint: anthropic
 settings:
   url: https://deepseek.com
   check_model: deepseek-chat

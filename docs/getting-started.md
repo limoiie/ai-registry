@@ -37,7 +37,17 @@ from ai_registry.schemas import Alias, Deployment, Model, Account, Provider
 provider = Provider(
     id="deepseek",
     name="DeepSeek",
-    default_base_url="https://api.deepseek.com/v1",
+    endpoints={
+        "openai-chat": {
+            "sdk_type": "openai",
+            "base_url": "https://api.deepseek.com",
+        },
+        "anthropic": {
+            "sdk_type": "anthropic",
+            "base_url": "https://api.deepseek.com/anthropic",
+        },
+    },
+    default_endpoint="anthropic",
     models=[
         Model(id="deepseek-chat", type="chat"),
     ],
@@ -167,7 +177,14 @@ Given these three documents:
 ```yaml
 id: deepseek
 name: DeepSeek
-default_base_url: https://api.deepseek.com/v1
+endpoints:
+  openai-chat:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+  anthropic:
+    sdk_type: anthropic
+    base_url: https://api.deepseek.com/anthropic
+default_endpoint: anthropic
 models:
   - id: deepseek-chat
     type: chat
