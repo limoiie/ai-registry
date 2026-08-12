@@ -6,7 +6,7 @@ providers:
       sdk_type: anthropic
       proxy_url:
         placeholder: https://api.deepseek.com
-    model_cards:
+    models:
       - id: deepseek-chat
         display_name: DeepSeek Chat
         type: chat
@@ -27,7 +27,7 @@ providers:
       sdk_type: openai
       proxy_url:
         placeholder: https://uni-api.cstcloud.cn/v1
-    model_cards:
+    models:
       - id: bge-large-zh:latest
         display_name: BGE Large ZH Latest
         type: embedding
@@ -44,7 +44,7 @@ providers:
       sdk_type: openai
       proxy_url:
         placeholder: https://api.minimaxi.com/v1
-    model_cards:
+    models:
       - id: MiniMax-M2.7
         display_name: MiniMax M2.7
         type: chat
@@ -59,7 +59,7 @@ providers:
       sdk_type: uniapi
       proxy_url:
         placeholder: https://uni-api.cstcloud.cn/v1
-    model_cards:
+    models:
       - id: bge-reranker-v2-m3
         display_name: BGE Reranker V2 M3
         type: reranking

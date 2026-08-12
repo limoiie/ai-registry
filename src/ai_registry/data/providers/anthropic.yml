@@ -2,15 +2,18 @@ id: anthropic
 name: Anthropic
 description: Anthropic builds Claude, a family of frontier AI models for enterprise
   reasoning, coding, and agentic work.
-sdk_type: anthropic
-default_base_url: https://api.anthropic.com
+endpoints:
+  anthropic:
+    sdk_type: anthropic
+    base_url: https://api.anthropic.com
+    mode: chat
 settings:
   url: https://www.anthropic.com
   check_model: claude-sonnet-5
   models_url: https://docs.anthropic.com/en/docs/about-claude/models/overview
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: claude-opus-5
   display_name: Claude Opus 5
   type: chat

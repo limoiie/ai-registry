@@ -2,15 +2,18 @@ id: gemini
 name: Google Gemini
 description: Google DeepMind's Gemini family of multimodal models, including fast flash
   models and text embeddings.
-sdk_type: google
-default_base_url: https://generativelanguage.googleapis.com
+endpoints:
+  google:
+    sdk_type: google
+    base_url: https://generativelanguage.googleapis.com
+    mode: chat
 settings:
   url: https://deepmind.google/technologies/gemini/
   check_model: gemini-3.6-flash
   models_url: https://ai.google.dev/gemini-api/docs/models
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: gemini-3.6-flash
   display_name: Gemini 3.6 Flash
   type: chat

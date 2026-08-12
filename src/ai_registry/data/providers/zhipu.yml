@@ -2,15 +2,18 @@ id: zhipu
 name: Zhipu AI (GLM)
 description: Zhipu AI develops the GLM family of foundation models with strong Chinese
   and multilingual language support.
-sdk_type: openai
-default_base_url: https://open.bigmodel.cn/api/paas/v4
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    mode: chat
 settings:
   url: https://www.zhipuai.cn
   check_model: glm-5.2
   models_url: https://open.bigmodel.cn/dev/howuse/model
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: glm-5.2
   display_name: GLM-5.2
   type: chat

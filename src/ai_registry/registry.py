@@ -28,8 +28,8 @@ from ai_registry.schemas import (
     Account,
     Alias,
     Deployment,
+    Model,
     ModelCapabilities,
-    ModelCard,
     ModelMode,
     ModelType,
     Provider,
@@ -83,7 +83,7 @@ class Resolution:
     """Safe deployment information passed to an adapter."""
 
     provider: Provider
-    model: ModelCard
+    model: Model
     account: Account
     deployment_id: str
     endpoint: str | None
@@ -154,10 +154,10 @@ class Resolution:
 
 @dataclass(frozen=True)
 class CatalogEntry:
-    """One model card together with the provider that offers it."""
+    """One model together with the provider that offers it."""
 
     provider_id: str
-    model: ModelCard
+    model: Model
 
     @property
     def model_id(self) -> str:
@@ -385,23 +385,23 @@ class Registry:
         for provider in sorted(self._providers.values(), key=lambda p: p.id):
             if provider_id is not None and provider.id != provider_id:
                 continue
-            for card in provider.model_cards:
-                if wanted_type is not None and card.type is not wanted_type:
+            for model in provider.models:
+                if wanted_type is not None and model.type is not wanted_type:
                     continue
-                if exposed is not None and (provider.id, card.id) not in exposed:
+                if exposed is not None and (provider.id, model.id) not in exposed:
                     continue
                 if min_context_tokens is not None and (
-                    card.context_window_tokens is None
-                    or card.context_window_tokens < min_context_tokens
+                    model.context_window_tokens is None
+                    or model.context_window_tokens < min_context_tokens
                 ):
                     continue
                 if any(
-                    getattr(card.capabilities, name) is not True for name in required
+                    getattr(model.capabilities, name) is not True for name in required
                 ):
                     continue
                 entries.append(
                     CatalogEntry(
-                        provider_id=provider.id, model=card.model_copy(deep=True)
+                        provider_id=provider.id, model=model.model_copy(deep=True)
                     )
                 )
         return entries
@@ -443,18 +443,25 @@ class Registry:
         result_provider = provider.model_copy(deep=True)
         result_account = account.model_copy(deep=True)
         result_model = next(
-            card
-            for card in result_provider.model_cards
-            if card.id == deployment.model_id
+            model for model in result_provider.models if model.id == deployment.model_id
         )
-        endpoint = result_account.endpoint or result_provider.default_base_url
-        sdk_type = result_provider.sdk_type
-        mode = ModelMode.CHAT
+        selected = None
         if result_account.endpoint_ref is not None:
             selected = result_provider.endpoints[result_account.endpoint_ref]
-            endpoint = selected.base_url
+        elif result_provider.endpoints:
+            name = result_provider.default_endpoint
+            if name is None and len(result_provider.endpoints) == 1:
+                name = next(iter(result_provider.endpoints))
+            if name is not None:
+                selected = result_provider.endpoints[name]
+        if selected is not None:
+            endpoint = result_account.endpoint or selected.base_url
             sdk_type = selected.sdk_type
             mode = selected.mode
+        else:
+            endpoint = result_account.endpoint or result_provider.default_base_url
+            sdk_type = result_provider.sdk_type
+            mode = ModelMode.CHAT
         return Resolution(
             provider=result_provider,
             model=result_model,
@@ -491,13 +498,13 @@ class Registry:
                     f"'{provider.id}' endpoints"
                 )
         for provider in self._providers.values():
-            for card in provider.model_cards:
-                if card.endpoints is None:
+            for model in provider.models:
+                if model.endpoints is None:
                     continue
-                for endpoint in card.endpoints:
+                for endpoint in model.endpoints:
                     if endpoint not in provider.endpoints:
                         raise ConfigurationError(
-                            f"model '{card.id}' references unknown endpoint "
+                            f"model '{model.id}' references unknown endpoint "
                             f"'{endpoint}'; add it to provider "
                             f"'{provider.id}' endpoints"
                         )
@@ -518,8 +525,8 @@ class Registry:
 
     def _validate_model_enabled(self, account: Account, model_id: str) -> None:
         provider = self._providers[account.provider_id]
-        card = _find_model(provider, model_id)
-        if card is None:
+        model = _find_model(provider, model_id)
+        if model is None:
             raise RegistryError(
                 f"unknown model for provider '{provider.id}'; add it to the provider"
             )
@@ -530,18 +537,18 @@ class Registry:
             )
         if (
             account.endpoint_ref is not None
-            and card.endpoints is not None
-            and account.endpoint_ref not in card.endpoints
+            and model.endpoints is not None
+            and account.endpoint_ref not in model.endpoints
         ):
             raise RegistryError(
                 f"model '{model_id}' is not supported by endpoint "
-                f"'{account.endpoint_ref}'; the model card declares "
-                f"endpoints {sorted(card.endpoints)}"
+                f"'{account.endpoint_ref}'; the model declares "
+                f"endpoints {sorted(model.endpoints)}"
             )
 
 
-def _find_model(provider: Provider, model_id: str) -> ModelCard | None:
-    return next((card for card in provider.model_cards if card.id == model_id), None)
+def _find_model(provider: Provider, model_id: str) -> Model | None:
+    return next((model for model in provider.models if model.id == model_id), None)
 
 
 def _redact_metadata(value: Any) -> Any:

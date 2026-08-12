@@ -19,7 +19,7 @@ from typing import Any
 from ai_registry.config import PathSource, load_document
 from ai_registry.errors import ConfigurationError
 from ai_registry.schemas import (
-    ModelCard,
+    Model,
     ModelType,
     Provider,
     normalize_capabilities,
@@ -31,7 +31,7 @@ __all__ = ["load_models_dev", "models_dev_provider"]
 #: :func:`~ai_registry.schemas.normalize_capabilities`.
 _MODELS_DEV_ABILITIES = ("tool_call", "reasoning", "structured_output")
 
-#: models.dev keys preserved on the model card's free-form ``metadata``.
+#: models.dev keys preserved on the model's free-form ``metadata``.
 _MODELS_DEV_METADATA = (
     "cost",
     "family",
@@ -110,13 +110,13 @@ def models_dev_provider(
         name=str(entry.get("name") or provider_id),
         default_base_url=default_base_url or _string_or_none(entry.get("api")),
         settings=settings,
-        model_cards=[
-            _model_card(model_id, models[model_id]) for model_id in sorted(models)
+        models=[
+            _build_model(model_id, models[model_id]) for model_id in sorted(models)
         ],
     )
 
 
-def _model_card(model_id: str, entry: Any) -> ModelCard:
+def _build_model(model_id: str, entry: Any) -> Model:
     if not isinstance(entry, Mapping):
         raise ConfigurationError(f"models.dev model '{model_id}' must be a mapping")
     limit = _mapping(entry.get("limit"))
@@ -126,7 +126,7 @@ def _model_card(model_id: str, entry: Any) -> ModelCard:
     if "image" in _sequence(modalities.get("input")):
         capabilities["vision"] = True
 
-    return ModelCard(
+    return Model(
         id=str(entry.get("id") or model_id),
         type=_model_type(modalities),
         display_name=_string_or_none(entry.get("name")),

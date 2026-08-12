@@ -124,7 +124,7 @@ def test_project_provider_overrides_builtin_by_id(tmp_path: Path) -> None:
     providers_dir = tmp_path / ".ai-registry" / "providers"
     providers_dir.mkdir(parents=True)
     (providers_dir / "uniapi.yml").write_text(
-        "id: uniapi\nname: My Uni API\nmodel_cards:\n  - id: custom\n    type: chat\n",
+        "id: uniapi\nname: My Uni API\nmodels:\n  - id: custom\n    type: chat\n",
         encoding="utf-8",
     )
 
@@ -134,7 +134,7 @@ def test_project_provider_overrides_builtin_by_id(tmp_path: Path) -> None:
 
     uniapi = next(provider for provider in merged if provider.id == "uniapi")
     assert uniapi.name == "My Uni API"
-    assert [card.id for card in uniapi.model_cards] == ["custom"]
+    assert [card.id for card in uniapi.models] == ["custom"]
     assert len({provider.id for provider in merged}) == len(merged)
 
 
@@ -142,8 +142,7 @@ def test_project_provider_adds_unique_provider(tmp_path: Path) -> None:
     providers_dir = tmp_path / ".ai-registry" / "providers"
     providers_dir.mkdir(parents=True)
     (providers_dir / "my-vllm.yaml").write_text(
-        "id: my-vllm\nname: Local vLLM\nmodel_cards:\n"
-        "  - id: qwen:32b\n    type: chat\n",
+        "id: my-vllm\nname: Local vLLM\nmodels:\n  - id: qwen:32b\n    type: chat\n",
         encoding="utf-8",
     )
 
@@ -267,9 +266,9 @@ def test_normalizes_single_provider_and_preserves_metadata() -> None:
     assert provider.sdk_type.value == "custom"
     assert provider.settings["proxy_url"] == "https://proxy.example.test"
     assert provider.settings["url"] == "https://alpha.example.test"
-    assert provider.model_cards[0].metadata["pricing"] == {"input": 1}
-    assert provider.model_cards[0].capabilities.reasoning is True
-    assert provider.model_cards[0].metadata["abilities"]["function_call"] is True
+    assert provider.models[0].metadata["pricing"] == {"input": 1}
+    assert provider.models[0].capabilities.reasoning is True
+    assert provider.models[0].metadata["abilities"]["function_call"] is True
 
 
 def test_loads_multiple_provider_files() -> None:
@@ -280,33 +279,40 @@ def test_loads_multiple_provider_files() -> None:
     assert [provider.id for provider in providers] == ["alpha", "beta"]
 
 
-@pytest.mark.parametrize("model_cards", [0, False, ""])
-def test_rejects_falsy_non_list_model_cards(
-    tmp_path: Path, model_cards: object
-) -> None:
-    path = tmp_path / "invalid-model-cards.yaml"
+@pytest.mark.parametrize("models", [0, False, ""])
+def test_rejects_falsy_non_list_models(tmp_path: Path, models: object) -> None:
+    path = tmp_path / "invalid-models.yaml"
     path.write_text(
-        f"id: provider\nname: Provider\nmodel_cards: {model_cards!r}\n",
+        f"id: provider\nname: Provider\nmodels: {models!r}\n",
         encoding="utf-8",
     )
 
-    with pytest.raises(
-        ConfigurationError, match=r"Invalid model cards.*expected a list"
-    ):
+    with pytest.raises(ConfigurationError, match=r"Invalid models.*expected a list"):
         load_provider_file(path)
 
 
-@pytest.mark.parametrize("model_cards", [None, []])
-def test_allows_empty_model_cards_values(tmp_path: Path, model_cards: object) -> None:
-    path = tmp_path / "empty-model-cards.yaml"
+@pytest.mark.parametrize("models", [None, []])
+def test_allows_empty_models_values(tmp_path: Path, models: object) -> None:
+    path = tmp_path / "empty-models.yaml"
     document = "id: provider\nname: Provider\n"
-    if model_cards is None:
-        document += "model_cards: null\n"
+    if models is None:
+        document += "models: null\n"
     else:
-        document += "model_cards: []\n"
+        document += "models: []\n"
     path.write_text(document, encoding="utf-8")
 
-    assert load_provider_file(path).model_cards == []
+    assert load_provider_file(path).models == []
+
+
+def test_legacy_model_cards_key_is_accepted(tmp_path: Path) -> None:
+    path = tmp_path / "legacy-models.yaml"
+    path.write_text(
+        "id: provider\nname: Provider\nmodel_cards:\n  - id: chat\n    type: chat\n",
+        encoding="utf-8",
+    )
+
+    provider = load_provider_file(path)
+    assert [model.id for model in provider.models] == ["chat"]
 
 
 def test_normalizes_accounts_without_resolving_credentials() -> None:
@@ -353,7 +359,7 @@ def test_duplicate_provider_ids_are_rejected(tmp_path: Path) -> None:
 def test_duplicate_model_ids_are_rejected(tmp_path: Path) -> None:
     path = tmp_path / "duplicate.yaml"
     path.write_text(
-        "id: provider\nname: Provider\nmodel_cards:\n"
+        "id: provider\nname: Provider\nmodels:\n"
         "  - id: same\n    type: chat\n  - id: same\n    type: chat\n",
         encoding="utf-8",
     )
@@ -368,13 +374,9 @@ def test_loads_actual_catalog_normalized_model_fields() -> None:
     uniapi = load_provider_file(DATA / "uniapi.yml")
     minimax = load_provider_file(DATA / "minimax.yml")
 
-    embedding = next(
-        card for card in uniapi.model_cards if card.id == "bge-large-zh:latest"
-    )
-    vision = next(card for card in uniapi.model_cards if card.id == "qwen2.5-vl:72b")
-    deprecated = next(
-        card for card in minimax.model_cards if card.id == "MiniMax-M2-Stable"
-    )
+    embedding = next(card for card in uniapi.models if card.id == "bge-large-zh:latest")
+    vision = next(card for card in uniapi.models if card.id == "qwen2.5-vl:72b")
+    deprecated = next(card for card in minimax.models if card.id == "MiniMax-M2-Stable")
 
     assert embedding.embedding_dimension == 1024
     assert vision.context_window_tokens == 131072
@@ -386,7 +388,7 @@ def test_normalizes_actual_uniapi_reranker_to_openai() -> None:
     provider = load_provider_file(DATA / "uniapi-rerankers.yml")
 
     assert provider.sdk_type.value == "openai"
-    assert provider.model_cards[0].type.value == "reranking"
+    assert provider.models[0].type.value == "reranking"
 
 
 def test_rejects_unsupported_sdk_type(tmp_path: Path) -> None:
@@ -438,7 +440,8 @@ def test_provider_endpoints_parse_from_file(tmp_path: Path) -> None:
         "  openai-responses:\n"
         "    sdk_type: openai\n"
         "    base_url: https://api.deepseek.com\n"
-        "    mode: responses\n",
+        "    mode: responses\n"
+        "default_endpoint: openai-chat\n",
         encoding="utf-8",
     )
     provider = load_provider_file(path)
@@ -449,7 +452,7 @@ def test_provider_endpoints_parse_from_file(tmp_path: Path) -> None:
 def test_multi_endpoint_fixture_loads() -> None:
     provider = load_provider_file(FIXTURES / "deepseek-endpoints.yml")
     assert set(provider.endpoints) == {"openai-chat", "openai-responses", "anthropic"}
-    flash = next(c for c in provider.model_cards if c.id == "deepseek-v4-flash")
+    flash = next(c for c in provider.models if c.id == "deepseek-v4-flash")
     assert flash.endpoints == ["openai-chat", "openai-responses", "anthropic"]
 
 
@@ -524,16 +527,14 @@ def test_loads_legacy_account_fields_into_metadata(tmp_path: Path) -> None:
     assert accounts[0].credential.env == "DEEPSEEK_API_KEY"
 
 
-def test_non_mapping_model_card_has_safe_actionable_error(tmp_path: Path) -> None:
+def test_non_mapping_model_has_safe_actionable_error(tmp_path: Path) -> None:
     path = tmp_path / "bad-card.yaml"
     path.write_text(
-        "id: provider\nname: Provider\nmodel_cards:\n  - bad\n",
+        "id: provider\nname: Provider\nmodels:\n  - bad\n",
         encoding="utf-8",
     )
 
-    with pytest.raises(
-        ConfigurationError, match=r"Invalid model card.*index 0.*mapping"
-    ):
+    with pytest.raises(ConfigurationError, match=r"Invalid model.*index 0.*mapping"):
         load_provider_file(path)
 
 
@@ -543,12 +544,12 @@ def test_non_mapping_model_card_has_safe_actionable_error(tmp_path: Path) -> Non
         ("settings", "id: provider\nname: Provider\nsettings: bad\n"),
         (
             "abilities",
-            "id: provider\nname: Provider\nmodel_cards:\n"
+            "id: provider\nname: Provider\nmodels:\n"
             "  - id: model\n    type: chat\n    abilities: bad\n",
         ),
         (
             "metadata",
-            "id: provider\nname: Provider\nmodel_cards:\n"
+            "id: provider\nname: Provider\nmodels:\n"
             "  - id: model\n    type: chat\n    metadata: bad\n",
         ),
     ],

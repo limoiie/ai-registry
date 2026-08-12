@@ -2,15 +2,18 @@ id: uniapi
 name: Uni API
 description: OpenAI-compatible gateway aggregating open-weight chat, embedding, and
   reranking models.
-sdk_type: openai
-default_base_url: https://uni-api.cstcloud.cn
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://uni-api.cstcloud.cn
+    mode: chat
 settings:
   url: https://www.cstcloud.cn
   check_model: deepseek-v4-flash
   models_url: https://uni-api.cstcloud.cn/doc/llm/models
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: bge-large-zh:latest
   display_name: BGE Large ZH Latest
   type: embedding

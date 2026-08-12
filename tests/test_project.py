@@ -201,11 +201,7 @@ def test_from_project_adds_new_project_provider(tmp_path: Path) -> None:
     providers_dir = tmp_path / ".ai-registry" / "providers"
     providers_dir.mkdir(parents=True)
     (providers_dir / "local-vllm.yml").write_text(
-        "id: local-vllm\n"
-        "name: Local vLLM\n"
-        "model_cards:\n"
-        "  - id: qwen:32b\n"
-        "    type: chat\n",
+        "id: local-vllm\nname: Local vLLM\nmodels:\n  - id: qwen:32b\n    type: chat\n",
         encoding="utf-8",
     )
     _write_deployments(
@@ -240,7 +236,7 @@ def test_from_project_project_provider_overrides_builtin(tmp_path: Path) -> None
     (providers_dir / "deepseek.yml").write_text(
         "id: deepseek\n"
         "name: Project DeepSeek\n"
-        "model_cards:\n"
+        "models:\n"
         "  - id: project-model\n"
         "    type: chat\n",
         encoding="utf-8",

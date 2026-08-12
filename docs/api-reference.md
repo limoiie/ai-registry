@@ -138,7 +138,7 @@ are redacted.
 | Attribute / property | Type | Meaning |
 | --- | --- | --- |
 | `provider` | `Provider` | Deep-copied provider metadata. |
-| `model` | `ModelCard` | The selected model card. |
+| `model` | `Model` | The selected model. |
 | `account` | `Account` | Deep-copied account. |
 | `deployment_id` | `str` | The deployment reference used by the resolution layer. |
 | `endpoint` | `str | None` | `account.endpoint` or provider `default_base_url` (or the selected endpoint's `base_url` when `endpoint_ref` is set). |
@@ -201,7 +201,7 @@ class ModelMode(StrEnum):
 | `vision` | bool | `False` |
 | `reasoning` | bool | `False` |
 
-### `ModelCard`
+### `Model`
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -232,11 +232,12 @@ class ModelMode(StrEnum):
 | `id` | str | Identifier. |
 | `name` | str | Required. |
 | `description` | `str | None` | |
-| `sdk_type` | `SDKType` | Default `openai`. |
-| `default_base_url` | `str | None` | Endpoint-validated. |
+| `sdk_type` | `SDKType` | Default `openai`. Legacy; used only when `endpoints` is empty. |
+| `default_base_url` | `str | None` | Endpoint-validated. Legacy; used only when `endpoints` is empty. |
 | `endpoints` | `dict[str, ProviderEndpoint]` | Named endpoints selectable per account. |
+| `default_endpoint` | `str | None` | Names the default endpoint; must be a declared endpoint. |
 | `settings` | `dict[str, Any]` | Adapter settings. |
-| `model_cards` | `list[ModelCard]` | |
+| `models` | `list[Model]` | |
 
 ### `CredentialRef`
 
@@ -487,7 +488,7 @@ build_registry(
     aliases: Mapping[str, Sequence[str]] | None = None,
     *,
     provider_id: str = "test-provider",
-    models: Sequence[str | ModelCard] = ("test-model",),
+    models: Sequence[str | Model] = ("test-model",),
     accounts: Sequence[str] = ("test-account",),
     model_type: ModelType | str = ModelType.CHAT,
     sdk_type: SDKType | str = SDKType.OPENAI,

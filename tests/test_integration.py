@@ -66,12 +66,12 @@ def test_registry_core_does_not_import_optional_sdks() -> None:
 import sys
 
 from ai_registry import Registry
-from ai_registry.schemas import Account, ModelCard, Provider
+from ai_registry.schemas import Account, Model, Provider
 
 provider = Provider(
     id="provider",
     name="Provider",
-    model_cards=[ModelCard(id="chat", type="chat")],
+    models=[Model(id="chat", type="chat")],
 )
 account = Account(id="account", provider_id="provider", enabled_models=["chat"])
 Registry.from_data(providers=[provider], accounts=[account])

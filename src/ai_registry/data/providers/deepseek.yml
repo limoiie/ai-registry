@@ -1,15 +1,27 @@
 id: deepseek
 name: DeepSeek
 description: DeepSeek focuses on AI research and applications.
-sdk_type: anthropic
-default_base_url: https://api.deepseek.com/anthropic
+endpoints:
+  openai-chat:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+    mode: chat
+  openai-responses:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+    mode: responses
+  anthropic:
+    sdk_type: anthropic
+    base_url: https://api.deepseek.com/anthropic
+    mode: chat
+default_endpoint: anthropic
 settings:
   url: https://deepseek.com
   check_model: deepseek-chat
   models_url: https://platform.deepseek.com/api-docs/quick_start/pricing
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: deepseek-v4-flash
   display_name: DeepSeek V4 Flash
   type: chat
@@ -18,6 +30,7 @@ model_cards:
     optional thinking mode, and strong agentic performance for high-volume workloads.
   context_window_tokens: 1000000
   max_output_tokens: 384000
+  endpoints: [openai-chat, openai-responses, anthropic]
   capabilities:
     tools: true
     reasoning: true
@@ -46,6 +59,7 @@ model_cards:
     thinking mode, and top-tier agentic coding, reasoning, and world-knowledge performance.
   context_window_tokens: 1000000
   max_output_tokens: 384000
+  endpoints: [openai-chat, anthropic]
   capabilities:
     tools: true
     reasoning: true
@@ -74,6 +88,7 @@ model_cards:
     architecture and stronger agent capabilities.
   context_window_tokens: 131072
   max_output_tokens: 8192
+  endpoints: [openai-chat, anthropic]
   capabilities:
     tools: true
     structured_output: true
@@ -101,6 +116,7 @@ model_cards:
     answer to improve accuracy.
   context_window_tokens: 131072
   max_output_tokens: 65536
+  endpoints: [openai-chat, anthropic]
   capabilities:
     tools: true
     reasoning: true

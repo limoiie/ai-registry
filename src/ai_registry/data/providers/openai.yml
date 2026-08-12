@@ -1,15 +1,18 @@
 id: openai
 name: OpenAI
 description: OpenAI develops frontier GPT models, reasoning models, and text embeddings.
-sdk_type: openai
-default_base_url: https://api.openai.com/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://api.openai.com/v1
+    mode: chat
 settings:
   url: https://openai.com
   check_model: gpt-5.6
   models_url: https://platform.openai.com/docs/pricing
   show_model_fetcher: true
 
-model_cards:
+models:
 - id: gpt-5.6
   display_name: GPT-5.6
   type: chat

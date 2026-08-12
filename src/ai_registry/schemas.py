@@ -352,7 +352,7 @@ def normalize_capabilities(abilities: Mapping[str, Any]) -> dict[str, bool]:
     return normalized
 
 
-class ModelCard(SafeModel):
+class Model(SafeModel):
     id: Identifier
     type: ModelType
     display_name: str | None = None
@@ -386,11 +386,32 @@ class Provider(SafeModel):
     sdk_type: SDKType = SDKType.OPENAI
     default_base_url: str | None = None
     endpoints: Mapping[str, ProviderEndpoint] = Field(default_factory=dict)
+    default_endpoint: Identifier | None = None
     settings: dict[str, Any] = Field(default_factory=dict)
-    model_cards: list[ModelCard] = Field(default_factory=list)
+    models: list[Model] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("models", "model_cards"),
+    )
 
     _validate_id = field_validator("id")(_check_identifier)
     _validate_endpoint = field_validator("default_base_url")(_validate_endpoint)
+
+    @model_validator(mode="after")
+    def validate_default_endpoint(self) -> Provider:
+        if (
+            self.default_endpoint is not None
+            and self.default_endpoint not in self.endpoints
+        ):
+            raise ValueError(
+                f"default_endpoint '{self.default_endpoint}' is not a "
+                "declared endpoint; declare it in endpoints"
+            )
+        if len(self.endpoints) > 1 and self.default_endpoint is None:
+            raise ValueError(
+                "a provider with multiple endpoints must declare "
+                "default_endpoint to pick the default"
+            )
+        return self
 
     @model_validator(mode="before")
     @classmethod
@@ -525,7 +546,7 @@ class RegistryConfig(SafeModel):
     @model_validator(mode="after")
     def validate_unique_ids(self) -> RegistryConfig:
         for provider in self.providers:
-            model_ids = [card.id for card in provider.model_cards]
+            model_ids = [model.id for model in provider.models]
             if len(model_ids) != len(set(model_ids)):
                 raise ConfigurationError("duplicate model id")
 

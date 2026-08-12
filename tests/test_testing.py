@@ -4,7 +4,7 @@ import pytest
 
 from ai_registry import RegistryError
 from ai_registry.routing import DeploymentTarget
-from ai_registry.schemas import ModelCard, ModelType
+from ai_registry.schemas import Model, ModelType
 from ai_registry.secrets import SecretResolutionError
 from ai_registry.testing import (
     FakeSecretResolver,
@@ -29,11 +29,11 @@ def test_build_registry_resolves_a_single_alias(
     assert resolution.resolve_credential() == "sk-test"
 
 
-def test_build_registry_accepts_multiple_accounts_and_model_cards() -> None:
+def test_build_registry_accepts_multiple_accounts_and_models() -> None:
     registry = build_registry(
         {"chat-default": ["primary/big", "backup/small"]},
         models=[
-            ModelCard(id="big", type=ModelType.CHAT, context_window_tokens=200_000),
+            Model(id="big", type=ModelType.CHAT, context_window_tokens=200_000),
             "small",
         ],
         accounts=["primary", "backup"],

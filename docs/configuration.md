@@ -118,19 +118,25 @@ It contains metadata and safe defaults, never secrets.
 id: uniapi
 name: Uni API
 description: OpenAI-compatible gateway
-sdk_type: openai            # openai | anthropic | google | custom
-default_base_url: https://uni-api.cstcloud.cn/v1
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://uni-api.cstcloud.cn/v1
+    mode: chat
 settings:
   region: cn-east
-model_cards:
+models:
   - id: deepseek-v4-flash
     type: chat
 ```
 
 ### Endpoints
 
-Some providers expose several protocols or HTTP endpoints. Declare them in an
-`endpoints` map, and each account selects one by name with `endpoint_ref`:
+A provider's API surfaces live in the `endpoints` map. Each entry bundles a
+protocol (`sdk_type`), a `base_url`, and an optional `mode`. Every catalog
+provider declares its endpoints here; the deprecated top-level `sdk_type` /
+`default_base_url` fields are only honored for legacy providers that declare no
+`endpoints` map.
 
 ```yaml
 id: deepseek
@@ -148,7 +154,7 @@ endpoints:
     sdk_type: anthropic
     base_url: https://api.deepseek.com/anthropic
     mode: chat
-model_cards:
+models:
   - id: deepseek-v4-flash
     type: chat
     endpoints: [openai-chat, openai-responses, anthropic]
@@ -171,11 +177,27 @@ Each endpoint entry is a `ProviderEndpoint`:
 can be omitted; `mode: responses` selects the OpenAI Responses API where the
 endpoint provides it.
 
-Providers **without** an `endpoints` map keep the legacy single-endpoint
-behavior: `sdk_type` and `default_base_url` apply to every account. When an
-`endpoints` map is present, accounts select an endpoint by name with
-`endpoint_ref` (see [Account](#account)), and resolution uses that endpoint's
-`base_url`, `sdk_type`, and `mode`.
+#### Default endpoint
+
+An account without an `endpoint_ref` uses the provider's **default endpoint**.
+The default is:
+
+- the endpoint named by the provider's `default_endpoint` field, when set; or
+- the provider's only endpoint, when exactly one is declared.
+
+```yaml
+id: deepseek
+name: DeepSeek
+endpoints:
+  openai-chat: {...}
+  openai-responses: {...}
+  anthropic: {...}
+default_endpoint: anthropic
+```
+
+`default_endpoint` must name a declared endpoint; it is rejected otherwise.
+When an account sets `endpoint_ref`, that endpoint wins regardless of the
+provider default.
 
 ### Field reference
 
@@ -184,11 +206,12 @@ behavior: `sdk_type` and `default_base_url` apply to every account. When an
 | `id` | identifier | yes | `[A-Za-z0-9_.-]`, no spaces. |
 | `name` | string | yes | Display name. |
 | `description` | string | no | Free text. |
-| `sdk_type` | enum | no | `openai` (default), `anthropic`, `google`, `custom`. Used when no `endpoints` map is declared. |
-| `default_base_url` | URL string | no | Validated endpoint (see [Endpoint validation](#endpoint-validation)). Used when no `endpoints` map is declared. |
+| `sdk_type` | enum | no | `openai` (default), `anthropic`, `google`, `custom`. Legacy; used only when no `endpoints` map is declared. |
+| `default_base_url` | URL string | no | Validated endpoint (see [Endpoint validation](#endpoint-validation)). Legacy; used only when no `endpoints` map is declared. |
 | `endpoints` | mapping | no | Named endpoint map (see [Endpoints](#endpoints)). |
+| `default_endpoint` | identifier | no | Names the default endpoint (see [Default endpoint](#default-endpoint)). |
 | `settings` | mapping | no | Provider-specific adapter settings; forwarded as-is. |
-| `model_cards` | list | no | The provider's model catalog. |
+| `models` | list | no | The provider's model catalog. |
 
 ### SDK types
 
@@ -203,12 +226,12 @@ so adapters can be chosen later:
 | `google` | Gemini/Google endpoints. |
 | `custom` | Anything else; adapter-specific handling. |
 
-### Model cards
+### Models
 
-A model card describes a model independently of any deployment.
+A model describes one model independently of any deployment.
 
 ```yaml
-model_cards:
+models:
   - id: deepseek-v4-flash
     display_name: DeepSeek V4 Flash
     type: chat                    # chat | embedding | reranking
@@ -450,7 +473,7 @@ models_url: https://uni-api.cstcloud.cn/doc/llm/models  # moved into settings.mo
 settings:
   sdk_type: openai
   show_model_fetcher: true
-model_cards:
+model_cards:                     # legacy key; the normalized key is `models`
   - id: deepseek-r1:32b
     type: chat
     abilities:                       # mapped to capabilities
@@ -464,6 +487,7 @@ model_cards:
 Normalization rules:
 
 - `url`, `check_model`, `models_url` are copied into `settings`.
+- `model_cards` (legacy) maps to the normalized `models` key; both are accepted.
 - `sdk_type` may appear at top level or inside `settings`. Legacy `uniapi` is
   normalized to `openai`. Conflicting `sdk_type` declarations are rejected.
 - `abilities` maps known capability keys (`reasoning`, `structured_output`,
@@ -503,9 +527,12 @@ A realistic multi-provider setup (one provider per file):
 # uniapi.yaml
 id: uniapi
 name: Uni API
-sdk_type: openai
-default_base_url: https://uni-api.cstcloud.cn/v1
-model_cards:
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://uni-api.cstcloud.cn/v1
+    mode: chat
+models:
   - id: deepseek-v4-flash
     type: chat
     context_window_tokens: 1000000

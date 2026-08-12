@@ -72,7 +72,7 @@ def test_models_dev_entry_maps_onto_the_provider_schema() -> None:
     assert provider.settings["env"] == ["ANTHROPIC_API_KEY"]
     assert provider.settings["source"] == "models.dev"
 
-    card = provider.model_cards[0]
+    card = provider.models[0]
     assert card.id == "claude-sonnet-4-6"
     assert card.display_name == "Claude Sonnet 4.6"
     assert card.type is ModelType.CHAT
@@ -83,7 +83,7 @@ def test_models_dev_entry_maps_onto_the_provider_schema() -> None:
 
 def test_models_dev_capabilities_use_the_shared_synonym_table() -> None:
     provider = models_dev_provider("anthropic", MODELS_DEV["anthropic"])
-    capabilities = provider.model_cards[0].capabilities
+    capabilities = provider.models[0].capabilities
 
     # models.dev spells tool support "tool_call", not "tools".
     assert capabilities.tools is True
@@ -94,7 +94,7 @@ def test_models_dev_capabilities_use_the_shared_synonym_table() -> None:
 
 
 def test_models_dev_pricing_and_extras_are_preserved_as_metadata() -> None:
-    card = models_dev_provider("anthropic", MODELS_DEV["anthropic"]).model_cards[0]
+    card = models_dev_provider("anthropic", MODELS_DEV["anthropic"]).models[0]
 
     assert card.metadata["cost"] == {
         "input": 3,
@@ -109,7 +109,7 @@ def test_models_dev_pricing_and_extras_are_preserved_as_metadata() -> None:
 
 def test_embedding_output_modality_selects_the_embedding_model_type() -> None:
     provider = models_dev_provider("openai", MODELS_DEV["openai"])
-    card = provider.model_cards[0]
+    card = provider.models[0]
 
     assert card.type is ModelType.EMBEDDING
     assert card.context_window_tokens == 8191

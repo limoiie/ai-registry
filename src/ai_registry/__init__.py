@@ -70,10 +70,10 @@ from ai_registry.schemas import (
     Deployment as Deployment,
 )
 from ai_registry.schemas import (
-    ModelCapabilities as ModelCapabilities,
+    Model as Model,
 )
 from ai_registry.schemas import (
-    ModelCard as ModelCard,
+    ModelCapabilities as ModelCapabilities,
 )
 from ai_registry.schemas import (
     ModelType as ModelType,
@@ -114,8 +114,8 @@ __all__ = [
     "EnvironmentSecretResolver",
     "HealthStore",
     "MissingDependencyError",
+    "Model",
     "ModelCapabilities",
-    "ModelCard",
     "ModelType",
     "NoAvailableDeploymentError",
     "Provider",

@@ -11,8 +11,8 @@ from ai_registry.schemas import (
     Alias,
     CredentialRef,
     Deployment,
+    Model,
     ModelCapabilities,
-    ModelCard,
     ModelType,
     Provider,
     RegistryConfig,
@@ -26,8 +26,8 @@ def test_provider_and_model_card_have_safe_defaults_and_capabilities() -> None:
     provider = Provider(
         id="openai-compatible",
         name="OpenAI Compatible",
-        model_cards=[
-            ModelCard(
+        models=[
+            Model(
                 id="chat-model",
                 type=ModelType.CHAT,
                 capabilities=ModelCapabilities(tools=True, vision=True),
@@ -38,8 +38,8 @@ def test_provider_and_model_card_have_safe_defaults_and_capabilities() -> None:
 
     assert provider.sdk_type is SDKType.OPENAI
     assert provider.default_base_url is None
-    assert provider.model_cards[0].capabilities.tools is True
-    assert provider.model_cards[0].capabilities.vision is True
+    assert provider.models[0].capabilities.tools is True
+    assert provider.models[0].capabilities.vision is True
 
 
 def test_provider_accepts_nested_sdk_type_settings() -> None:
@@ -64,14 +64,14 @@ def test_identifiers_are_constrained() -> None:
         Provider(id="bad id", name="Invalid")
 
     with pytest.raises(ValidationError):
-        ModelCard(id="", type=ModelType.CHAT)
+        Model(id="", type=ModelType.CHAT)
 
 
 def test_model_ids_allow_catalog_native_separators() -> None:
     catalog_ids = ["bge-large-zh:latest", "Qwen/Qwen3-32B"]
 
     for model_id in catalog_ids:
-        assert ModelCard(id=model_id, type=ModelType.CHAT).id == model_id
+        assert Model(id=model_id, type=ModelType.CHAT).id == model_id
 
     account = Account(
         id="catalog-account",
@@ -352,9 +352,9 @@ def test_aggregate_rejects_duplicate_model_ids_within_provider() -> None:
     provider = Provider(
         id="provider",
         name="Provider",
-        model_cards=[
-            ModelCard(id="chat-model", type=ModelType.CHAT),
-            ModelCard(id="chat-model", type=ModelType.CHAT),
+        models=[
+            Model(id="chat-model", type=ModelType.CHAT),
+            Model(id="chat-model", type=ModelType.CHAT),
         ],
     )
 
@@ -678,6 +678,7 @@ def test_provider_endpoint_and_mode_parsed() -> None:
                     "base_url": "https://api.deepseek.com/anthropic",
                 },
             },
+            "default_endpoint": "anthropic",
         }
     )
     assert provider.endpoints["openai-chat"].sdk_type is SDKType.OPENAI
@@ -692,6 +693,47 @@ def test_provider_endpoint_rejects_unknown_mode() -> None:
                 "id": "p",
                 "name": "P",
                 "endpoints": {"x": {"sdk_type": "openai", "mode": "bogus"}},
+            }
+        )
+
+
+def test_provider_default_endpoint_must_be_declared() -> None:
+    with pytest.raises(ValidationError, match="not a declared endpoint"):
+        Provider.model_validate(
+            {
+                "id": "p",
+                "name": "P",
+                "endpoints": {"chat": {"sdk_type": "openai"}},
+                "default_endpoint": "bogus",
+            }
+        )
+
+
+def test_provider_default_endpoint_is_accepted() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "p",
+            "name": "P",
+            "endpoints": {
+                "chat": {"sdk_type": "openai"},
+                "responses": {"sdk_type": "openai", "mode": "responses"},
+            },
+            "default_endpoint": "responses",
+        }
+    )
+    assert provider.default_endpoint == "responses"
+
+
+def test_provider_with_multiple_endpoints_requires_default_endpoint() -> None:
+    with pytest.raises(ValidationError, match="must declare default_endpoint"):
+        Provider.model_validate(
+            {
+                "id": "p",
+                "name": "P",
+                "endpoints": {
+                    "chat": {"sdk_type": "openai"},
+                    "responses": {"sdk_type": "openai", "mode": "responses"},
+                },
             }
         )
 
@@ -721,7 +763,7 @@ def test_account_rejects_endpoint_and_endpoint_ref() -> None:
 
 
 def test_model_card_endpoint_support_set() -> None:
-    card = ModelCard.model_validate(
+    card = Model.model_validate(
         {"id": "m", "type": "chat", "endpoints": ["openai-chat", "anthropic"]}
     )
     assert card.endpoints == ["openai-chat", "anthropic"]
