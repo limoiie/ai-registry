@@ -504,6 +504,26 @@ def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
         )
 
 
+def test_aggregate_validation_reports_unknown_endpoint_ref() -> None:
+    with pytest.raises(
+        ConfigurationError, match=r"account 'orphan'.*unknown endpoint.*'bogus'"
+    ):
+        Registry.from_data(
+            providers=[
+                Provider.model_validate(
+                    {
+                        "id": "openai",
+                        "name": "OpenAI",
+                        "endpoints": {"chat": {"sdk_type": "openai"}},
+                    }
+                )
+            ],
+            accounts=[
+                Account(id="orphan", provider_id="openai", endpoint_ref="bogus")
+            ],
+        )
+
+
 def test_validation_redacts_untrusted_model_id() -> None:
     secret_like_model_id = "sk-live-secret/model"
 

@@ -481,6 +481,15 @@ class Registry:
                         f"account '{account.id}' enables unknown model; "
                         f"add the model to provider '{provider.id}'"
                     )
+            if (
+                account.endpoint_ref is not None
+                and account.endpoint_ref not in provider.endpoints
+            ):
+                raise ConfigurationError(
+                    f"account '{account.id}' references unknown endpoint "
+                    f"'{account.endpoint_ref}'; add it to provider "
+                    f"'{provider.id}' endpoints"
+                )
         for alias in self._aliases.values():
             for deployment in alias.deployments:
                 alias_account = self._accounts.get(deployment.account_id)
