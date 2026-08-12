@@ -1,0 +1,26 @@
+id: deepseek
+name: DeepSeek
+endpoints:
+  openai-chat:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+    mode: chat
+  openai-responses:
+    sdk_type: openai
+    base_url: https://api.deepseek.com
+    mode: responses
+  anthropic:
+    sdk_type: anthropic
+    base_url: https://api.deepseek.com/anthropic
+    mode: chat
+model_cards:
+  - id: deepseek-v4-flash
+    display_name: DeepSeek V4 Flash
+    type: chat
+    endpoints: [openai-chat, openai-responses, anthropic]
+    context_window_tokens: 1000000
+  - id: deepseek-v4-pro
+    display_name: DeepSeek V4 Pro
+    type: chat
+    endpoints: [openai-chat, anthropic]
+    context_window_tokens: 1000000

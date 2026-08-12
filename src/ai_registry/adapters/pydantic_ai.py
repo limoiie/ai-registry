@@ -36,7 +36,7 @@ def build_model(resolution: Resolution, **overrides: Any) -> Model:
             "models, so resolve a chat alias instead"
         )
     credential = resolution.resolve_credential()
-    sdk_type = resolution.provider.sdk_type
+    sdk_type = resolution.sdk_type
 
     if sdk_type is SDKType.OPENAI:
         models = _import("pydantic_ai.models.openai")
@@ -67,7 +67,7 @@ def build_model(resolution: Resolution, **overrides: Any) -> Model:
         )
 
     raise UnsupportedProviderError(
-        f"provider '{resolution.provider.id}' declares sdk_type "
+        f"provider '{resolution.provider.id}' resolves to sdk_type "
         f"'{sdk_type.value}', which this adapter does not build; set "
         "sdk_type: openai for an OpenAI-compatible endpoint, or construct the "
         "Pydantic AI model yourself from the resolution"

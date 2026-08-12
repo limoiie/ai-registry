@@ -221,6 +221,11 @@ Notes:
   registry with `Registry.from_data` (see
   [Configuration](configuration.md)).
 
+Some providers declare multiple endpoints selectable per account — for example
+DeepSeek's `openai-chat`, `openai-responses`, and `anthropic` endpoints. An
+account picks one by name with `endpoint_ref` instead of quoting a URL. See
+[Configuration](configuration.md).
+
 ## Built-in provider catalog
 
 The package ships a built-in provider catalog at

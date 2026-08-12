@@ -656,3 +656,72 @@ def test_capability_synonyms_combine_with_or_semantics() -> None:
     assert normalize_capabilities({"tools": False, "function_call": True}) == {
         "tools": True
     }
+
+
+def test_provider_endpoint_and_mode_parsed() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "endpoints": {
+                "openai-chat": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                },
+                "openai-responses": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                    "mode": "responses",
+                },
+                "anthropic": {
+                    "sdk_type": "anthropic",
+                    "base_url": "https://api.deepseek.com/anthropic",
+                },
+            },
+        }
+    )
+    assert provider.endpoints["openai-chat"].sdk_type is SDKType.OPENAI
+    assert provider.endpoints["openai-responses"].mode == "responses"
+    assert provider.endpoints["anthropic"].mode == "chat"
+
+
+def test_provider_endpoint_rejects_unknown_mode() -> None:
+    with pytest.raises(ValidationError):
+        Provider.model_validate(
+            {
+                "id": "p",
+                "name": "P",
+                "endpoints": {"x": {"sdk_type": "openai", "mode": "bogus"}},
+            }
+        )
+
+
+def test_account_endpoint_ref_roundtrip() -> None:
+    account = Account.model_validate(
+        {
+            "id": "a",
+            "provider_id": "p",
+            "endpoint_ref": "openai-responses",
+            "credential": "env:KEY",
+        }
+    )
+    assert account.endpoint_ref == "openai-responses"
+
+
+def test_account_rejects_endpoint_and_endpoint_ref() -> None:
+    with pytest.raises(ValidationError):
+        Account.model_validate(
+            {
+                "id": "a",
+                "provider_id": "p",
+                "endpoint": "https://x/v1",
+                "endpoint_ref": "chat",
+            }
+        )
+
+
+def test_model_card_endpoint_support_set() -> None:
+    card = ModelCard.model_validate(
+        {"id": "m", "type": "chat", "endpoints": ["openai-chat", "anthropic"]}
+    )
+    assert card.endpoints == ["openai-chat", "anthropic"]

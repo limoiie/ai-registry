@@ -21,6 +21,7 @@ from ai_registry.schemas import (
     SDKType,
 )
 from ai_registry.secrets import SecretResolver
+from ai_registry.testing import build_registry, constant_secret_resolver
 
 
 def provider() -> Provider:
@@ -503,6 +504,46 @@ def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
         )
 
 
+def test_aggregate_validation_reports_unknown_endpoint_ref() -> None:
+    with pytest.raises(
+        ConfigurationError, match=r"account 'orphan'.*unknown endpoint.*'bogus'"
+    ):
+        Registry.from_data(
+            providers=[
+                Provider.model_validate(
+                    {
+                        "id": "openai",
+                        "name": "OpenAI",
+                        "endpoints": {"chat": {"sdk_type": "openai"}},
+                    }
+                )
+            ],
+            accounts=[Account(id="orphan", provider_id="openai", endpoint_ref="bogus")],
+        )
+
+
+def test_aggregate_validation_reports_unknown_model_card_endpoint() -> None:
+    with pytest.raises(
+        ConfigurationError,
+        match=r"model 'chat'.*unknown endpoint.*'bogus'.*provider 'openai'",
+    ):
+        Registry.from_data(
+            providers=[
+                Provider.model_validate(
+                    {
+                        "id": "openai",
+                        "name": "OpenAI",
+                        "endpoints": {"chat": {"sdk_type": "openai"}},
+                        "model_cards": [
+                            {"id": "chat", "type": "chat", "endpoints": ["bogus"]}
+                        ],
+                    }
+                )
+            ],
+            accounts=[],
+        )
+
+
 def test_validation_redacts_untrusted_model_id() -> None:
     secret_like_model_id = "sk-live-secret/model"
 
@@ -887,3 +928,87 @@ def test_otel_attributes_omit_the_operation_for_reranking_models() -> None:
     attributes = registry.resolve("primary/rerank").otel_attributes()
 
     assert "gen_ai.operation.name" not in attributes
+
+
+def test_resolution_exposes_selected_endpoint_and_mode() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "sdk_type": "anthropic",
+            "default_base_url": "https://api.deepseek.com/anthropic",
+            "endpoints": {
+                "openai-chat": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                },
+                "openai-responses": {
+                    "sdk_type": "openai",
+                    "base_url": "https://api.deepseek.com",
+                    "mode": "responses",
+                },
+                "anthropic": {
+                    "sdk_type": "anthropic",
+                    "base_url": "https://api.deepseek.com/anthropic",
+                },
+            },
+            "model_cards": [
+                {"id": "deepseek-v4-flash", "type": "chat"},
+                {
+                    "id": "deepseek-chat",
+                    "type": "chat",
+                    "endpoints": ["openai-chat", "anthropic"],
+                },
+            ],
+        }
+    )
+    account = Account.model_validate(
+        {
+            "id": "a",
+            "provider_id": "deepseek",
+            "endpoint_ref": "openai-responses",
+            "credential": "env:KEY",
+            "enabled_models": ["deepseek-v4-flash"],
+        }
+    )
+    registry = Registry.from_data(
+        providers=[provider],
+        accounts=[account],
+        secret_resolver=constant_secret_resolver("sk"),
+    )
+    resolution = registry.resolve("a/deepseek-v4-flash")
+    assert resolution.sdk_type.value == "openai"
+    assert resolution.mode.value == "responses"
+    assert resolution.endpoint == "https://api.deepseek.com"
+
+
+def test_resolution_legacy_single_endpoint_defaults() -> None:
+    registry = build_registry({"chat": ["test-account/test-model"]})
+    resolution = registry.resolve("chat")
+    assert resolution.sdk_type.value == "openai"
+    assert resolution.mode.value == "chat"
+
+
+def test_model_not_supported_by_endpoint_is_rejected() -> None:
+    provider = Provider.model_validate(
+        {
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "endpoints": {
+                "chat": {"sdk_type": "openai"},
+                "responses": {"sdk_type": "openai", "mode": "responses"},
+            },
+            "model_cards": [{"id": "m", "type": "chat", "endpoints": ["chat"]}],
+        }
+    )
+    account = Account.model_validate(
+        {
+            "id": "a",
+            "provider_id": "deepseek",
+            "endpoint_ref": "responses",
+            "enabled_models": ["m"],
+        }
+    )
+    registry = Registry.from_data(providers=[provider], accounts=[account])
+    with pytest.raises(RegistryError):
+        registry.resolve("a/m")
