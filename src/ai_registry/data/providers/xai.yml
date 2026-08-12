@@ -1,0 +1,133 @@
+id: xai
+name: xAI (Grok)
+description: xAI develops the Grok family of frontier models with very large context
+  windows and strong reasoning and coding performance.
+sdk_type: openai
+default_base_url: https://api.x.ai/v1
+settings:
+  url: https://x.ai
+  check_model: grok-4.5
+  models_url: https://docs.x.ai/docs/models
+  show_model_fetcher: true
+
+model_cards:
+- id: grok-4.5
+  display_name: Grok 4.5
+  type: chat
+  released_at: '2026-06-01'
+  description: Latest Grok flagship with a 500K context window and frontier reasoning.
+  context_window_tokens: 500000
+  max_output_tokens: 500000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 2
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 6
+        strategy: fixed
+        unit: millionTokens
+- id: grok-4.3
+  display_name: Grok 4.3
+  type: chat
+  released_at: '2026-03-01'
+  description: High-capability model with a 1M context window.
+  context_window_tokens: 1000000
+  max_output_tokens: 1000000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 1
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 3
+        strategy: fixed
+        unit: millionTokens
+- id: grok-4
+  display_name: Grok 4
+  type: chat
+  released_at: '2025-07-09'
+  description: Grok 4 generation model with a 256K context window and strong reasoning.
+  context_window_tokens: 256000
+  max_output_tokens: 256000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 3
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 15
+        strategy: fixed
+        unit: millionTokens
+- id: grok-4-latest
+  display_name: Grok 4 Latest
+  type: chat
+  released_at: '2025-07-09'
+  description: Rolling alias for the current Grok 4 model.
+  context_window_tokens: 256000
+  max_output_tokens: 256000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 3
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 15
+        strategy: fixed
+        unit: millionTokens
+- id: grok-3
+  display_name: Grok 3
+  type: chat
+  released_at: '2025-02-20'
+  description: Prior-generation reasoning model with a 128K context window.
+  context_window_tokens: 131072
+  max_output_tokens: 131072
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 3
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 15
+        strategy: fixed
+        unit: millionTokens

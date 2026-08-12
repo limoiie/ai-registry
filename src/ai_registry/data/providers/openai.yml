@@ -1,0 +1,383 @@
+id: openai
+name: OpenAI
+description: OpenAI develops frontier GPT models, reasoning models, and text embeddings.
+sdk_type: openai
+default_base_url: https://api.openai.com/v1
+settings:
+  url: https://openai.com
+  check_model: gpt-5.6
+  models_url: https://platform.openai.com/docs/pricing
+  show_model_fetcher: true
+
+model_cards:
+- id: gpt-5.6
+  display_name: GPT-5.6
+  type: chat
+  released_at: '2026-08-01'
+  description: OpenAI's latest flagship model with a 1M context window and advanced
+    reasoning, coding, and multimodal abilities.
+  context_window_tokens: 1050000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 5
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 30
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.6-sol
+  display_name: GPT-5.6 Sol
+  type: chat
+  released_at: '2026-08-01'
+  description: Flagship tier of GPT-5.6 with maximal reasoning effort and a 1M context
+    window.
+  context_window_tokens: 1050000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 5
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 30
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.6-terra
+  display_name: GPT-5.6 Terra
+  type: chat
+  released_at: '2026-08-01'
+  description: Balanced tier of GPT-5.6 for general-purpose workloads with a 1M context
+    window.
+  context_window_tokens: 1050000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 2
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 12
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.6-luna
+  display_name: GPT-5.6 Luna
+  type: chat
+  released_at: '2026-08-01'
+  description: Compact, cost-effective tier of GPT-5.6 for latency-sensitive and high-volume
+    workloads.
+  context_window_tokens: 1050000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 0.2
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 1.2
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.5
+  display_name: GPT-5.5
+  type: chat
+  released_at: '2026-04-23'
+  description: OpenAI's latest flagship model with a 1M context window and advanced
+    reasoning, coding, and multimodal abilities.
+  context_window_tokens: 1050000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 5
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 30
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.4
+  display_name: GPT-5.4
+  type: chat
+  released_at: '2026-03-05'
+  description: High-capability reasoning model with a 1M context window.
+  context_window_tokens: 1050000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 2.5
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 15
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.2
+  display_name: GPT-5.2
+  type: chat
+  released_at: '2025-12-11'
+  description: General-purpose reasoning model with strong coding and agentic performance.
+  context_window_tokens: 272000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 1.75
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 14
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5.1
+  display_name: GPT-5.1
+  type: chat
+  released_at: '2025-11-19'
+  description: Balanced reasoning model with optional reasoning_effort=none for low-latency
+    responses.
+  context_window_tokens: 272000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 1.25
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 10
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5
+  display_name: GPT-5
+  type: chat
+  released_at: '2025-08-07'
+  description: OpenAI's hybrid reasoning model combining fast and deep reasoning paths.
+  context_window_tokens: 272000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 1.25
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 10
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5-mini
+  display_name: GPT-5 Mini
+  type: chat
+  released_at: '2025-08-07'
+  description: Cost-effective reasoning model for high-volume workloads.
+  context_window_tokens: 272000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 0.25
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 2
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5-nano
+  display_name: GPT-5 Nano
+  type: chat
+  released_at: '2025-08-07'
+  description: Smallest and cheapest GPT-5 model for latency-sensitive applications.
+  context_window_tokens: 272000
+  max_output_tokens: 128000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 0.05
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 0.4
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-5-pro
+  display_name: GPT-5 Pro
+  type: chat
+  released_at: '2025-08-07'
+  description: OpenAI's most advanced reasoning model with a 400K context window, available
+    through the Responses API.
+  context_window_tokens: 400000
+  max_output_tokens: 272000
+  capabilities:
+    tools: true
+    structured_output: true
+    vision: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 15
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 120
+        strategy: fixed
+        unit: millionTokens
+- id: o3
+  display_name: O3
+  type: chat
+  released_at: '2025-04-16'
+  description: Reasoning model optimized for complex math, coding, and science tasks.
+  context_window_tokens: 200000
+  max_output_tokens: 100000
+  capabilities:
+    tools: true
+    structured_output: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 2
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 8
+        strategy: fixed
+        unit: millionTokens
+- id: o4-mini
+  display_name: O4 Mini
+  type: chat
+  released_at: '2025-04-16'
+  description: Small, fast reasoning model with strong coding and tool use.
+  context_window_tokens: 200000
+  max_output_tokens: 100000
+  capabilities:
+    tools: true
+    structured_output: true
+    reasoning: true
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 1.1
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 4.4
+        strategy: fixed
+        unit: millionTokens
+- id: text-embedding-3-large
+  display_name: Text Embedding 3 Large
+  type: embedding
+  released_at: '2024-01-25'
+  description: High-fidelity embedding model producing up to 3072-dim vectors.
+  context_window_tokens: 8191
+  embedding_dimension: 3072
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 0.13
+        strategy: fixed
+        unit: millionTokens
+- id: text-embedding-3-small
+  display_name: Text Embedding 3 Small
+  type: embedding
+  released_at: '2024-01-25'
+  description: Cost-effective embedding model producing up to 1536-dim vectors.
+  context_window_tokens: 8191
+  embedding_dimension: 1536
+  metadata:
+    pricing:
+      currency: USD
+      units:
+      - name: textInput
+        rate: 0.02
+        strategy: fixed
+        unit: millionTokens

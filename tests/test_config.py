@@ -34,6 +34,13 @@ def test_builtin_provider_data_is_package_data() -> None:
         "uniapi.yml",
         "minimax.yml",
         "uniapi-rerankers.yml",
+        "openai.yml",
+        "anthropic.yml",
+        "gemini.yml",
+        "moonshot.yml",
+        "zhipu.yml",
+        "qwen.yml",
+        "xai.yml",
     } <= names
 
 
@@ -45,6 +52,13 @@ def test_discovers_builtin_providers_from_package_data() -> None:
         "uniapi",
         "minimax",
         "uniapi-rerankers",
+        "openai",
+        "anthropic",
+        "gemini",
+        "moonshot",
+        "zhipu",
+        "qwen",
+        "xai",
     }
 
 
@@ -350,14 +364,14 @@ def test_duplicate_model_ids_are_rejected(tmp_path: Path) -> None:
         load_provider_file(path)
 
 
-def test_loads_actual_catalog_legacy_model_fields() -> None:
+def test_loads_actual_catalog_normalized_model_fields() -> None:
     uniapi = load_provider_file(DATA / "uniapi.yml")
     minimax = load_provider_file(DATA / "minimax.yml")
 
     embedding = next(
         card for card in uniapi.model_cards if card.id == "bge-large-zh:latest"
     )
-    unknown_context = next(
+    vision = next(
         card for card in uniapi.model_cards if card.id == "qwen2.5-vl:72b"
     )
     deprecated = next(
@@ -365,18 +379,15 @@ def test_loads_actual_catalog_legacy_model_fields() -> None:
     )
 
     assert embedding.embedding_dimension == 1024
-    assert embedding.metadata["max_dimension"] == 1024
-    assert unknown_context.context_window_tokens is None
-    assert unknown_context.metadata["context_window_tokens"] == 0
+    assert vision.context_window_tokens == 131072
+    assert vision.capabilities.vision is True
     assert deprecated.metadata["deprecated"] is True
-    assert deprecated.metadata["settings"] == {"search_impl": "params"}
 
 
 def test_normalizes_actual_uniapi_reranker_to_openai() -> None:
     provider = load_provider_file(DATA / "uniapi-rerankers.yml")
 
     assert provider.sdk_type.value == "openai"
-    assert provider.settings["sdk_type"] == "uniapi"
     assert provider.model_cards[0].type.value == "reranking"
 
 

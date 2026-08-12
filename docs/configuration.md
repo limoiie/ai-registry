@@ -97,7 +97,8 @@ rather than being rejected.
 
 Providers come from two scopes and are merged by `id`:
 
-- **Built-in** — `deepseek`, `uniapi`, `minimax`, `uniapi-rerankers` ship with
+- **Built-in** — `deepseek`, `uniapi`, `minimax`, `uniapi-rerankers`, `openai`,
+  `anthropic`, `gemini`, `moonshot`, `zhipu`, `qwen`, `xai` ship with
   the package as package data at `ai_registry/data/providers/*.yml`.
 - **Project** — files under `.ai-registry/providers/`.
 

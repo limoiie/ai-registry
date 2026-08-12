@@ -1,13 +1,12 @@
 id: uniapi-rerankers
 name: Uni API for Rerankers Only
-description: DeepSeek focuses on AI research and applications.
-url: https://www.cstcloud.cn
-check_model: deepseek-r1:32b
-models_url: https://uni-api.cstcloud.cn/doc/llm/models
+description: OpenAI-compatible reranking models served through the Uni API gateway.
+sdk_type: openai
+default_base_url: https://uni-api.cstcloud.cn/v1
 settings:
-  proxy_url:
-    placeholder: https://uni-api.cstcloud.cn/v1
-  sdk_type: uniapi
+  url: https://www.cstcloud.cn
+  check_model: bge-reranker-v2-m3
+  models_url: https://uni-api.cstcloud.cn/doc/llm/models
   show_model_fetcher: true
 
 model_cards:
@@ -17,23 +16,25 @@ model_cards:
   released_at: '2025-04-11'
   description: BGE reranker v2 m3 model.
   context_window_tokens: 131072
-  pricing:
-    currency: CNY
-    units:
-    - name: textInput
-      rate: 0
-      strategy: fixed
-      unit: millionTokens
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
 - id: qwen3-reranker:8b
   display_name: Qwen3 Reranker 8B
   type: reranking
   released_at: '2025-07-11'
   description: Qwen3 reranker model with 4096-dim embeddings and a 32K context window.
   context_window_tokens: 32768
-  pricing:
-    currency: CNY
-    units:
-    - name: textInput
-      rate: 0
-      strategy: fixed
-      unit: millionTokens
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens

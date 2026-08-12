@@ -225,9 +225,11 @@ Notes:
 
 The package ships a built-in provider catalog at
 `ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
-`uniapi-rerankers`). These use the legacy provider-catalog format (top-level
-`url`, `settings.sdk_type`, and `abilities` on model cards), which the loader
-normalizes automatically.
+`uniapi-rerankers`, `openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
+`qwen`, `xai`). These use the normalized provider-catalog format
+(`default_base_url`, `capabilities`, and `metadata.pricing` on model cards);
+the loader also accepts the legacy format (`url`, `settings.sdk_type`, and
+`abilities` on model cards) and normalizes it automatically.
 
 `Registry.from_project` loads the built-ins automatically and lets project
 providers override them by id, so most projects never list a provider file:
