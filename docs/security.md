@@ -134,7 +134,33 @@ Adapters are the intended consumers of `Resolution`. When building them:
   endpoint validator is a denylist, not a parameter allowlist.
 - `Provider.settings` and `Account.metadata` are free-form and forwarded
   verbatim to adapters; redaction applies at serialization boundaries only.
-- The health store is an in-memory map without synchronization and grows with
-  use. Concurrent routers should use their own store per process.
+- The default health store is in-process. It is thread-safe and bounded by the
+  number of configured deployments, but is not shared between processes —
+  implement the `HealthStore` protocol for that.
 - `model_dump_json()` requires values that are JSON-serializable; exotic custom
   objects in `metadata` may raise.
+- `client_kwargs()` and the adapters resolve the credential by design; their
+  return values are secret and must not be logged.
+
+## Command line
+
+The `ai-registry` CLI never prints a credential. `resolve` and `explain` report
+a status only — `none`, `env (ok)`, `env (unresolved)`, or the `secret_ref`
+equivalent — deliberately omitting the variable name so that command output and
+CI logs are safe to paste.
+
+```console
+$ ai-registry explain chat-default
+1. deepseek-primary/deepseek-chat -> https://api.deepseek.com/anthropic (credential: env (ok))
+2. uniapi-chat/deepseek-v4-flash -> https://uni-api.cstcloud.cn (credential: env (unresolved))
+```
+
+## Supply chain
+
+The runtime dependency closure is six packages (`pydantic`, `pydantic-core`,
+`annotated-types`, `typing-extensions`, `typing-inspection`, `pyyaml`). The CLI
+and the adapters are optional extras that the core never imports, so a
+dependency you have not installed cannot be part of your attack surface. This is
+a deliberate property of a component that sits next to every API key you own.
+
+See [SECURITY.md](../SECURITY.md) for reporting and release provenance.

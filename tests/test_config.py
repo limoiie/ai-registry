@@ -63,7 +63,7 @@ def test_discover_builtin_providers_missing_data_dir(
         "importlib.resources.files", lambda _package: tmp_path / "missing"
     )
 
-    with pytest.raises(ConfigurationError, match="built-in provider data"):
+    with pytest.raises(ConfigurationError, match=r"built-in provider data"):
         discover_builtin_providers()
 
 
@@ -96,7 +96,7 @@ def test_provider_from_text_wraps_parse_failures(name: str, text: str) -> None:
 
 
 def test_provider_from_text_requires_top_level_mapping() -> None:
-    with pytest.raises(ConfigurationError, match="top-level mapping"):
+    with pytest.raises(ConfigurationError, match=r"top-level mapping"):
         _provider_from_text("list.yaml", "- not\n- a\n- mapping\n")
 
 
@@ -152,7 +152,7 @@ def test_discover_project_providers_rejects_duplicate_ids(
         "id: duplicate\nname: Second\n", encoding="utf-8"
     )
 
-    with pytest.raises(ConfigurationError, match="duplicate provider id 'duplicate'"):
+    with pytest.raises(ConfigurationError, match=r"duplicate provider id 'duplicate'"):
         discover_project_providers(tmp_path)
 
 
@@ -175,7 +175,7 @@ def test_discover_project_providers_malformed_yaml_is_actionable(
     providers_dir.mkdir(parents=True)
     (providers_dir / "broken.yaml").write_text("id: [broken", encoding="utf-8")
 
-    with pytest.raises(ConfigurationError, match="Unable to parse YAML.*broken.yaml"):
+    with pytest.raises(ConfigurationError, match=r"Unable to parse YAML.*broken.yaml"):
         discover_project_providers(tmp_path)
 
 
@@ -191,7 +191,7 @@ def test_merge_providers_rejects_duplicate_project_ids(tmp_path: Path) -> None:
         normalize_provider({"id": "dup", "name": "Second"}),
     ]
 
-    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+    with pytest.raises(ConfigurationError, match=r"duplicate provider id 'dup'"):
         merge_providers([], project)
 
 
@@ -201,7 +201,7 @@ def test_merge_providers_rejects_duplicate_builtin_ids() -> None:
         normalize_provider({"id": "dup", "name": "Second"}),
     ]
 
-    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+    with pytest.raises(ConfigurationError, match=r"duplicate provider id 'dup'"):
         merge_providers(builtin, [])
 
 
@@ -211,7 +211,7 @@ def test_ensure_unique_provider_ids_rejects_duplicates() -> None:
         normalize_provider({"id": "dup", "name": "Second"}),
     ]
 
-    with pytest.raises(ConfigurationError, match="duplicate provider id 'dup'"):
+    with pytest.raises(ConfigurationError, match=r"duplicate provider id 'dup'"):
         _ensure_unique_provider_ids(providers)
 
 
@@ -277,7 +277,7 @@ def test_rejects_falsy_non_list_model_cards(
     )
 
     with pytest.raises(
-        ConfigurationError, match="Invalid model cards.*expected a list"
+        ConfigurationError, match=r"Invalid model cards.*expected a list"
     ):
         load_provider_file(path)
 
@@ -307,7 +307,7 @@ def test_malformed_yaml_has_safe_actionable_error(tmp_path: Path) -> None:
     path = tmp_path / "broken.yaml"
     path.write_text("id: [broken", encoding="utf-8")
 
-    with pytest.raises(ConfigurationError, match="Unable to parse YAML.*broken.yaml"):
+    with pytest.raises(ConfigurationError, match=r"Unable to parse YAML.*broken.yaml"):
         load_document(path)
 
 
@@ -332,7 +332,7 @@ def test_duplicate_provider_ids_are_rejected(tmp_path: Path) -> None:
     first.write_text("id: duplicate\nname: First\n", encoding="utf-8")
     second.write_text("id: duplicate\nname: Second\n", encoding="utf-8")
 
-    with pytest.raises(ConfigurationError, match="duplicate provider id 'duplicate'"):
+    with pytest.raises(ConfigurationError, match=r"duplicate provider id 'duplicate'"):
         load_provider_files([first, second])
 
 
@@ -344,7 +344,9 @@ def test_duplicate_model_ids_are_rejected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="duplicate model id 'same'.*provider"):
+    with pytest.raises(
+        ConfigurationError, match=r"duplicate model id 'same'.*provider"
+    ):
         load_provider_file(path)
 
 
@@ -385,7 +387,7 @@ def test_rejects_unsupported_sdk_type(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="sdk_type"):
+    with pytest.raises(ConfigurationError, match=r"sdk_type"):
         load_provider_file(path)
 
 
@@ -411,7 +413,7 @@ def test_rejects_conflicting_canonical_and_nested_sdk_types(tmp_path: Path) -> N
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="conflicting sdk_type"):
+    with pytest.raises(ConfigurationError, match=r"conflicting sdk_type"):
         load_provider_file(path)
 
 
@@ -445,7 +447,7 @@ def test_non_mapping_model_card_has_safe_actionable_error(tmp_path: Path) -> Non
     )
 
     with pytest.raises(
-        ConfigurationError, match="Invalid model card.*index 0.*mapping"
+        ConfigurationError, match=r"Invalid model card.*index 0.*mapping"
     ):
         load_provider_file(path)
 
@@ -483,7 +485,7 @@ def test_non_mapping_account_metadata_has_safe_error(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="Invalid account metadata.*mapping"):
+    with pytest.raises(ConfigurationError, match=r"Invalid account metadata.*mapping"):
         load_account_file(path)
 
 
@@ -495,7 +497,7 @@ def test_rejects_conflicting_account_credentials(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="api_key_env.*credential"):
+    with pytest.raises(ConfigurationError, match=r"api_key_env.*credential"):
         load_account_file(path)
 
 
@@ -535,7 +537,7 @@ def test_deployments_file_requires_accounts_and_optional_aliases(
 ) -> None:
     path = tmp_path / "registry.yaml"
     path.write_text("aliases: []\n", encoding="utf-8")
-    with pytest.raises(ConfigurationError, match="accounts"):
+    with pytest.raises(ConfigurationError, match=r"accounts"):
         load_deployments_file(path)
 
     path.write_text("accounts: []\n", encoding="utf-8")
@@ -547,7 +549,7 @@ def test_deployments_file_rejects_non_list_aliases(tmp_path: Path) -> None:
     path = tmp_path / "registry.yaml"
     path.write_text("accounts: []\naliases: not-a-list\n", encoding="utf-8")
 
-    with pytest.raises(ConfigurationError, match="'aliases' list"):
+    with pytest.raises(ConfigurationError, match=r"'aliases' list"):
         load_deployments_file(path)
 
 
@@ -576,7 +578,7 @@ def test_load_alias_file_requires_aliases_list(tmp_path: Path) -> None:
 
     with pytest.raises(
         ConfigurationError,
-        match="Alias configuration .*must contain an 'aliases' list",
+        match=r"Alias configuration .*must contain an 'aliases' list",
     ):
         load_alias_file(path)
 
@@ -585,7 +587,7 @@ def test_load_alias_file_rejects_non_list_aliases(tmp_path: Path) -> None:
     path = tmp_path / "aliases.yaml"
     path.write_text("aliases: not-a-list\n", encoding="utf-8")
 
-    with pytest.raises(ConfigurationError, match="'aliases' list"):
+    with pytest.raises(ConfigurationError, match=r"'aliases' list"):
         load_alias_file(path)
 
 
@@ -593,7 +595,7 @@ def test_load_alias_file_rejects_non_mapping_alias(tmp_path: Path) -> None:
     path = tmp_path / "aliases.yaml"
     path.write_text("aliases:\n  - just-a-string\n", encoding="utf-8")
 
-    with pytest.raises(ConfigurationError, match="invalid alias at index 0"):
+    with pytest.raises(ConfigurationError, match=r"invalid alias at index 0"):
         load_alias_file(path)
 
 

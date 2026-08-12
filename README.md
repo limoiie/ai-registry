@@ -1,157 +1,223 @@
-# AI Registry
+# ai-registry
 
-A framework-independent core for registering and resolving AI providers,
-models, accounts, and deployments. Resolve a **stable alias** to a **concrete,
-healthy deployment** — then build any framework-native client from the result.
+[![PyPI](https://img.shields.io/pypi/v/ai-registry.svg)](https://pypi.org/project/ai-registry/)
+[![Python versions](https://img.shields.io/pypi/pyversions/ai-registry.svg)](https://pypi.org/project/ai-registry/)
+[![CI](https://github.com/limoiie/ai-registry/actions/workflows/ci.yml/badge.svg)](https://github.com/limoiie/ai-registry/actions/workflows/ci.yml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/mypy-strict-2a6db2.svg)](https://mypy-lang.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**Resolve a stable alias to a concrete AI deployment — provider, model card,
+account, endpoint — and stop there.**
+
+`ai-registry` is the configuration layer under your AI stack, not another client.
+It answers one question — *"which provider, which model, whose key, what URL?"* —
+and hands the answer to whatever SDK you already use.
+
+It makes **no network requests**, defines **no chat interface**, ships **no
+gateway**, and **cannot hold a literal API key**. The runtime dependency closure
+is six packages.
 
 ```python
 from ai_registry import Registry
 
-registry = Registry.from_files(
-    provider_files=["catalog.yaml"],
-    account_files=["accounts.yaml"],
-    alias_files=["aliases.yaml"],
-)
-
-resolution = registry.resolve("sol")  # stable logical name
-
-resolution.account_id  # which account/key was selected
-resolution.model_id  # canonical model id (for requests/logging)
-resolution.endpoint  # base URL
-resolution.resolve_credential()  # resolved lazily, only at the adapter boundary
+registry = Registry.from_project()  # reads ./.ai-registry/registry.yaml
+resolution = registry.resolve("chat-default")
 ```
 
-The underlying model, provider, or endpoint behind `"sol"` can change in
-configuration without any application code changes.
+| What you get | Example | Why it matters |
+| --- | --- | --- |
+| `resolution.provider_id` | `'deepseek'` | Which provider was chosen. |
+| `resolution.model_id` | `'deepseek-chat'` | The id to send, and to log. |
+| `resolution.account_id` | `'deepseek-primary'` | **Which key** was chosen. |
+| `resolution.endpoint` | `'https://api.deepseek.com/anthropic'` | Where to send it. |
+| `resolution.model.capabilities` | `tools=True, reasoning=False, …` | What the model can do. |
+| `resolution.resolve_credential()` | `'sk-…'` | Resolved lazily, only at the adapter boundary. |
 
-## Features
+The model, provider, account, or endpoint behind `"chat-default"` can change in
+configuration without touching application code.
 
-- **Alias-first resolution** with an explicit `account-id/model-id` fallback.
-- **Health-aware routing**: priority, weight, disabled deployments, and a
-  runtime health store with recovery.
-- **Multiple accounts and keys** for the same or different providers.
-- **OpenAI-compatible endpoints** out of the box (UniAPI, vLLM, gateways),
-  plus support for other SDK families.
-- **Secret references, not secrets**: `env:` / `secret_ref:` credentials,
-  lazy resolution, and pluggable `SecretResolver` for Vault/AWS/Kubernetes.
-- **Secret-safe by construction**: literal keys are rejected; `repr`, dumps,
-  and errors are redacted.
-- **Built-in provider catalog** ships with the package at
-  `ai_registry/data/providers/*.yml`; project providers under
-  `.ai-registry/providers/` override them by id.
-- **Compatibility loaders** normalize the legacy catalog and account formats.
-- **Framework-independent**: only depends on Pydantic and PyYAML; adapters for
-  the OpenAI SDK, Pydantic AI, LangGraph, and LlamaIndex are planned as
-  optional extras.
+## Why a resolver instead of a client
+
+Most tools in this space fuse two separate concerns: *deciding what to call* and
+*calling it*. Fusing them means you adopt someone's request translation, error
+types, retry semantics, and dependency tree in order to get their configuration
+model.
+
+That fusion has a well-known failure mode. From
+[openai/codex#1370](https://github.com/openai/codex/issues/1370), on Azure
+deployment names:
+
+> No logic should inspect the user's deployment name when making assumptions
+> about model capabilities.
+
+That is exactly the split this library enforces. A **deployment** is where you
+send the request. A **model card** is what the model can do. They are different
+objects, and `Resolution` gives you both.
 
 ## Install
 
 ```bash
-pip install ai-registry
-# or, from a checkout with uv:
-uv sync
+pip install ai-registry                    # core: pydantic + pyyaml only
+pip install "ai-registry[cli]"             # + ai-registry command
+pip install "ai-registry[openai]"          # + OpenAI SDK adapter
+pip install "ai-registry[pydantic-ai]"     # + Pydantic AI adapter
 ```
 
 Requires Python 3.11+.
 
-## Quick start
+## Configure
 
-```python
-import os
-from ai_registry import Registry
-from ai_registry.schemas import Alias, Deployment, ModelCard, Account, Provider
-
-os.environ["DEEPSEEK_API_KEY"] = "sk-example"
-
-registry = Registry.from_data(
-    providers=[
-        Provider(
-            id="deepseek",
-            name="DeepSeek",
-            default_base_url="https://api.deepseek.com/v1",
-            model_cards=[ModelCard(id="deepseek-chat", type="chat")],
-        ),
-    ],
-    accounts=[
-        Account(
-            id="primary",
-            provider_id="deepseek",
-            credential={"env": "DEEPSEEK_API_KEY"},
-            enabled_models=["deepseek-chat"],
-        ),
-    ],
-    aliases=[
-        Alias(
-            id="chat-default",
-            deployments=[Deployment(account_id="primary", model_id="deepseek-chat")],
-        ),
-    ],
-)
-
-resolution = registry.resolve("chat-default")
-print(resolution.endpoint)
-print(resolution.resolve_credential())
-```
-
-For file-based configuration, see [Getting started](docs/getting-started.md).
-
-## Discover from your project
-
-Projects keep configuration in a `.ai-registry/` directory at the root:
+Projects keep configuration in `.ai-registry/` at the repository root, resolved
+from any subdirectory:
 
 ```text
 <project-root>/
 └── .ai-registry/
-    ├── providers/          # OPTIONAL — override or add providers
-    ├── registry.yaml    # default — used when no profile requested
-    ├── registry.dev.yaml   # OPTIONAL — profile "dev"
-    └── registry.prod.yaml  # OPTIONAL — profile "prod"
+    ├── providers/            # OPTIONAL — override or add providers
+    ├── registry.yaml         # default
+    ├── registry.dev.yaml     # OPTIONAL — profile "dev"
+    └── registry.prod.yaml    # OPTIONAL — profile "prod"
 ```
 
-Start from `examples/registry.example.yaml`, which references the built-in
-providers (`deepseek`, `uniapi`, `uniapi-rerankers`) that ship with the
-package. A project provider with the same `id` replaces the built-in provider
-entirely.
+```yaml
+# .ai-registry/registry.yaml
+accounts:
+  - id: deepseek-primary
+    provider_id: deepseek
+    credential: env:DEEPSEEK_API_KEY      # a reference, never a key
+    enabled_models: [deepseek-chat, deepseek-reasoner]
+  - id: uniapi-chat
+    provider_id: uniapi
+    credential: env:UNIAPI_API_KEY
+    enabled_models: [deepseek-v4-flash]
+
+aliases:
+  - id: chat-default
+    deployments:
+      - account_id: deepseek-primary      # preferred
+        model_id: deepseek-chat
+      - account_id: uniapi-chat           # used when the first is cooling down
+        model_id: deepseek-v4-flash
+        routing: {priority: 1}
+```
+
+Select a profile with `Registry.from_project(profile="prod")` or
+`AI_REGISTRY_PROFILE=prod`.
+
+## Use the result
+
+Build a client yourself, or use an optional adapter:
 
 ```python
-import os
 from ai_registry import Registry
+from ai_registry.adapters.openai import build_client
+from ai_registry.adapters.pydantic_ai import build_model, build_fallback_model
 
-os.environ["DEEPSEEK_API_KEY"] = "sk-example"
+registry = Registry.from_project()
 
-registry = Registry.from_project()  # discovers ./.ai-registry/
+# An openai.OpenAI client, pointed at the resolved endpoint and key:
+client = build_client(registry.resolve("chat-default"))
 
-resolution = registry.resolve("chat-default")
-print(resolution.endpoint)
-print(resolution.resolve_credential())
+# A Pydantic AI model — a framework with no config-file registry of its own:
+model = build_model(registry.resolve("chat-default"))
+
+# Registry routing becomes Pydantic AI request-time failover:
+model = build_fallback_model(registry.candidates("chat-default"))
 ```
 
-Select a profile by environment with `Registry.from_project(profile="prod")`
-or by setting `AI_REGISTRY_PROFILE`, which loads `registry.prod.yaml` instead
-of the default. See [Configuration](docs/configuration.md).
+Or drive failover yourself — `candidates()` returns every healthy deployment in
+preference order:
 
-`Registry.from_files(...)` remains available when you want explicit control
-over every configuration file.
+```python
+for resolution in registry.candidates("chat-default"):
+    try:
+        response = call(resolution)
+    except TransientError:
+        registry.record_failure(resolution)  # cools this target down everywhere
+        continue
+    registry.record_success(resolution)
+    break
+```
+
+## Inspect it
+
+```console
+$ ai-registry explain chat-default
+1. deepseek-primary/deepseek-chat -> https://api.deepseek.com/anthropic (credential: env (ok))
+2. uniapi-chat/deepseek-v4-flash -> https://uni-api.cstcloud.cn (credential: env (unresolved))
+
+$ ai-registry models --type chat --tools --min-context 500000
+deepseek	deepseek-v4-flash	chat	1000000	reasoning,structured_output,tools
+```
+
+`resolve` and `explain` report whether a credential resolves, never its name or
+value.
+
+## Features
+
+- **Alias-first resolution**, with an explicit `account-id/model-id` escape hatch.
+- **Multiple accounts and keys** per provider, as reusable first-class objects.
+- **Deterministic deployment selection**: priority, weight, disabled, plus a
+  health store with time-based cooldown and exponential backoff.
+- **Capability-aware catalog queries** — find a chat model with tools and a
+  200k window without hardcoding a model id.
+- **Secret references, not secrets**: `env:` / `secret_ref:`, resolved lazily,
+  with a pluggable `SecretResolver` for Vault, AWS, or Kubernetes.
+- **Secret-safe by construction**: literal keys rejected; `repr`, dumps, and
+  errors redacted; credential-bearing URLs refused.
+- **Bring your own catalog**: `ai_registry.catalog.load_models_dev()` imports a
+  models.dev `api.json` so you need not hand-maintain context windows or pricing.
+- **Observability built in**: `Resolution.otel_attributes()` emits OpenTelemetry
+  GenAI attributes plus which alias and account were selected.
+- **Testable**: `ai_registry.testing` ships supported fakes.
+
+## Why not X?
+
+| | Alias layer | Resolution separable from invocation | Multiple keys per provider | In-process | Rejects literal secrets |
+|---|---|---|---|---|---|
+| **ai-registry** | config file | yes, that's all it does | yes, as `Account` | yes (6 pkgs) | **yes** |
+| **LiteLLM Router** | `model_name` groups | yes, via `get_available_deployment()` | yes, by repeating entries | yes (49 pkgs) | no |
+| **`llm` (simonw)** | `aliases.json` | yes, `llm.get_model()` | yes, `api_key_name` | yes | no (plaintext `keys.json`) |
+| **Pydantic AI** | `'openai:gpt-4o'` string | no — returns a live model | no | yes | n/a |
+| **Vercel AI SDK registry** | `customProvider` (code) | no — returns a live model | no | yes (TS) | n/a |
+| **Portkey / Helicone / Bifrost / Kong** | gateway config | no | yes | no — network hop | varies |
+
+**Use LiteLLM instead** if you want one `completion()` call across providers,
+request translation, retries, spend tracking, or a proxy. It does far more than
+this library and does it well.
+
+**Use ai-registry** if you already have SDKs you like and only want the
+configuration layer — especially if the dependency footprint of the component
+that touches every API key you own is something you care about. For scale: the
+resolved closure is 49 packages for `litellm`, 107 for `litellm[proxy]`, and 6
+here. In March 2026 two `litellm` releases were
+[compromised on PyPI](https://docs.litellm.ai/blog/security-update-march-2026)
+with a `.pth` file that harvested cloud credentials on every Python start. Fewer
+moving parts near your keys is a real property, not an aesthetic one.
+
+The two are not exclusive: point an `Account` at a LiteLLM proxy and use this to
+decide which one.
 
 ## Documentation
 
-| Guide | Audience | Contents |
-| --- | --- | --- |
-| [Overview](docs/overview.md) | Everyone | The idea, concepts, architecture, goals and non-goals. |
-| [Getting started](docs/getting-started.md) | New users | Install, first resolution, loading files, built-in data. |
-| [Configuration](docs/configuration.md) | Everyone | Complete data file format: normalized + legacy shapes, field references, validation. |
-| [Use cases](docs/use-cases.md) | All users | 12 detailed scenarios: failover, weighted routing, embeddings, custom endpoints, secret resolvers, and more. |
-| [API reference](docs/api-reference.md) | Experienced users | Every public class, function, field, and behavior. |
-| [Security](docs/security.md) | Everyone | Secret-handling guarantees, redaction rules, endpoint validation, limitations. |
-| [Development](docs/development.md) | Contributors | Environment, checks, conventions, testing. |
+| Guide | Contents |
+| --- | --- |
+| [Overview](docs/overview.md) | The idea, concepts, architecture, goals and non-goals. |
+| [Getting started](docs/getting-started.md) | Install, first resolution, loading files, built-in data. |
+| [Configuration](docs/configuration.md) | Complete file format, field reference, validation. |
+| [Use cases](docs/use-cases.md) | Failover, weighted routing, embeddings, custom endpoints, secret resolvers. |
+| [API reference](docs/api-reference.md) | Every public class, function, field, and behavior. |
+| [Security](docs/security.md) | Secret-handling guarantees, redaction rules, limitations. |
+| [Development](docs/development.md) | Environment, checks, conventions, testing. |
 
 ## Non-goals
 
 This package does not make network requests, define a unified AI response
-interface, resolve framework SDK behavior, or ship a gateway. Health-aware
-routing applies to deployment selection in the core; request-time failover and
-framework adapters are outside the current release.
+interface, translate or retry requests, or ship a gateway. Deployment selection
+is deterministic and based on configuration plus recorded health; request-time
+concerns belong to the caller or the adapter.
 
 ## License
 
-TBD.
+[MIT](LICENSE).

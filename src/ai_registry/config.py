@@ -9,11 +9,16 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, TextIO
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import ValidationError
 
 from ai_registry.errors import ConfigurationError
-from ai_registry.schemas import Account, Provider, canonical_sdk_type
+from ai_registry.schemas import (
+    Account,
+    Provider,
+    canonical_sdk_type,
+    normalize_capabilities,
+)
 
 PathSource = str | Path | TextIO
 
@@ -224,6 +229,14 @@ def normalize_provider(
             settings[key] = value[key]
             value.pop(key)
     value["settings"] = settings
+    if value.get("default_base_url") is None:
+        # The catalog format carries the provider's base URL under
+        # settings.proxy_url.placeholder. Without this, providers that only
+        # declare it there resolve to a null endpoint and adapters silently fall
+        # back to their own default host.
+        placeholder = _proxy_url_placeholder(settings)
+        if placeholder is not None:
+            value["default_base_url"] = placeholder
     top_sdk_type = value.get("sdk_type")
     nested_sdk_type = settings.get("sdk_type")
     try:
@@ -258,11 +271,7 @@ def normalize_provider(
             if "abilities" in card_value
             else {}
         )
-        known_capabilities = {
-            key: abilities[key]
-            for key in ("reasoning", "structured_output", "vision", "tools")
-            if key in abilities
-        }
+        known_capabilities = normalize_capabilities(abilities)
         if known_capabilities:
             card_value["capabilities"] = known_capabilities
         metadata = (
@@ -298,6 +307,14 @@ def normalize_provider(
             f"duplicate model id '{duplicates[0]}' in provider '{provider.id}'"
         )
     return provider
+
+
+def _proxy_url_placeholder(settings: Mapping[str, Any]) -> str | None:
+    proxy_url = settings.get("proxy_url")
+    if not isinstance(proxy_url, Mapping):
+        return None
+    placeholder = proxy_url.get("placeholder")
+    return placeholder if isinstance(placeholder, str) and placeholder else None
 
 
 def _require_mapping(value: Any, field: str, source_name: str) -> dict[str, Any]:

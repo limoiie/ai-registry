@@ -5,19 +5,67 @@ build-backend = "uv_build"
 [project]
 name = "ai-registry"
 version = "0.1.0"
-description = "Framework-independent AI provider registry core."
+description = "Resolve a stable alias to a concrete AI provider deployment. No requests, no gateway, no literal secrets."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = [
+    "ai",
+    "llm",
+    "model-routing",
+    "provider-registry",
+    "configuration",
+    "secrets",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "pydantic>=2",
     "pyyaml",
 ]
 
+[project.optional-dependencies]
+cli = ["typer>=0.12"]
+openai = ["openai>=1.40"]
+# OpenAIChatModel (formerly OpenAIModel) and pydantic_ai.providers.* are
+# required by the adapter, so the floor is 1.0 rather than the oldest release.
+pydantic-ai = ["pydantic-ai-slim[openai]>=1.0"]
+
+[project.scripts]
+ai-registry = "ai_registry.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/limoiie/ai-registry"
+Documentation = "https://github.com/limoiie/ai-registry#documentation"
+Source = "https://github.com/limoiie/ai-registry"
+Changelog = "https://github.com/limoiie/ai-registry/blob/main/CHANGELOG.md"
+Issues = "https://github.com/limoiie/ai-registry/issues"
+
 [dependency-groups]
 dev = [
     "mypy>=1.13",
     "pytest>=8.3",
+    "pytest-cov>=5.0",
     "ruff>=0.8",
+    "types-pyyaml>=6.0",
+    # The CLI extra is exercised by the test suite; the runtime core does not
+    # depend on it.
+    "typer>=0.12",
+]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
 ]
 
 [tool.uv]
@@ -25,14 +73,49 @@ default-groups = ["dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--strict-markers --strict-config"
+
+[tool.coverage.run]
+source = ["ai_registry"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
 
 [tool.ruff]
 line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "SIM",  # simplify
+    "RUF",  # ruff-specific
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer expresses CLI arguments as function defaults.
+"src/ai_registry/cli.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["ai_registry.cli"]
+# Typer's decorators are untyped in the optional-extra import path.
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+# Optional extras are not installed in the default dev environment; the adapters
+# import them defensively and are covered by tests using stub modules.
+module = ["openai", "openai.*", "pydantic_ai", "pydantic_ai.*"]
+ignore_missing_imports = true

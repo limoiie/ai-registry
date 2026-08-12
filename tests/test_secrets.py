@@ -36,7 +36,7 @@ def test_empty_environment_variable_raises_safe_error(
 ) -> None:
     monkeypatch.setenv("AI_REGISTRY_EMPTY_KEY", "")
 
-    with pytest.raises(SecretResolutionError, match="is empty"):
+    with pytest.raises(SecretResolutionError, match=r"is empty"):
         EnvironmentSecretResolver().resolve("AI_REGISTRY_EMPTY_KEY")
 
 
@@ -76,14 +76,14 @@ def test_custom_resolver_empty_result_is_rejected() -> None:
         def resolve(self, reference: str) -> str:
             return ""
 
-    with pytest.raises(SecretResolutionError, match="empty"):
+    with pytest.raises(SecretResolutionError, match=r"empty"):
         resolve_credential(
             CredentialRef(secret_ref="vault://production/ai/key"), EmptyResolver()
         )
 
 
 def test_unsupported_reference_is_rejected_without_resolving() -> None:
-    with pytest.raises(SecretResolutionError, match="unsupported"):
+    with pytest.raises(SecretResolutionError, match=r"unsupported"):
         resolve_credential({"file": "/tmp/secret"})
 
 

@@ -81,41 +81,69 @@ aliases:
         routing: {priority: 1, weight: 1}
 ```
 
-With default (healthy) state, `resolve("chat-default")` always returns
-`uniapi-primary`. After `mark_failure("chat-default", 0)`, it returns the vLLM
-backup.
+With default (available) state, `resolve("chat-default")` always returns
+`uniapi-primary`. After a recorded failure it returns the vLLM backup.
 
 ## 4. Health-aware routing with recovery
 
-`DeploymentHealthStore` and `DeploymentRouter` work together. Health identity is
-`(alias_id, candidate_index)`, so it is independent of routing metadata and
-works even with duplicate deployments.
+Report the outcome of each attempt and the registry stops choosing a deployment
+that is failing:
+
+```python
+from ai_registry import Registry
+
+registry = Registry.from_project()
+
+resolution = registry.resolve("chat-default")
+try:
+    response = call(resolution)
+except TransientError:
+    registry.record_failure(resolution)  # cools this target down
+    raise
+else:
+    registry.record_success(resolution)
+```
+
+Health identity is `DeploymentTarget(account_id, model_id)`, which has two
+useful consequences: a failing account/model pair is withheld from *every* alias
+that references it, and reordering deployments in your YAML never reassigns
+health state to a different deployment.
+
+Recovery is time-based, so nothing has to remember to re-enable a deployment:
 
 ```python
 from ai_registry import DeploymentHealthStore, DeploymentRouter, Registry
 
-health = DeploymentHealthStore()
-router = DeploymentRouter(health)
-
-registry = Registry.from_data(
-    providers=[...],
-    accounts=[...],
-    aliases=[...],
-    router=router,
+health = DeploymentHealthStore(
+    cooldown_seconds=30.0,  # withhold for 30s after a failure
+    max_cooldown_seconds=300.0,  # doubling per repeated failure, capped here
+    failure_threshold=3,  # tolerate two transient errors first
 )
-
-# Application adapter reports a failure for candidate 0
-health.mark_failure("chat-default", 0)
-
-resolution = registry.resolve("chat-default")  # fails over to backup
-
-# After the deployment recovers, restore it
-health.mark_success("chat-default", 0)
+registry = Registry.from_project(router=DeploymentRouter(health))
 ```
 
-The health store is separate from static configuration, so marking a failure
-or recovery never mutates your YAML-defined config. Unknown health state is
-healthy, so the system fails open by default.
+Once the window elapses the deployment is tried once more (half-open); a success
+clears the state, a failure extends the window. Unknown state is available, so
+the system fails open by default. The store is thread-safe, and marking failures
+never mutates your YAML-defined configuration.
+
+To drive failover yourself in one pass, use `candidates()`:
+
+```python
+for resolution in registry.candidates("chat-default"):
+    try:
+        response = call(resolution)
+    except TransientError:
+        registry.record_failure(resolution)
+        continue
+    registry.record_success(resolution)
+    break
+else:
+    raise RuntimeError("every deployment for 'chat-default' failed")
+```
+
+To share health across processes, or to fix it in a test, implement the
+`HealthStore` protocol — see `ai_registry.testing.ManualHealthStore`.
 
 ## 5. Disabling a deployment or account
 

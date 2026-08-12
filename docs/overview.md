@@ -137,10 +137,11 @@ default.
 - It does **not** ship a gateway or proxy service.
 - It does **not** put literal API keys in configuration files.
 
-Framework adapters (OpenAI SDK, Pydantic AI, LangGraph, LlamaIndex) are the
-intended consumers of a `Resolution` and will be delivered as optional
-dependencies. The current release is the framework-independent core that those
-adapters are built on.
+Framework adapters are the intended consumers of a `Resolution`. The OpenAI SDK
+and Pydantic AI adapters ship as optional extras
+(`ai_registry.adapters.openai`, `ai_registry.adapters.pydantic_ai`); LangGraph
+and LlamaIndex are not covered yet, and `client_kwargs()` gives you what you need
+to write your own in a few lines.
 
 ## Design principles
 
@@ -189,8 +190,11 @@ adapters are built on.
                      +------------+------------+
                      v            v            v
                 OpenAI SDK   Pydantic AI   LangGraph / LlamaIndex
-                (future)     (future)      (future optional adapters)
+                [openai]     [pydantic-ai]  (your own adapter)
 ```
+
+Adapters are optional extras under `ai_registry.adapters`. The core never
+imports them, so `pip install ai-registry` still resolves to six packages.
 
 The core modules are:
 
@@ -202,13 +206,24 @@ The core modules are:
 | `ai_registry.registry` | `Registry` construction and alias/direct resolution. |
 | `ai_registry.routing` | Priority/weight/health-aware deployment selection. |
 | `ai_registry.errors` | Stable, actionable exception types. |
+| `ai_registry.catalog` | Import third-party catalogs (models.dev) into the provider schema. |
+| `ai_registry.testing` | Supported test doubles for consumers. |
+| `ai_registry.cli` | Optional command line interface (`cli` extra). |
+| `ai_registry.adapters.*` | Optional framework adapters (`openai`, `pydantic-ai` extras). |
 
 ## Current status
 
-- Version `0.1.0` provides the framework-independent core described above.
-- The initial focus is OpenAI-compatible providers (`sdk_type: openai`,
-  including UniAPI, vLLM, and gateways). Native Anthropic, Cohere, Gemini, and
-  other provider adapters can be added later without changing the registry,
-  account, alias, or credential model.
-- OpenAI SDK, Pydantic AI, LangGraph, and LlamaIndex adapters are planned as
-  optional extras on top of this core.
+- The framework-independent core described above is complete: schemas, loaders,
+  secret references, resolution, deployment selection with time-based recovery,
+  the built-in catalog, and project scopes with profiles.
+- OpenAI SDK and Pydantic AI adapters ship as optional extras, alongside an
+  optional CLI and a models.dev catalog importer.
+- The focus is OpenAI-compatible providers (`sdk_type: openai`, including
+  UniAPI, vLLM, and gateways) plus native Anthropic. Cohere, Gemini, and others
+  can be added without changing the registry, account, alias, or credential
+  model.
+- Not covered yet: LangGraph and LlamaIndex adapters, request-time concerns
+  (retries, request translation, spend tracking), and any form of context-aware
+  selection that would require inspecting the request.
+- While the version is `0.x`, minor releases may contain breaking changes; see
+  the [changelog](../CHANGELOG.md).

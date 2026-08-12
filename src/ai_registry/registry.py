@@ -23,18 +23,58 @@ from ai_registry.config import (
     merge_providers,
 )
 from ai_registry.errors import ConfigurationError, RegistryError
-from ai_registry.routing import DeploymentRouter
+from ai_registry.routing import DeploymentRouter, DeploymentTarget
 from ai_registry.schemas import (
     Account,
     Alias,
     Deployment,
+    ModelCapabilities,
     ModelCard,
+    ModelType,
     Provider,
     RegistryConfig,
     SafeModel,
+    SDKType,
     _is_sensitive_key,
 )
 from ai_registry.secrets import SecretResolver, resolve_credential
+
+#: Provider ids that are already valid ``gen_ai.provider.name`` values.
+_OTEL_PROVIDER_NAMES = frozenset(
+    {
+        "anthropic",
+        "aws.bedrock",
+        "azure.ai.inference",
+        "azure.ai.openai",
+        "cohere",
+        "deepseek",
+        "gcp.gemini",
+        "gcp.gen_ai",
+        "gcp.vertex_ai",
+        "groq",
+        "ibm.watsonx.ai",
+        "mistral_ai",
+        "openai",
+        "perplexity",
+        "x_ai",
+    }
+)
+
+#: Fallback ``gen_ai.provider.name`` per SDK family, used when the provider id
+#: is not itself a registered OpenTelemetry value. The attribute identifies the
+#: telemetry *format flavor*, so an OpenAI-compatible gateway reports "openai".
+_OTEL_PROVIDER_BY_SDK = {
+    SDKType.OPENAI: "openai",
+    SDKType.ANTHROPIC: "anthropic",
+    SDKType.GOOGLE: "gcp.gen_ai",
+}
+
+#: ``gen_ai.operation.name`` per model type. Reranking has no registered
+#: operation value, so it is omitted rather than reported inaccurately.
+_OTEL_OPERATIONS = {
+    ModelType.CHAT: "chat",
+    ModelType.EMBEDDING: "embeddings",
+}
 
 
 @dataclass(frozen=True)
@@ -57,11 +97,45 @@ class Resolution:
     def account_id(self) -> str:
         return self.account.id
 
+    @property
+    def provider_id(self) -> str:
+        return self.provider.id
+
+    @property
+    def target(self) -> DeploymentTarget:
+        """Return the health-state identity of the resolved deployment."""
+        return DeploymentTarget(account_id=self.account.id, model_id=self.model.id)
+
     def resolve_credential(self) -> str | None:
         """Resolve the account credential only when an adapter requests it."""
         if self.account.credential is None:
             return None
         return resolve_credential(self.account.credential, self._secret_resolver)
+
+    def otel_attributes(self) -> dict[str, str]:
+        """Return OpenTelemetry GenAI attributes describing this resolution.
+
+        Keys follow the OpenTelemetry GenAI semantic conventions
+        (``gen_ai.provider.name`` supersedes the deprecated ``gen_ai.system``).
+        The ``ai_registry.*`` keys are this library's own additions: they record
+        *which* alias and account produced the request, which the standard
+        attributes cannot express. No secret is ever included.
+        """
+        attributes = {
+            "gen_ai.provider.name": (
+                self.provider.id
+                if self.provider.id in _OTEL_PROVIDER_NAMES
+                else _OTEL_PROVIDER_BY_SDK.get(self.provider.sdk_type, self.provider.id)
+            ),
+            "gen_ai.request.model": self.model.id,
+            "ai_registry.deployment_id": self.deployment_id,
+            "ai_registry.provider_id": self.provider.id,
+            "ai_registry.account_id": self.account.id,
+        }
+        operation = _OTEL_OPERATIONS.get(self.model.type)
+        if operation is not None:
+            attributes["gen_ai.operation.name"] = operation
+        return attributes
 
     def __repr__(self) -> str:
         return (
@@ -73,6 +147,37 @@ class Resolution:
         )
 
     __str__ = __repr__
+
+
+@dataclass(frozen=True)
+class CatalogEntry:
+    """One model card together with the provider that offers it."""
+
+    provider_id: str
+    model: ModelCard
+
+    @property
+    def model_id(self) -> str:
+        return self.model.id
+
+
+def _required_capabilities(
+    requires: ModelCapabilities | Mapping[str, bool] | None,
+) -> tuple[str, ...]:
+    if requires is None:
+        return ()
+    values = (
+        requires._raw_dump()
+        if isinstance(requires, ModelCapabilities)
+        else dict(requires)
+    )
+    unknown = set(values) - set(ModelCapabilities.model_fields)
+    if unknown:
+        raise RegistryError(
+            f"unknown capability {sorted(unknown)[0]!r}; use one of "
+            f"{sorted(ModelCapabilities.model_fields)}"
+        )
+    return tuple(name for name, wanted in values.items() if wanted)
 
 
 class Registry:
@@ -143,19 +248,26 @@ class Registry:
         root: str | Path | None = None,
         *,
         profile: str | None = None,
+        search_parents: bool = True,
         secret_resolver: SecretResolver | None = None,
         router: DeploymentRouter | None = None,
     ) -> Registry:
         """Build a registry from built-in and project-scoped configuration.
 
         Discovery starts at ``root`` or the current working directory when
-        omitted, and requires a ``<root>/.ai-registry/registry.yaml`` (or
-        ``.yml``/``.json``) file containing accounts and optional aliases.
-        Pass ``profile`` (or set ``AI_REGISTRY_PROFILE``) to select a
+        omitted and walks upward to the first ancestor containing an
+        ``.ai-registry`` directory, so the registry resolves identically from
+        any subdirectory of a project. Pass ``search_parents=False`` to require
+        the directory at ``root`` itself.
+
+        The discovered directory must hold a ``registry.yaml`` (or
+        ``.yml``/``.json``) file containing accounts and optional aliases. Pass
+        ``profile`` (or set ``AI_REGISTRY_PROFILE``) to select a
         ``registry.<profile>.yaml`` file instead of the default.
         """
-        root_path = Path(root) if root is not None else Path.cwd()
+        start = Path(root) if root is not None else Path.cwd()
         resolved_profile = _resolve_profile(profile)
+        root_path = _discover_project_root(start) if search_parents else start
         deployments_file = _discover_registry_file(root_path, resolved_profile)
         if deployments_file is None:
             expected = (
@@ -184,14 +296,125 @@ class Registry:
         """Resolve an alias first, then an explicit ``account-id/model-id``."""
         alias = self._aliases.get(reference)
         if alias is not None:
-            selected = self._router.select(
-                alias,
-                eligible=lambda deployment: (
-                    self._accounts[deployment.account_id].enabled
-                ),
-            )
+            selected = self._router.select(alias, eligible=self._account_enabled)
             return self._resolution(selected.deployment, selected.deployment_id)
+        return self._resolve_direct(reference)
 
+    def candidates(self, reference: str) -> list[Resolution]:
+        """Return every available deployment for ``reference``, best first.
+
+        This is the entry point for callers that implement their own
+        request-time failover: walk the list, and report the outcome of each
+        attempt with :meth:`record_success` / :meth:`record_failure`. An alias
+        with no available deployment returns an empty list rather than raising,
+        because "nothing to try" is a normal branch for a retry loop.
+        """
+        alias = self._aliases.get(reference)
+        if alias is None:
+            return [self._resolve_direct(reference)]
+        return [
+            self._resolution(selected.deployment, selected.deployment_id)
+            for selected in self._router.candidates(
+                alias, eligible=self._account_enabled
+            )
+        ]
+
+    def record_success(self, resolution: Resolution) -> None:
+        """Clear health state for the deployment behind ``resolution``."""
+        self._router.health_store.record_success(resolution.target)
+
+    def record_failure(self, resolution: Resolution) -> None:
+        """Record a failure for the deployment behind ``resolution``."""
+        self._router.health_store.record_failure(resolution.target)
+
+    def list_aliases(self) -> list[str]:
+        """Return every configured alias id, sorted."""
+        return sorted(self._aliases)
+
+    def list_accounts(self) -> list[Account]:
+        """Return every configured account, sorted by id."""
+        return [
+            account.model_copy(deep=True)
+            for account in sorted(self._accounts.values(), key=lambda a: a.id)
+        ]
+
+    def list_providers(self) -> list[Provider]:
+        """Return every configured provider, sorted by id."""
+        return [
+            provider.model_copy(deep=True)
+            for provider in sorted(self._providers.values(), key=lambda p: p.id)
+        ]
+
+    def get_provider(self, provider_id: str) -> Provider:
+        """Return one provider by id."""
+        provider = self._providers.get(provider_id)
+        if provider is None:
+            raise RegistryError("unknown provider; configure the provider")
+        return provider.model_copy(deep=True)
+
+    def get_account(self, account_id: str) -> Account:
+        """Return one account by id."""
+        account = self._accounts.get(account_id)
+        if account is None:
+            raise RegistryError("unknown account; configure the account")
+        return account.model_copy(deep=True)
+
+    def list_models(
+        self,
+        *,
+        model_type: ModelType | str | None = None,
+        provider_id: str | None = None,
+        requires: ModelCapabilities | Mapping[str, bool] | None = None,
+        min_context_tokens: int | None = None,
+        enabled_only: bool = False,
+    ) -> list[CatalogEntry]:
+        """Return catalog entries matching every supplied constraint.
+
+        ``requires`` selects models whose capabilities include each requested
+        flag, so ``requires={"tools": True}`` returns only tool-capable models.
+        ``enabled_only`` restricts the result to models some enabled account
+        actually exposes.
+        """
+        wanted_type = ModelType(model_type) if model_type is not None else None
+        required = _required_capabilities(requires)
+        exposed = self._enabled_model_ids() if enabled_only else None
+        entries: list[CatalogEntry] = []
+        for provider in sorted(self._providers.values(), key=lambda p: p.id):
+            if provider_id is not None and provider.id != provider_id:
+                continue
+            for card in provider.model_cards:
+                if wanted_type is not None and card.type is not wanted_type:
+                    continue
+                if exposed is not None and (provider.id, card.id) not in exposed:
+                    continue
+                if min_context_tokens is not None and (
+                    card.context_window_tokens is None
+                    or card.context_window_tokens < min_context_tokens
+                ):
+                    continue
+                if any(
+                    getattr(card.capabilities, name) is not True for name in required
+                ):
+                    continue
+                entries.append(
+                    CatalogEntry(
+                        provider_id=provider.id, model=card.model_copy(deep=True)
+                    )
+                )
+        return entries
+
+    def _enabled_model_ids(self) -> set[tuple[str, str]]:
+        return {
+            (account.provider_id, model_id)
+            for account in self._accounts.values()
+            if account.enabled
+            for model_id in account.enabled_models
+        }
+
+    def _account_enabled(self, deployment: Deployment) -> bool:
+        return self._accounts[deployment.account_id].enabled
+
+    def _resolve_direct(self, reference: str) -> Resolution:
         if "/" not in reference:
             raise RegistryError(
                 "unknown alias or model reference; use an alias or 'account/model'"
@@ -352,15 +575,12 @@ def _load_accounts(sources: Sequence[PathSource]) -> list[Account]:
 
 
 _PROFILE_ENV = "AI_REGISTRY_PROFILE"
+_PROJECT_DIR = ".ai-registry"
 _REGISTRY_NAMES = ("registry.yaml", "registry.yml", "registry.json")
 
 
 def _resolve_profile(profile: str | None) -> str | None:
-    value: str | None
-    if profile is not None:
-        value = profile
-    else:
-        value = os.environ.get(_PROFILE_ENV)
+    value = profile if profile is not None else os.environ.get(_PROFILE_ENV)
     if value is None or value.strip() == "":
         return None
     if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
@@ -371,8 +591,21 @@ def _resolve_profile(profile: str | None) -> str | None:
     return value
 
 
+def _discover_project_root(start: Path) -> Path:
+    """Return the nearest ancestor of ``start`` holding an ``.ai-registry`` dir.
+
+    Falls back to ``start`` when no ancestor qualifies, so the caller still
+    reports a missing-file error rooted where the search began.
+    """
+    current = start if start.is_dir() else start.parent
+    for candidate in (current, *current.parents):
+        if (candidate / _PROJECT_DIR).is_dir():
+            return candidate
+    return start
+
+
 def _discover_registry_file(root: Path, profile: str | None) -> Path | None:
-    deployments_dir = root / ".ai-registry"
+    deployments_dir = root / _PROJECT_DIR
     names = (
         (
             f"registry.{profile}.yaml",
