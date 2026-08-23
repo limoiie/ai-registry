@@ -101,6 +101,15 @@ are always listed under **Changed** with a migration note.
   `settings.proxy_url.placeholder`, which was ignored, so every resolution from
   the documented quick-start returned `endpoint = None` and adapters silently
   fell back to their own default host.
+- The built-in provider catalog is corrected against official sources: release
+  dates, `context_window_tokens`, and `max_output_tokens` are aligned for
+  Anthropic, OpenAI, Google, DeepSeek, Moonshot, Qwen, Zhipu, xAI, MiniMax, and
+  Uni API models. Entries that never existed are removed (`glm-5-code`) or
+  renamed to their real IDs (`MiniMax-M2-Stable` → `MiniMax-M2`,
+  `kimi-k2.7` → `kimi-k2.7-code`), and models retired upstream
+  (`deepseek-chat`, `deepseek-reasoner`, `kimi-latest`,
+  `kimi-thinking-preview`, `kimi-k2-thinking`, `kimi-k2-turbo-preview`,
+  `grok-3`, `grok-4`, `grok-4-latest`) are marked `deprecated`.
 
 ## [0.1.0]
 
