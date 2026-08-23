@@ -7,7 +7,10 @@ adapter you need directly::
 
     from ai_registry.adapters.openai import create_client
     from ai_registry.adapters.pydantic_ai import create_model
-    from ai_registry.adapters.langchain import create_chat_model
+    from ai_registry.adapters.langchain import (
+        create_chat_model,
+        create_embeddings,
+    )
 
 The functions take a :class:`~ai_registry.registry.Resolution`. For one-call
 building from a reference, use :class:`~ai_registry.factory.ClientFactory`.
