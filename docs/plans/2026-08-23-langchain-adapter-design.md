@@ -32,8 +32,10 @@ Rejected alternatives:
   `ModelType.CHAT`; builds `ChatOpenAI` (SDKType.OPENAI) or
   `ChatAnthropic` (SDKType.ANTHROPIC).
 - `create_embeddings(resolution, **overrides)` — requires
-  `ModelType.EMBEDDING`; builds `OpenAIEmbeddings` or
-  `AnthropicEmbeddings` for the same sdk_types.
+  `ModelType.EMBEDDING`; builds `OpenAIEmbeddings` for OpenAI-compatible
+  `sdk_type` (SDKType.OPENAI). Anthropic provides no embedding API and
+  `langchain-anthropic` ships no embeddings class, so an anthropic
+  resolution raises `UnsupportedProviderError` with a remedy instead.
 
 `overrides` win on constructor conflict. The credential is resolved exactly
 once and never returned. Missing optional extras raise

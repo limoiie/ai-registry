@@ -76,14 +76,10 @@ class ChatAnthropic(Recorder):  # noqa: N801
     pass
 
 
-class AnthropicEmbeddings(Recorder):  # noqa: N801
-    pass
-
-
 def install_langchain_stub(monkeypatch: pytest.MonkeyPatch) -> None:
     modules = {
         "langchain_openai": (ChatOpenAI, OpenAIEmbeddings),
-        "langchain_anthropic": (ChatAnthropic, AnthropicEmbeddings),
+        "langchain_anthropic": (ChatAnthropic,),
     }
     for name, classes in modules.items():
         module = types.ModuleType(name)
@@ -103,7 +99,7 @@ def test_langchain_adapter_reports_the_missing_extra_for_openai() -> None:
 
 def test_langchain_adapter_reports_the_missing_extra_for_anthropic() -> None:
     with pytest.raises(MissingDependencyError) as caught:
-        langchain_adapter.create_embeddings(resolution(sdk_type="anthropic", model_type="embedding"))
+        langchain_adapter.create_chat_model(resolution(sdk_type="anthropic"))
 
     assert 'pip install "ai-registry[langchain]"' in str(caught.value)
     assert caught.value.package == "langchain-anthropic"
@@ -149,17 +145,15 @@ def test_langchain_adapter_builds_openai_embeddings(
     assert model.kwargs["api_key"] == "sk-adapter"
 
 
-def test_langchain_adapter_builds_anthropic_embeddings(
+def test_langchain_adapter_rejects_anthropic_embeddings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     install_langchain_stub(monkeypatch)
 
-    model = langchain_adapter.create_embeddings(
-        resolution(sdk_type="anthropic", model_type="embedding")
-    )
-
-    assert isinstance(model, AnthropicEmbeddings)
-    assert model.kwargs["api_key"] == "sk-adapter"
+    with pytest.raises(UnsupportedProviderError, match=r"anthropic"):
+        langchain_adapter.create_embeddings(
+            resolution(sdk_type="anthropic", model_type="embedding")
+        )
 
 
 def test_langchain_adapter_overrides_win(
@@ -273,7 +267,6 @@ _SDK_CLASS: dict[SDKType, dict[ModelType, str]] = {
     },
     SDKType.ANTHROPIC: {
         ModelType.CHAT: "ChatAnthropic",
-        ModelType.EMBEDDING: "AnthropicEmbeddings",
     },
 }
 
@@ -301,12 +294,22 @@ def create_chat_model(resolution: Resolution, **overrides: Any) -> BaseChatModel
 
 
 def create_embeddings(resolution: Resolution, **overrides: Any) -> Embeddings:
-    """Build a LangChain embedding model for ``resolution``."""
+    """Build a LangChain embedding model for ``resolution``.
+
+    Only OpenAI-compatible endpoints serve embeddings; Anthropic offers no
+    embedding API, so anthropic resolutions raise ``UnsupportedProviderError``.
+    """
     if resolution.model.type is not ModelType.EMBEDDING:
         raise UnsupportedProviderError(
             f"model '{resolution.model.id}' is of type "
             f"'{resolution.model.type.value}'; LangChain embedding models are "
             "embedding models, so resolve an embedding alias instead"
+        )
+    if resolution.sdk_type is SDKType.ANTHROPIC:
+        raise UnsupportedProviderError(
+            f"provider '{resolution.provider.id}' resolves to sdk_type "
+            "'anthropic'; Anthropic offers no embedding models, so resolve an "
+            "OpenAI-compatible embedding endpoint instead"
         )
     return _build(resolution, ModelType.EMBEDDING, overrides)
 
@@ -508,16 +511,13 @@ def install_langchain_stub(monkeypatch: pytest.MonkeyPatch) -> None:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
-    for name, class_name in (
-        ("langchain_openai", "ChatOpenAI"),
-        ("langchain_anthropic", "ChatAnthropic"),
+    for name, class_names in (
+        ("langchain_openai", ("ChatOpenAI", "OpenAIEmbeddings")),
+        ("langchain_anthropic", ("ChatAnthropic",)),
     ):
         module = types.ModuleType(name)
-        setattr(module, class_name, Recorder)
-        if name == "langchain_openai":
-            module.OpenAIEmbeddings = Recorder  # type: ignore[attr-defined]
-        else:
-            module.AnthropicEmbeddings = Recorder  # type: ignore[attr-defined]
+        for class_name in class_names:
+            setattr(module, class_name, Recorder)
         monkeypatch.setitem(sys.modules, name, module)
 ```
 
@@ -619,10 +619,10 @@ Add to the `### Added` list after the pydantic-ai adapter entry:
 
 ```text
 - Optional LangChain adapter: `ai_registry.adapters.langchain`
-  (`create_chat_model`, `create_embeddings`) — chat models and embeddings for
-  OpenAI-compatible and Anthropic providers, plus `ClientFactory`
-  `langchain_chat_model` / `langchain_embeddings`. Install with the
-  `langchain` extra; the models feed straight into LangGraph states.
+  (`create_chat_model`, `create_embeddings`) — chat models for OpenAI-compatible
+  and Anthropic providers, embeddings for OpenAI-compatible providers, plus
+  `ClientFactory` `langchain_chat_model` / `langchain_embeddings`. Install with
+  the `langchain` extra; the models feed straight into LangGraph states.
 ```
 
 **Step 4: Verify nothing else references the status**
