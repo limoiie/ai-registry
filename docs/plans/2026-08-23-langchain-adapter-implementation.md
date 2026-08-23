@@ -4,7 +4,7 @@
 
 **Goal:** Add an optional `ai_registry.adapters.langchain` adapter that builds LangChain chat models and embeddings from a `Resolution` (LangGraph consumers get it for free).
 
-**Architecture:** Mirror the existing `pydantic_ai` adapter: a lazy-importing adapter module behind a `langchain` extra, direct class construction (`ChatOpenAI`, `ChatAnthropic`, `OpenAIEmbeddings`, `AnthropicEmbeddings`), optional dependencies never imported by the core, wiring through `ClientFactory`.
+**Architecture:** Mirror the existing `pydantic_ai` adapter: a lazy-importing adapter module behind a `langchain` extra, direct class construction (`ChatOpenAI`, `ChatAnthropic`, `OpenAIEmbeddings` — Anthropic offers no embedding API, so anthropic embeddings raise instead), optional dependencies never imported by the core, wiring through `ClientFactory`.
 
 **Tech Stack:** Python 3.11+, LangChain (langchain-openai, langchain-anthropic), pytest with `sys.modules` stubs.
 
