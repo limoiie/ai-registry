@@ -356,7 +356,7 @@ to the docstring's import example block.
 **Step 3: Run the tests**
 
 Run: `uv run pytest tests/test_langchain.py -q`
-Expected: PASS (all 13 tests).
+Expected: PASS (all 11 tests).
 
 **Step 4: Lint and type-check**
 
