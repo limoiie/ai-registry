@@ -41,6 +41,9 @@ openai = ["openai>=1.40"]
 # OpenAIChatModel (formerly OpenAIModel) and pydantic_ai.providers.* are
 # required by the adapter, so the floor is 1.0 rather than the oldest release.
 pydantic-ai = ["pydantic-ai-slim[openai]>=1.0"]
+# `api_key`/`base_url`/`model` constructor kwargs are required by the adapter;
+# langchain-openai and langchain-anthropic provide them from 0.2 on.
+langchain = ["langchain-openai>=0.2", "langchain-anthropic>=0.2"]
 
 [project.scripts]
 ai-registry = "ai_registry.cli:main"
@@ -117,5 +120,16 @@ disallow_untyped_decorators = false
 [[tool.mypy.overrides]]
 # Optional extras are not installed in the default dev environment; the adapters
 # import them defensively and are covered by tests using stub modules.
-module = ["openai", "openai.*", "pydantic_ai", "pydantic_ai.*"]
+module = [
+    "openai",
+    "openai.*",
+    "pydantic_ai",
+    "pydantic_ai.*",
+    "langchain_core",
+    "langchain_core.*",
+    "langchain_openai",
+    "langchain_openai.*",
+    "langchain_anthropic",
+    "langchain_anthropic.*",
+]
 ignore_missing_imports = true
