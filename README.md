@@ -62,6 +62,7 @@ pip install ai-registry                    # core: pydantic + pyyaml only
 pip install "ai-registry[cli]"             # + ai-registry command
 pip install "ai-registry[openai]"          # + OpenAI SDK adapter
 pip install "ai-registry[pydantic-ai]"     # + Pydantic AI adapter
+pip install "ai-registry[langchain]"       # + LangChain chat/embeddings adapter
 ```
 
 Requires Python 3.11+.
@@ -122,6 +123,9 @@ model = factory.pydantic_ai_model("chat-default")
 
 # Registry routing becomes Pydantic AI request-time failover:
 model = factory.pydantic_ai_fallback_model("chat-default")
+
+# A LangChain model — LangGraph states take it directly as a node model:
+model = factory.langchain_chat_model("chat-default")
 ```
 
 Or drive failover yourself — `candidates()` returns every healthy deployment in
