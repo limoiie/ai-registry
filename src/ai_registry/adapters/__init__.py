@@ -7,6 +7,7 @@ adapter you need directly::
 
     from ai_registry.adapters.openai import create_client
     from ai_registry.adapters.pydantic_ai import create_model
+    from ai_registry.adapters.langchain import create_chat_model
 
 The functions take a :class:`~ai_registry.registry.Resolution`. For one-call
 building from a reference, use :class:`~ai_registry.factory.ClientFactory`.
@@ -16,4 +17,4 @@ never returns it.
 
 from __future__ import annotations
 
-__all__ = ["openai", "pydantic_ai"]
+__all__ = ["langchain", "openai", "pydantic_ai"]
