@@ -23,7 +23,8 @@ def test_core_import_does_not_import_adapter_extras() -> None:
             "-c",
             "import ai_registry, sys;"
             "assert 'ai_registry.adapters.openai' not in sys.modules;"
-            "assert 'ai_registry.adapters.pydantic_ai' not in sys.modules",
+            "assert 'ai_registry.adapters.pydantic_ai' not in sys.modules;"
+            "assert 'ai_registry.adapters.langchain' not in sys.modules",
         ],
         check=True,
     )
