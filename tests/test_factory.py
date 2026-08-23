@@ -263,6 +263,7 @@ def test_langchain_embeddings_resolves_reference_and_builds(
     model = ClientFactory(registry).langchain_embeddings("embed-default")
 
     assert model.kwargs["model"] == "test-model"
+    assert model.kwargs["api_key"] == "sk-adapter"
 
 
 def test_langchain_missing_extra_is_reported_on_first_use() -> None:
