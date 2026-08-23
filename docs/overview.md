@@ -188,9 +188,9 @@ need to write your own in a few lines.
             |                          v        v                |
             |                     Resolution (safe, isolated)    |
             +---------------------------------------------------+
-                                  |
-                     +------------+------------+
-                     v            v            v
+                                   |
+                     +------------+------------+------------+
+                     v            v            v            v
               OpenAI SDK   Pydantic AI   LangChain / LangGraph   LlamaIndex
               [openai]     [pydantic-ai] [langchain]             (your own adapter)
 ```
