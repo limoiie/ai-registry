@@ -187,3 +187,8 @@ def test_langchain_adapter_rejects_unsupported_sdk_types(
 
     with pytest.raises(UnsupportedProviderError, match=r"google"):
         langchain_adapter.create_chat_model(resolution(sdk_type="google"))
+
+    with pytest.raises(UnsupportedProviderError, match=r"google"):
+        langchain_adapter.create_embeddings(
+            resolution(sdk_type="google", model_type="embedding")
+        )

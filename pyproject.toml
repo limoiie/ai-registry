@@ -41,8 +41,8 @@ openai = ["openai>=1.40"]
 # OpenAIChatModel (formerly OpenAIModel) and pydantic_ai.providers.* are
 # required by the adapter, so the floor is 1.0 rather than the oldest release.
 pydantic-ai = ["pydantic-ai-slim[openai]>=1.0"]
-# `api_key`/`base_url`/`model` constructor kwargs are required by the adapter;
-# langchain-openai and langchain-anthropic provide them from 0.2 on.
+# `api_key`/`base_url`/`model`/`timeout` constructor kwargs are required by the
+# adapter; langchain-openai and langchain-anthropic provide them from 0.2 on.
 langchain = ["langchain-openai>=0.2", "langchain-anthropic>=0.2"]
 
 [project.scripts]
