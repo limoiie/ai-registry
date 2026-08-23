@@ -56,14 +56,10 @@ class ChatAnthropic(Recorder):
     pass
 
 
-class AnthropicEmbeddings(Recorder):
-    pass
-
-
 def install_langchain_stub(monkeypatch: pytest.MonkeyPatch) -> None:
     modules = {
         "langchain_openai": (ChatOpenAI, OpenAIEmbeddings),
-        "langchain_anthropic": (ChatAnthropic, AnthropicEmbeddings),
+        "langchain_anthropic": (ChatAnthropic,),
     }
     for name, classes in modules.items():
         module = types.ModuleType(name)
@@ -83,9 +79,7 @@ def test_langchain_adapter_reports_the_missing_extra_for_openai() -> None:
 
 def test_langchain_adapter_reports_the_missing_extra_for_anthropic() -> None:
     with pytest.raises(MissingDependencyError) as caught:
-        langchain_adapter.create_embeddings(
-            resolution(sdk_type="anthropic", model_type="embedding")
-        )
+        langchain_adapter.create_chat_model(resolution(sdk_type="anthropic"))
 
     assert 'pip install "ai-registry[langchain]"' in str(caught.value)
     assert caught.value.package == "langchain-anthropic"
@@ -131,17 +125,15 @@ def test_langchain_adapter_builds_openai_embeddings(
     assert model.kwargs["api_key"] == "sk-adapter"
 
 
-def test_langchain_adapter_builds_anthropic_embeddings(
+def test_langchain_adapter_rejects_anthropic_embeddings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     install_langchain_stub(monkeypatch)
 
-    model = langchain_adapter.create_embeddings(
-        resolution(sdk_type="anthropic", model_type="embedding")
-    )
-
-    assert isinstance(model, AnthropicEmbeddings)
-    assert model.kwargs["api_key"] == "sk-adapter"
+    with pytest.raises(UnsupportedProviderError, match=r"anthropic"):
+        langchain_adapter.create_embeddings(
+            resolution(sdk_type="anthropic", model_type="embedding")
+        )
 
 
 def test_langchain_adapter_overrides_win(

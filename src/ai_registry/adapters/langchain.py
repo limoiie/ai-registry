@@ -31,7 +31,6 @@ _SDK_CLASS: dict[SDKType, dict[ModelType, str]] = {
     },
     SDKType.ANTHROPIC: {
         ModelType.CHAT: "ChatAnthropic",
-        ModelType.EMBEDDING: "AnthropicEmbeddings",
     },
 }
 
@@ -59,12 +58,22 @@ def create_chat_model(resolution: Resolution, **overrides: Any) -> BaseChatModel
 
 
 def create_embeddings(resolution: Resolution, **overrides: Any) -> Embeddings:
-    """Build a LangChain embedding model for ``resolution``."""
+    """Build a LangChain embedding model for ``resolution``.
+
+    Only OpenAI-compatible endpoints serve embeddings; Anthropic offers no
+    embedding API, so anthropic resolutions raise ``UnsupportedProviderError``.
+    """
     if resolution.model.type is not ModelType.EMBEDDING:
         raise UnsupportedProviderError(
             f"model '{resolution.model.id}' is of type "
             f"'{resolution.model.type.value}'; LangChain embedding models are "
             "embedding models, so resolve an embedding alias instead"
+        )
+    if resolution.sdk_type is SDKType.ANTHROPIC:
+        raise UnsupportedProviderError(
+            f"provider '{resolution.provider.id}' resolves to sdk_type "
+            "'anthropic'; Anthropic offers no embedding models, so resolve an "
+            "OpenAI-compatible embedding endpoint instead"
         )
     return _build(resolution, ModelType.EMBEDDING, overrides)
 
