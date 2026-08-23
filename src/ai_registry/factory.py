@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 from ai_registry.registry import Registry
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from langchain_core.embeddings import Embeddings
+    from langchain_core.language_models.chat_models import BaseChatModel
     from openai import AsyncOpenAI, OpenAI
     from pydantic_ai.models import Model
 
@@ -83,3 +85,15 @@ class ClientFactory:
         from ai_registry.adapters.pydantic_ai import create_fallback_model
 
         return create_fallback_model(self._registry.candidates(reference), **overrides)
+
+    def langchain_chat_model(self, reference: str, **overrides: Any) -> BaseChatModel:
+        """Build a LangChain chat model for ``reference``."""
+        from ai_registry.adapters.langchain import create_chat_model
+
+        return create_chat_model(self._registry.resolve(reference), **overrides)
+
+    def langchain_embeddings(self, reference: str, **overrides: Any) -> Embeddings:
+        """Build a LangChain embedding model for ``reference``."""
+        from ai_registry.adapters.langchain import create_embeddings
+
+        return create_embeddings(self._registry.resolve(reference), **overrides)

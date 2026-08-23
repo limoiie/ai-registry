@@ -62,6 +62,21 @@ def install_pydantic_ai_stub(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setitem(sys.modules, name, module)
 
 
+def install_langchain_stub(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Recorder:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+
+    for name, class_names in (
+        ("langchain_openai", ("ChatOpenAI", "OpenAIEmbeddings")),
+        ("langchain_anthropic", ("ChatAnthropic",)),
+    ):
+        module = types.ModuleType(name)
+        for class_name in class_names:
+            setattr(module, class_name, Recorder)
+        monkeypatch.setitem(sys.modules, name, module)
+
+
 def registered_factory() -> ClientFactory:
     registry = build_registry(
         {"chat-default": ["test-account/test-model"]},
@@ -221,3 +236,37 @@ def test_pydantic_ai_model_forwards_overrides(
     model = registered_factory().pydantic_ai_model("chat-default", settings={})
 
     assert model.kwargs["settings"] == {}
+
+
+def test_langchain_chat_model_resolves_reference_and_builds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_langchain_stub(monkeypatch)
+
+    model = registered_factory().langchain_chat_model("chat-default")
+
+    assert model.kwargs["model"] == "test-model"
+    assert model.kwargs["api_key"] == "sk-adapter"
+
+
+def test_langchain_embeddings_resolves_reference_and_builds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_langchain_stub(monkeypatch)
+    registry = build_registry(
+        {"embed-default": ["test-account/test-model"]},
+        model_type="embedding",
+        credential="secret_ref:key",
+        secret_resolver=constant_secret_resolver("sk-adapter"),
+    )
+
+    model = ClientFactory(registry).langchain_embeddings("embed-default")
+
+    assert model.kwargs["model"] == "test-model"
+
+
+def test_langchain_missing_extra_is_reported_on_first_use() -> None:
+    with pytest.raises(MissingDependencyError) as caught:
+        registered_factory().langchain_chat_model("chat-default")
+
+    assert 'pip install "ai-registry[langchain]"' in str(caught.value)
