@@ -8,19 +8,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from ai_registry.errors import MissingDependencyError, UnsupportedProviderError
-from ai_registry.registry import Registry, Resolution
+from ai_registry.registry import Resolution
 from ai_registry.schemas import SDKType
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from openai import AsyncOpenAI, OpenAI
 
-__all__ = [
-    "client_kwargs",
-    "create_async_client",
-    "create_async_client_for",
-    "create_client",
-    "create_client_for",
-]
+__all__ = ["client_kwargs", "create_async_client", "create_client"]
 
 
 def client_kwargs(resolution: Resolution) -> dict[str, Any]:
@@ -52,27 +46,6 @@ def create_async_client(resolution: Resolution, **overrides: Any) -> AsyncOpenAI
     """Build an ``openai.AsyncOpenAI`` client for ``resolution``."""
     openai = _import_openai(resolution)
     return openai.AsyncOpenAI(**{**client_kwargs(resolution), **overrides})
-
-
-def create_client_for(
-    registry: Registry, reference: str, **overrides: Any
-) -> OpenAI:
-    """Resolve ``reference`` with ``registry``, then build a sync client.
-
-    One import and one call::
-
-        from ai_registry.adapters.openai import create_client_for
-
-        client = create_client_for(registry, "chat-default")
-    """
-    return create_client(registry.resolve(reference), **overrides)
-
-
-def create_async_client_for(
-    registry: Registry, reference: str, **overrides: Any
-) -> AsyncOpenAI:
-    """Resolve ``reference`` with ``registry``, then build an async client."""
-    return create_async_client(registry.resolve(reference), **overrides)
 
 
 def _import_openai(resolution: Resolution) -> Any:

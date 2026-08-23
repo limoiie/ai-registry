@@ -17,7 +17,7 @@ models:
 - id: claude-opus-5
   display_name: Claude Opus 5
   type: chat
-  released_at: '2026-06-18'
+  released_at: '2026-07-24'
   description: Anthropic's most capable model with a 1M context window and frontier
     reasoning, coding, and long-horizon agent performance.
   context_window_tokens: 1000000
@@ -42,7 +42,7 @@ models:
 - id: claude-sonnet-5
   display_name: Claude Sonnet 5
   type: chat
-  released_at: '2026-05-14'
+  released_at: '2026-06-30'
   description: Balanced frontier model with a 1M context window and strong value for
     coding and agentic workloads.
   context_window_tokens: 1000000
@@ -67,7 +67,7 @@ models:
 - id: claude-opus-4-8
   display_name: Claude Opus 4.8
   type: chat
-  released_at: '2026-04-16'
+  released_at: '2026-05-28'
   description: Latest Opus 4.x generation with a 1M context window and strong long-context
     reasoning.
   context_window_tokens: 1000000
@@ -116,7 +116,7 @@ models:
 - id: claude-sonnet-4-6
   display_name: Claude Sonnet 4.6
   type: chat
-  released_at: '2025-12-01'
+  released_at: '2026-02-17'
   description: Prior Sonnet generation with a 1M context window.
   context_window_tokens: 1000000
   max_output_tokens: 64000
@@ -140,7 +140,7 @@ models:
 - id: claude-haiku-4-5
   display_name: Claude Haiku 4.5
   type: chat
-  released_at: '2025-10-01'
+  released_at: '2025-10-15'
   description: Fast, cost-efficient model for high-volume and latency-sensitive workloads.
   context_window_tokens: 200000
   max_output_tokens: 64000

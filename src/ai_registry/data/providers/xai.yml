@@ -17,7 +17,7 @@ models:
 - id: grok-4.5
   display_name: Grok 4.5
   type: chat
-  released_at: '2026-06-01'
+  released_at: '2026-07-08'
   description: Latest Grok flagship with a 500K context window and frontier reasoning.
   context_window_tokens: 500000
   max_output_tokens: 500000
@@ -41,7 +41,7 @@ models:
 - id: grok-4.3
   display_name: Grok 4.3
   type: chat
-  released_at: '2026-03-01'
+  released_at: '2026-04-30'
   description: High-capability model with a 1M context window.
   context_window_tokens: 1000000
   max_output_tokens: 1000000
@@ -65,6 +65,7 @@ models:
 - id: grok-4
   display_name: Grok 4
   type: chat
+  deprecated: true
   released_at: '2025-07-09'
   description: Grok 4 generation model with a 256K context window and strong reasoning.
   context_window_tokens: 256000
@@ -89,6 +90,7 @@ models:
 - id: grok-4-latest
   display_name: Grok 4 Latest
   type: chat
+  deprecated: true
   released_at: '2025-07-09'
   description: Rolling alias for the current Grok 4 model.
   context_window_tokens: 256000
@@ -113,10 +115,11 @@ models:
 - id: grok-3
   display_name: Grok 3
   type: chat
-  released_at: '2025-02-20'
+  deprecated: true
+  released_at: '2025-02-17'
   description: Prior-generation reasoning model with a 128K context window.
   context_window_tokens: 131072
-  max_output_tokens: 131072
+  max_output_tokens: 8192
   capabilities:
     tools: true
     structured_output: true

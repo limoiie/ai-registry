@@ -31,9 +31,17 @@ are always listed under **Changed** with a migration note.
   be maintained by hand. No network access is performed.
 - Optional adapters: `ai_registry.adapters.openai` (`create_client`,
   `create_async_client`, `client_kwargs`) and `ai_registry.adapters.pydantic_ai`
-  (`create_model`, `create_fallback_model`). Each adapter also ships a
-  `create_*_for(registry, reference)` helper that resolves the reference and
-  builds in one call. Install with the `openai` or `pydantic-ai` extras.
+  (`create_model`, `create_fallback_model`). Install with the `openai` or
+  `pydantic-ai` extras.
+- Optional LangChain adapter: `ai_registry.adapters.langchain`
+  (`create_chat_model`, `create_embeddings`) — chat models for OpenAI-compatible
+  and Anthropic providers, embeddings for OpenAI-compatible providers, plus
+  `ClientFactory` `langchain_chat_model` / `langchain_embeddings`. Install with
+  the `langchain` extra; the models feed straight into LangGraph states.
+- `ClientFactory`: a core facade that builds a registry once (`from_project` /
+  `from_files` / `from_data`) and builds framework clients from references
+  (`openai_client`, `openai_async_client`, `pydantic_ai_model`,
+  `pydantic_ai_fallback_model`). Adapter extras are imported lazily.
 - Optional CLI (`pip install "ai-registry[cli]"`): `ai-registry validate`,
   `aliases`, `models`, `resolve`, and `explain`. No command prints a credential.
 - Credential references accept string shorthands: `env:NAME`, `env.NAME`,

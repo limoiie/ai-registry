@@ -17,11 +17,11 @@ models:
 - id: qwen3.8-max
   display_name: Qwen3.8 Max
   type: chat
-  released_at: '2026-08-01'
+  released_at: '2026-08-03'
   description: Alibaba's strongest API model with a 1M context window and frontier
     reasoning and agentic performance.
   context_window_tokens: 991808
-  max_output_tokens: 65536
+  max_output_tokens: 131072
   capabilities:
     tools: true
     structured_output: true
@@ -42,11 +42,11 @@ models:
 - id: qwen3.7-max
   display_name: Qwen3.7 Max
   type: chat
-  released_at: '2026-07-01'
+  released_at: '2026-05-20'
   description: Alibaba's strongest API model with a 1M context window and frontier
     reasoning and agentic performance.
   context_window_tokens: 991808
-  max_output_tokens: 65536
+  max_output_tokens: 131072
   capabilities:
     tools: true
     structured_output: true
@@ -67,10 +67,10 @@ models:
 - id: qwen3.7-plus
   display_name: Qwen3.7 Plus
   type: chat
-  released_at: '2026-07-01'
+  released_at: '2026-05-26'
   description: Mid-tier hybrid reasoning model with a 1M context window.
   context_window_tokens: 991808
-  max_output_tokens: 65536
+  max_output_tokens: 131072
   capabilities:
     tools: true
     structured_output: true
@@ -91,7 +91,7 @@ models:
 - id: qwen3.5-plus
   display_name: Qwen3.5 Plus
   type: chat
-  released_at: '2026-02-01'
+  released_at: '2026-02-16'
   description: Prior-generation hybrid reasoning model with a 1M context window.
   context_window_tokens: 991808
   max_output_tokens: 65536
@@ -115,7 +115,7 @@ models:
 - id: qwen3-max
   display_name: Qwen3 Max
   type: chat
-  released_at: '2026-01-23'
+  released_at: '2025-09-23'
   description: Qwen3 generation flagship with a 256K context window.
   context_window_tokens: 258048
   max_output_tokens: 65536
@@ -186,7 +186,7 @@ models:
 - id: qwen3-vl-235b-a22b-instruct
   display_name: Qwen3 VL 235B Instruct
   type: chat
-  released_at: '2025-11-01'
+  released_at: '2025-09-23'
   description: Vision-language model with strong image understanding and 128K context.
   context_window_tokens: 131072
   max_output_tokens: 32768
@@ -210,7 +210,7 @@ models:
 - id: qwq-plus
   display_name: QwQ Plus
   type: chat
-  released_at: '2025-04-10'
+  released_at: '2025-03-12'
   description: QwQ reasoning model for complex math and logic.
   context_window_tokens: 98304
   max_output_tokens: 8192

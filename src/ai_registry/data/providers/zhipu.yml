@@ -17,11 +17,11 @@ models:
 - id: glm-5.2
   display_name: GLM-5.2
   type: chat
-  released_at: '2026-08-01'
-  description: Latest GLM flagship with a 262K context window and strong reasoning
+  released_at: '2026-06-13'
+  description: Latest GLM flagship with a 1M context window and strong reasoning
     and coding.
-  context_window_tokens: 262144
-  max_output_tokens: 262144
+  context_window_tokens: 1000000
+  max_output_tokens: 128000
   capabilities:
     tools: true
     structured_output: true
@@ -42,7 +42,7 @@ models:
 - id: glm-5.1
   display_name: GLM-5.1
   type: chat
-  released_at: '2026-06-01'
+  released_at: '2026-04-08'
   description: Latest GLM flagship with a 200K context window and strong reasoning
     and coding.
   context_window_tokens: 200000
@@ -67,7 +67,7 @@ models:
 - id: glm-5
   display_name: GLM-5
   type: chat
-  released_at: '2026-04-01'
+  released_at: '2026-02-11'
   description: Flagship GLM model with a 200K context window.
   context_window_tokens: 200000
   max_output_tokens: 128000
@@ -88,33 +88,10 @@ models:
         rate: 3
         strategy: fixed
         unit: millionTokens
-- id: glm-5-code
-  display_name: GLM-5 Code
-  type: chat
-  released_at: '2026-04-01'
-  description: Coding-specialized GLM model with a 200K context window.
-  context_window_tokens: 200000
-  max_output_tokens: 128000
-  capabilities:
-    tools: true
-    structured_output: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 1
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 5
-        strategy: fixed
-        unit: millionTokens
 - id: glm-4.7
   display_name: GLM-4.7
   type: chat
-  released_at: '2026-02-01'
+  released_at: '2025-12-22'
   description: Prior GLM generation with a 200K context window.
   context_window_tokens: 200000
   max_output_tokens: 128000
@@ -138,7 +115,7 @@ models:
 - id: glm-4.7-flash
   display_name: GLM-4.7 Flash
   type: chat
-  released_at: '2026-02-01'
+  released_at: '2026-01-19'
   description: Lightweight, free-to-use GLM-4.7 variant.
   context_window_tokens: 200000
   max_output_tokens: 128000
@@ -161,10 +138,10 @@ models:
 - id: glm-4.5
   display_name: GLM-4.5
   type: chat
-  released_at: '2025-06-01'
+  released_at: '2025-07-28'
   description: General GLM model with a 128K context window.
   context_window_tokens: 128000
-  max_output_tokens: 32000
+  max_output_tokens: 96000
   capabilities:
     tools: true
     structured_output: true

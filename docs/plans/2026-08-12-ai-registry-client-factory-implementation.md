@@ -91,7 +91,8 @@ from typing import Any
 
 import pytest
 
-from ai_registry import ClientFactory, MissingDependencyError
+from ai_registry.errors import MissingDependencyError
+from ai_registry.factory import ClientFactory
 from ai_registry.testing import build_registry, constant_secret_resolver
 
 
@@ -268,7 +269,7 @@ def test_from_files_builds_a_registry(tmp_path: Path) -> None:
 **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/test_factory.py -q`
-Expected: FAIL with `ImportError: cannot import name 'ClientFactory' from 'ai_registry'`.
+Expected: FAIL with `ModuleNotFoundError: No module named 'ai_registry.factory'`.
 
 **Step 3: Write the minimal implementation**
 

@@ -298,25 +298,24 @@ resolution.endpoint_metadata  # adapter-specific settings
 
 `str(resolution)` / `repr(resolution)` are redacted, so they are safe to log.
 
-## 12. Connecting to framework adapters (roadmap)
+## 12. Connecting to framework adapters
 
-The current release is the core. The intended adapter pattern resolves an alias
-and builds a framework-native object from the `Resolution`:
+Framework adapters turn a resolved alias into a framework-native object.
+Optional extras ship with the core; install the one you need
+(`openai`, `pydantic-ai`, or `langchain`):
 
 ```python
-# Conceptual — adapters are not yet shipped.
 resolution = registry.resolve("sol")
-client = openai_adapter.create_client(resolution)  # AsyncOpenAI / OpenAI
-model = pydantic_ai_adapter.chat_model(resolution)  # PydanticAIModel
-chat = langchain_adapter.chat_model(resolution)  # BaseChatModel
-llm = llama_index_adapter.llm(resolution)  # LLM
-embedding = llama_index_adapter.embedding(resolution)  # Embedding
+client = openai_adapter.create_client(resolution)  # openai.OpenAI
+model = pydantic_ai_adapter.create_model(resolution)  # pydantic_ai.models.Model
+chat = langchain_adapter.create_chat_model(resolution)  # BaseChatModel
+embedding = langchain_adapter.create_embeddings(resolution)  # Embeddings
 ```
 
 Adapters receive the selected deployment and call
-`resolution.resolve_credential()` at client construction time. Optional
-dependency errors should point at the relevant extra, e.g.
-`pip install ai-registry[pydantic-ai]`.
+`resolution.resolve_credential()` at client construction time. Missing optional
+dependencies raise errors pointing at the relevant extra, e.g.
+`pip install "ai-registry[langchain]"`.
 
 ## 13. Project-scoped configuration (`from_project`)
 

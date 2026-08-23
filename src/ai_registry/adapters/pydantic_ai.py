@@ -14,18 +14,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from ai_registry.errors import MissingDependencyError, UnsupportedProviderError
-from ai_registry.registry import Registry, Resolution
+from ai_registry.registry import Resolution
 from ai_registry.schemas import ModelType, SDKType
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from pydantic_ai.models import Model
 
-__all__ = [
-    "create_fallback_model",
-    "create_fallback_model_for",
-    "create_model",
-    "create_model_for",
-]
+__all__ = ["create_fallback_model", "create_model"]
 
 
 def create_model(resolution: Resolution, **overrides: Any) -> Model:
@@ -97,35 +92,6 @@ def create_fallback_model(resolutions: list[Resolution], **overrides: Any) -> Mo
     if len(built) == 1:
         return built[0]
     return fallback.FallbackModel(*built)
-
-
-def create_model_for(
-    registry: Registry, reference: str, **overrides: Any
-) -> Model:
-    """Resolve ``reference`` with ``registry``, then build a Pydantic AI model.
-
-    One import and one call::
-
-        from ai_registry.adapters.pydantic_ai import create_model_for
-
-        model = create_model_for(registry, "chat-default")
-    """
-    return create_model(registry.resolve(reference), **overrides)
-
-
-def create_fallback_model_for(
-    registry: Registry, reference: str, **overrides: Any
-) -> Model:
-    """Resolve every candidate for ``reference``, then build a ``FallbackModel``.
-
-    Combines :meth:`ai_registry.Registry.candidates` routing with
-    :func:`create_fallback_model`::
-
-        from ai_registry.adapters.pydantic_ai import create_fallback_model_for
-
-        model = create_fallback_model_for(registry, "chat-default")
-    """
-    return create_fallback_model(registry.candidates(reference), **overrides)
 
 
 def _import(module: str) -> Any:

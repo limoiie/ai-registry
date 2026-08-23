@@ -376,7 +376,7 @@ def test_loads_actual_catalog_normalized_model_fields() -> None:
 
     embedding = next(card for card in uniapi.models if card.id == "bge-large-zh:latest")
     vision = next(card for card in uniapi.models if card.id == "qwen2.5-vl:72b")
-    deprecated = next(card for card in minimax.models if card.id == "MiniMax-M2-Stable")
+    deprecated = next(card for card in minimax.models if card.id == "MiniMax-M2")
 
     assert embedding.embedding_dimension == 1024
     assert vision.context_window_tokens == 131072

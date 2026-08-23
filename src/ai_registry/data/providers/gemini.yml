@@ -17,7 +17,7 @@ models:
 - id: gemini-3.6-flash
   display_name: Gemini 3.6 Flash
   type: chat
-  released_at: '2026-07-01'
+  released_at: '2026-07-21'
   description: Latest fast multimodal model with a 1M context window and strong reasoning
     and tool use.
   context_window_tokens: 1048576
@@ -42,11 +42,11 @@ models:
 - id: gemini-3.5-flash
   display_name: Gemini 3.5 Flash
   type: chat
-  released_at: '2026-05-01'
+  released_at: '2026-05-19'
   description: Fast multimodal model with a 1M context window, optimized for high-throughput
     workloads.
   context_window_tokens: 1048576
-  max_output_tokens: 65535
+  max_output_tokens: 65536
   capabilities:
     tools: true
     structured_output: true
@@ -67,7 +67,7 @@ models:
 - id: gemini-3.5-flash-lite
   display_name: Gemini 3.5 Flash Lite
   type: chat
-  released_at: '2026-05-01'
+  released_at: '2026-07-21'
   description: Low-cost, low-latency variant of Gemini 3.5 Flash.
   context_window_tokens: 1048576
   max_output_tokens: 65536
@@ -91,7 +91,7 @@ models:
 - id: gemini-3.1-pro-preview
   display_name: Gemini 3.1 Pro Preview
   type: chat
-  released_at: '2026-03-01'
+  released_at: '2026-02-19'
   description: High-capability pro reasoning model with a 1M context window.
   context_window_tokens: 1048576
   max_output_tokens: 65536
@@ -115,10 +115,10 @@ models:
 - id: gemini-2.5-pro
   display_name: Gemini 2.5 Pro
   type: chat
-  released_at: '2025-06-25'
+  released_at: '2025-06-17'
   description: Stable pro-tier multimodal model with a 1M context window.
   context_window_tokens: 1048576
-  max_output_tokens: 65535
+  max_output_tokens: 65536
   capabilities:
     tools: true
     structured_output: true
@@ -143,7 +143,7 @@ models:
 - id: gemini-embedding-001
   display_name: Gemini Embedding 001
   type: embedding
-  released_at: '2024-05-01'
+  released_at: '2025-05-20'
   description: Text embedding model with a 2K token input limit.
   context_window_tokens: 2048
   embedding_dimension: 3072
@@ -158,7 +158,7 @@ models:
 - id: gemini-embedding-2
   display_name: Gemini Embedding 2
   type: embedding
-  released_at: '2025-09-01'
+  released_at: '2026-04-22'
   description: Text embedding model with an 8K token input limit.
   context_window_tokens: 8192
   embedding_dimension: 3072

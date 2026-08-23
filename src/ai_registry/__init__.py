@@ -30,6 +30,9 @@ from ai_registry.errors import (
 from ai_registry.errors import (
     UnsupportedProviderError as UnsupportedProviderError,
 )
+from ai_registry.factory import (
+    ClientFactory as ClientFactory,
+)
 from ai_registry.registry import (
     CatalogEntry as CatalogEntry,
 )
@@ -105,6 +108,7 @@ __all__ = [
     "AdapterError",
     "Alias",
     "CatalogEntry",
+    "ClientFactory",
     "ConfigurationError",
     "CredentialRef",
     "Deployment",
