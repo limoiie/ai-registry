@@ -16,7 +16,7 @@ models:
 - id: gpt-5.6
   display_name: GPT-5.6
   type: chat
-  released_at: '2026-08-01'
+  released_at: '2026-07-09'
   description: OpenAI's latest flagship model with a 1M context window and advanced
     reasoning, coding, and multimodal abilities.
   context_window_tokens: 1050000
@@ -41,7 +41,7 @@ models:
 - id: gpt-5.6-sol
   display_name: GPT-5.6 Sol
   type: chat
-  released_at: '2026-08-01'
+  released_at: '2026-07-09'
   description: Flagship tier of GPT-5.6 with maximal reasoning effort and a 1M context
     window.
   context_window_tokens: 1050000
@@ -66,7 +66,7 @@ models:
 - id: gpt-5.6-terra
   display_name: GPT-5.6 Terra
   type: chat
-  released_at: '2026-08-01'
+  released_at: '2026-07-09'
   description: Balanced tier of GPT-5.6 for general-purpose workloads with a 1M context
     window.
   context_window_tokens: 1050000
@@ -91,7 +91,7 @@ models:
 - id: gpt-5.6-luna
   display_name: GPT-5.6 Luna
   type: chat
-  released_at: '2026-08-01'
+  released_at: '2026-07-09'
   description: Compact, cost-effective tier of GPT-5.6 for latency-sensitive and high-volume
     workloads.
   context_window_tokens: 1050000
@@ -167,7 +167,7 @@ models:
   type: chat
   released_at: '2025-12-11'
   description: General-purpose reasoning model with strong coding and agentic performance.
-  context_window_tokens: 272000
+  context_window_tokens: 400000
   max_output_tokens: 128000
   capabilities:
     tools: true
@@ -189,10 +189,10 @@ models:
 - id: gpt-5.1
   display_name: GPT-5.1
   type: chat
-  released_at: '2025-11-19'
+  released_at: '2025-11-12'
   description: Balanced reasoning model with optional reasoning_effort=none for low-latency
     responses.
-  context_window_tokens: 272000
+  context_window_tokens: 400000
   max_output_tokens: 128000
   capabilities:
     tools: true
@@ -286,7 +286,7 @@ models:
 - id: gpt-5-pro
   display_name: GPT-5 Pro
   type: chat
-  released_at: '2025-08-07'
+  released_at: '2025-10-06'
   description: OpenAI's most advanced reasoning model with a 400K context window, available
     through the Responses API.
   context_window_tokens: 400000

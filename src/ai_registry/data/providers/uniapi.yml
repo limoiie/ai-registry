@@ -17,9 +17,9 @@ models:
 - id: bge-large-zh:latest
   display_name: BGE Large ZH Latest
   type: embedding
-  released_at: '2025-02-18'
+  released_at: '2023-08-02'
   description: BGE large zh embedding model.
-  context_window_tokens: 524288
+  context_window_tokens: 512
   embedding_dimension: 1024
   metadata:
     pricing:
@@ -58,7 +58,7 @@ models:
 - id: deepseek-r1:671b
   display_name: DeepSeek R1 671B
   type: chat
-  released_at: '2025-02-16'
+  released_at: '2025-01-20'
   description: DeepSeek R1 671B with a 64K context window.
   context_window_tokens: 65536
   max_output_tokens: 8192
@@ -84,7 +84,7 @@ models:
 - id: deepseek-r1:671b-0528
   display_name: DeepSeek R1 671B 0528
   type: chat
-  released_at: '2025-05-29'
+  released_at: '2025-05-28'
   description: DeepSeek R1 671B 0528 version with a 64K context window.
   context_window_tokens: 65536
   max_output_tokens: 8192
@@ -110,7 +110,7 @@ models:
 - id: deepseek-r1:671b-64k
   display_name: DeepSeek R1 671B 64K
   type: chat
-  released_at: '2025-02-16'
+  released_at: '2025-01-20'
   description: DeepSeek R1 671B with a 64K context window.
   context_window_tokens: 65536
   max_output_tokens: 8192
@@ -137,7 +137,7 @@ models:
   display_name: DeepSeek R1 32B
   type: chat
   deprecated: true
-  released_at: '2025-02-16'
+  released_at: '2025-01-20'
   description: DeepSeek R1 32B with a 32K context window.
   context_window_tokens: 32768
   max_output_tokens: 8192
@@ -163,10 +163,10 @@ models:
 - id: gpt-oss-120b
   display_name: GPT-OSS-120B
   type: chat
-  released_at: '2025-08-08'
+  released_at: '2025-08-05'
   description: OpenAI gpt-oss-120b model with a 128K context window.
   context_window_tokens: 131072
-  max_output_tokens: 8192
+  max_output_tokens: 131072
   capabilities:
     tools: true
     structured_output: true
@@ -189,7 +189,7 @@ models:
 - id: gte-qwen2-7b
   display_name: GTE Qwen2 7B
   type: embedding
-  released_at: '2025-04-25'
+  released_at: '2024-06-16'
   description: GTE Qwen2 7B embedding model with 3584-dim embeddings and a 32K context
     window.
   context_window_tokens: 32768
@@ -205,11 +205,11 @@ models:
 - id: qwen3.5
   display_name: Qwen3.5
   type: chat
-  released_at: '2025-12-01'
+  released_at: '2026-02-16'
   description: Qwen3.5 is Qwen's latest general model with a hybrid reasoning architecture
     and stronger agent capabilities.
-  context_window_tokens: 131072
-  max_output_tokens: 8192
+  context_window_tokens: 262144
+  max_output_tokens: 65536
   capabilities:
     tools: true
     structured_output: true
@@ -232,7 +232,7 @@ models:
 - id: qwen3:235b
   display_name: Qwen3 235B
   type: chat
-  released_at: '2025-04-30'
+  released_at: '2025-04-28'
   description: Qwen3 235B with a 40K context window.
   context_window_tokens: 40960
   max_output_tokens: 8192
@@ -258,7 +258,7 @@ models:
 - id: qwen3-embedding:8b
   display_name: Qwen3 Embedding 8B
   type: embedding
-  released_at: '2025-06-26'
+  released_at: '2025-06-05'
   description: Qwen3 embedding model with 4096-dim embeddings and a 32K context window.
   context_window_tokens: 32768
   embedding_dimension: 4096
@@ -273,7 +273,7 @@ models:
 - id: qwen2.5-vl:72b
   display_name: Qwen2.5 VL 72B
   type: chat
-  released_at: '2025-06-19'
+  released_at: '2025-01-26'
   description: Qwen2.5 VL 72B multimodal model with a 128K context window.
   context_window_tokens: 131072
   max_output_tokens: 8192
@@ -300,7 +300,7 @@ models:
 - id: qwq:32b
   display_name: QwQ 32B
   type: chat
-  released_at: '2025-04-10'
+  released_at: '2025-03-06'
   description: QwQ 32B reasoning model with a 128K context window.
   context_window_tokens: 131072
   max_output_tokens: 8192
@@ -329,6 +329,7 @@ models:
   type: chat
   released_at: '2025-07-25'
   description: ScienceOne small-scale model with 8B parameters.
+  context_window_tokens: 32768
   max_output_tokens: 8192
   capabilities:
     tools: true
@@ -354,6 +355,7 @@ models:
   type: chat
   released_at: '2025-07-25'
   description: ScienceOne mid-scale model with 32B parameters.
+  context_window_tokens: 32768
   max_output_tokens: 8192
   capabilities:
     tools: true
@@ -379,6 +381,7 @@ models:
   type: chat
   released_at: '2025-07-25'
   description: ScienceOne large-scale model with 671B parameters.
+  context_window_tokens: 32768
   max_output_tokens: 8192
   capabilities:
     tools: true

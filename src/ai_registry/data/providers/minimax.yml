@@ -21,11 +21,11 @@ models:
 - id: MiniMax-M3
   display_name: MiniMax M3
   type: chat
-  released_at: '2026-07-01'
+  released_at: '2026-06-01'
   description: MiniMax's latest flagship model with 1M context, strong reasoning,
     coding, and agentic tool use.
   context_window_tokens: 1000000
-  max_output_tokens: 128000
+  max_output_tokens: 512000
   capabilities:
     tools: true
     reasoning: true
@@ -79,7 +79,7 @@ models:
   description: SOTA model for coding, agentic tool use, and search with 230B parameters
     (10B active). Achieves 80.2% on SWE-Bench Verified, 51.3% on Multi-SWE-Bench, 76.3%
     on BrowseComp.
-  context_window_tokens: 1000000
+  context_window_tokens: 204800
   max_output_tokens: 131072
   capabilities:
     tools: true
@@ -110,7 +110,7 @@ models:
   released_at: '2026-02-12'
   description: Faster, more efficient variant of MiniMax M2.5 for high-throughput
     coding and agent workloads.
-  context_window_tokens: 1000000
+  context_window_tokens: 204800
   max_output_tokens: 131072
   capabilities:
     tools: true
@@ -197,7 +197,7 @@ models:
         rate: 2.4
         strategy: fixed
         unit: millionTokens
-- id: MiniMax-M2-Stable
+- id: MiniMax-M2
   display_name: MiniMax M2
   type: chat
   deprecated: true

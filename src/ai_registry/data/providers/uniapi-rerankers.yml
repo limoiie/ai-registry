@@ -16,9 +16,9 @@ models:
 - id: bge-reranker-v2-m3
   display_name: BGE Reranker V2 M3
   type: reranking
-  released_at: '2025-04-11'
+  released_at: '2024-03-18'
   description: BGE reranker v2 m3 model.
-  context_window_tokens: 131072
+  context_window_tokens: 8192
   metadata:
     pricing:
       currency: CNY
@@ -30,8 +30,8 @@ models:
 - id: qwen3-reranker:8b
   display_name: Qwen3 Reranker 8B
   type: reranking
-  released_at: '2025-07-11'
-  description: Qwen3 reranker model with 4096-dim embeddings and a 32K context window.
+  released_at: '2025-06-05'
+  description: Qwen3 reranker model with a 32K context window.
   context_window_tokens: 32768
   metadata:
     pricing:

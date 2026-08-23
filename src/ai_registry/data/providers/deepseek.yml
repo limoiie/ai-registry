@@ -17,7 +17,7 @@ endpoints:
 default_endpoint: anthropic
 settings:
   url: https://deepseek.com
-  check_model: deepseek-chat
+  check_model: deepseek-v4-flash
   models_url: https://platform.deepseek.com/api-docs/quick_start/pricing
   show_model_fetcher: true
 
@@ -83,6 +83,7 @@ models:
 - id: deepseek-chat
   display_name: DeepSeek V3.2
   type: chat
+  deprecated: true
   released_at: '2025-12-01'
   description: DeepSeek V3.2 is DeepSeek's latest general model with a hybrid reasoning
     architecture and stronger agent capabilities.
@@ -111,6 +112,7 @@ models:
 - id: deepseek-reasoner
   display_name: DeepSeek V3.2 Thinking
   type: chat
+  deprecated: true
   released_at: '2025-12-01'
   description: DeepSeek V3.2 thinking mode outputs a chain-of-thought before the final
     answer to improve accuracy.
