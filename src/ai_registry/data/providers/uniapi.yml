@@ -5,7 +5,7 @@ description: OpenAI-compatible gateway aggregating open-weight chat, embedding, 
 endpoints:
   openai:
     sdk_type: openai
-    base_url: https://uni-api.cstcloud.cn
+    base_url: https://uni-api.cstcloud.cn/v1
     mode: chat
 settings:
   url: https://www.cstcloud.cn

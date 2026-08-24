@@ -152,7 +152,7 @@ CI logs are safe to paste.
 ```console
 $ ai-registry explain chat-default
 1. deepseek-primary/deepseek-chat -> https://api.deepseek.com/anthropic (credential: env (ok))
-2. uniapi-chat/deepseek-v4-flash -> https://uni-api.cstcloud.cn (credential: env (unresolved))
+2. uniapi-chat/deepseek-v4-flash -> https://uni-api.cstcloud.cn/v1 (credential: env (unresolved))
 ```
 
 ## Supply chain
