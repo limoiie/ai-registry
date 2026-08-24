@@ -25,9 +25,10 @@ models:
 - id: deepseek-v4-flash
   display_name: DeepSeek V4 Flash
   type: chat
-  released_at: '2026-04-24'
-  description: DeepSeek V4 Flash is a fast, cost-effective 284B MoE model with 1M context,
-    optional thinking mode, and strong agentic performance for high-volume workloads.
+  released_at: '2026-07-31'
+  description: DeepSeek V4 Flash is a fast, cost-effective 284B MoE model with 1M
+    context, optional thinking mode, and strong agentic performance for high-volume
+    workloads. The 0731 update adds multimodal (image) input.
   context_window_tokens: 1000000
   max_output_tokens: 384000
   endpoints: [openai-chat, openai-responses, anthropic]
@@ -35,6 +36,7 @@ models:
     tools: true
     reasoning: true
     structured_output: true
+    vision: true
   metadata:
     pricing:
       currency: USD
@@ -54,9 +56,10 @@ models:
 - id: deepseek-v4-pro
   display_name: DeepSeek V4 Pro
   type: chat
-  released_at: '2026-04-24'
+  released_at: '2026-08-13'
   description: DeepSeek V4 Pro is a frontier 1.6T MoE model with 1M context, optional
-    thinking mode, and top-tier agentic coding, reasoning, and world-knowledge performance.
+    thinking mode, and top-tier agentic coding, reasoning, and world-knowledge
+    performance. Version 0813 is the GA release.
   context_window_tokens: 1000000
   max_output_tokens: 384000
   endpoints: [openai-chat, anthropic]

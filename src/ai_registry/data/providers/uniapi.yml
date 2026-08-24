@@ -180,8 +180,8 @@ models:
 - id: deepseek-v4-flash
   display_name: DeepSeek V4 Flash
   type: chat
-  released_at: '2026-04-24'
-  description: DeepSeek V4 Flash with a 1M context window.
+  released_at: '2026-07-31'
+  description: DeepSeek V4 Flash with a 1M context window (version 0731).
   context_window_tokens: 1000000
   max_output_tokens: 384000
   capabilities:
