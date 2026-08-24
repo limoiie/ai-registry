@@ -89,6 +89,17 @@ are always listed under **Changed** with a migration note.
 - The built-in provider catalog now declares explicit `endpoints` maps for every
   provider, and DeepSeek's `openai-responses` endpoint is marked as supporting
   only `deepseek-v4-flash`.
+- The Uni API built-in catalog is aligned with the gateway's current model list:
+  models retired upstream are removed (`spark-x1:70b`, `qwen2.5-vl:72b`,
+  `qwq:32b`, the `deepseek-r1` family, `qwen3:235b`, `deepseek-v4-pro`), models
+  are renamed to their upstream ids (`s1-base-lite:s1-8b` → `S1-Base-Lite`,
+  `s1-base-pro:s1-32b` → `S1-Base-Pro`, `s1-base-ultra:s1-671b` →
+  `S1-Base-Ultra`, `s1-citationcalculate` → `S1-CitationCalculate`,
+  `gte-qwen2-7b` → `gte-qwen2:7b`), and `deepseek-v3.2` is added. The
+  reranking models (`bge-reranker-v2-m3`, `qwen3-reranker:8b`) move into the
+  `uniapi` provider, and the separate `uniapi-rerankers` provider is removed.
+  *Migration*: point accounts that referenced `uniapi-rerankers` at `uniapi`
+  instead, and update references to the renamed model ids.
 
 ### Fixed
 
@@ -101,6 +112,9 @@ are always listed under **Changed** with a migration note.
   `settings.proxy_url.placeholder`, which was ignored, so every resolution from
   the documented quick-start returned `endpoint = None` and adapters silently
   fell back to their own default host.
+- The Uni API provider's OpenAI-compatible base URL now includes the `/v1`
+  prefix. Previously clients posted to the portal's bare domain, which returned
+  404 with an HTML body instead of reaching the API gateway.
 - The built-in provider catalog is corrected against official sources: release
   dates, `context_window_tokens`, and `max_output_tokens` are aligned for
   Anthropic, OpenAI, Google, DeepSeek, Moonshot, Qwen, Zhipu, xAI, MiniMax, and
