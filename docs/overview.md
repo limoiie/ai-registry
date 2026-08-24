@@ -101,7 +101,7 @@ Providers come from two scopes, merged by provider `id`:
 
 - **Built-in** — the catalog shipped with the package at
   `ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
-  `uniapi-rerankers`, `openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
+  `openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
   `qwen`, `xai`). It is available in every project with no configuration.
 - **Project** — optional files under `<project-root>/.ai-registry/providers/`
   (`.yaml`, `.yml`, or `.json`). A project provider with the same `id`

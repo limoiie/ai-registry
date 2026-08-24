@@ -33,7 +33,6 @@ def test_builtin_provider_data_is_package_data() -> None:
         "deepseek.yml",
         "uniapi.yml",
         "minimax.yml",
-        "uniapi-rerankers.yml",
         "openai.yml",
         "anthropic.yml",
         "gemini.yml",
@@ -51,7 +50,6 @@ def test_discovers_builtin_providers_from_package_data() -> None:
         "deepseek",
         "uniapi",
         "minimax",
-        "uniapi-rerankers",
         "openai",
         "anthropic",
         "gemini",
@@ -375,20 +373,23 @@ def test_loads_actual_catalog_normalized_model_fields() -> None:
     minimax = load_provider_file(DATA / "minimax.yml")
 
     embedding = next(card for card in uniapi.models if card.id == "bge-large-zh:latest")
-    vision = next(card for card in uniapi.models if card.id == "qwen2.5-vl:72b")
+    reranker = next(card for card in uniapi.models if card.id == "qwen3-reranker:8b")
+    reasoning = next(card for card in uniapi.models if card.id == "deepseek-v4-flash")
     deprecated = next(card for card in minimax.models if card.id == "MiniMax-M2")
 
     assert embedding.embedding_dimension == 1024
-    assert vision.context_window_tokens == 131072
-    assert vision.capabilities.vision is True
+    assert reranker.type.value == "reranking"
+    assert reasoning.context_window_tokens == 1000000
+    assert reasoning.capabilities.reasoning is True
     assert deprecated.metadata["deprecated"] is True
 
 
-def test_normalizes_actual_uniapi_reranker_to_openai() -> None:
-    provider = load_provider_file(DATA / "uniapi-rerankers.yml")
+def test_actual_uniapi_catalog_covers_reranking_models() -> None:
+    uniapi = load_provider_file(DATA / "uniapi.yml")
 
-    assert provider.sdk_type.value == "openai"
-    assert provider.models[0].type.value == "reranking"
+    rerankers = [card.id for card in uniapi.models if card.type.value == "reranking"]
+
+    assert rerankers == ["qwen3-reranker:8b", "bge-reranker-v2-m3"]
 
 
 def test_rejects_unsupported_sdk_type(tmp_path: Path) -> None:

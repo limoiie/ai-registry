@@ -107,7 +107,7 @@ accepted:
 ```
 
 Copy `examples/registry.example.yaml`, which references the built-in
-`deepseek`, `uniapi`, and `uniapi-rerankers` providers:
+`deepseek` and `uniapi` providers:
 
 ```yaml
 accounts:
@@ -247,7 +247,7 @@ account picks one by name with `endpoint_ref` instead of quoting a URL. See
 
 The package ships a built-in provider catalog at
 `ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
-`uniapi-rerankers`, `openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
+`openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
 `qwen`, `xai`). These use the normalized provider-catalog format
 (`default_base_url`, `capabilities`, and `metadata.pricing` on models);
 the loader also accepts the legacy format (`url`, `settings.sdk_type`, and

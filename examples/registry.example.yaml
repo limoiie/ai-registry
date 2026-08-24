@@ -2,8 +2,8 @@
 #
 # Copy this file to .ai-registry/registry.yaml in your project root and set the
 # referenced environment variables. The built-in providers (deepseek, minimax,
-# uniapi, uniapi-rerankers) ship with the package, so no provider file is needed
-# unless you override or add one under .ai-registry/providers/.
+# uniapi) ship with the package, so no provider file is needed unless you
+# override or add one under .ai-registry/providers/.
 #
 # Credentials are always references. A literal key here is a validation error.
 # These spellings are equivalent:
@@ -34,8 +34,8 @@ accounts:
     credential: env:UNIAPI_API_KEY
     enabled_models: ["bge-large-zh:latest"]
 
-  - id: uniapi-rerankers
-    provider_id: uniapi-rerankers
+  - id: uniapi-rerank
+    provider_id: uniapi
     credential: env:UNIAPI_API_KEY
     enabled_models: [bge-reranker-v2-m3, "qwen3-reranker:8b"]
 
@@ -57,5 +57,5 @@ aliases:
 
   - id: rerank-default
     deployments:
-      - account_id: uniapi-rerankers
+      - account_id: uniapi-rerank
         model_id: bge-reranker-v2-m3

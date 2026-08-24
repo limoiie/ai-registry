@@ -14,227 +14,12 @@ settings:
   show_model_fetcher: true
 
 models:
-- id: bge-large-zh:latest
-  display_name: BGE Large ZH Latest
-  type: embedding
-  released_at: '2023-08-02'
-  description: BGE large zh embedding model.
-  context_window_tokens: 512
-  embedding_dimension: 1024
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
 - id: deepseek-v3:671b
   display_name: DeepSeek V3 671B 0324
   type: chat
   released_at: '2025-03-24'
   description: DeepSeek V3 671B 0324 version with a 64K context window.
   context_window_tokens: 65536
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: deepseek-r1:671b
-  display_name: DeepSeek R1 671B
-  type: chat
-  released_at: '2025-01-20'
-  description: DeepSeek R1 671B with a 64K context window.
-  context_window_tokens: 65536
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: deepseek-r1:671b-0528
-  display_name: DeepSeek R1 671B 0528
-  type: chat
-  released_at: '2025-05-28'
-  description: DeepSeek R1 671B 0528 version with a 64K context window.
-  context_window_tokens: 65536
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: deepseek-r1:671b-64k
-  display_name: DeepSeek R1 671B 64K
-  type: chat
-  released_at: '2025-01-20'
-  description: DeepSeek R1 671B with a 64K context window.
-  context_window_tokens: 65536
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: deepseek-r1:32b
-  display_name: DeepSeek R1 32B
-  type: chat
-  deprecated: true
-  released_at: '2025-01-20'
-  description: DeepSeek R1 32B with a 32K context window.
-  context_window_tokens: 32768
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: gpt-oss-120b
-  display_name: GPT-OSS-120B
-  type: chat
-  released_at: '2025-08-05'
-  description: OpenAI gpt-oss-120b model with a 128K context window.
-  context_window_tokens: 131072
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: gte-qwen2-7b
-  display_name: GTE Qwen2 7B
-  type: embedding
-  released_at: '2024-06-16'
-  description: GTE Qwen2 7B embedding model with 3584-dim embeddings and a 32K context
-    window.
-  context_window_tokens: 32768
-  embedding_dimension: 3584
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: qwen3.5
-  display_name: Qwen3.5
-  type: chat
-  released_at: '2026-02-16'
-  description: Qwen3.5 is Qwen's latest general model with a hybrid reasoning architecture
-    and stronger agent capabilities.
-  context_window_tokens: 262144
-  max_output_tokens: 65536
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: qwen3:235b
-  display_name: Qwen3 235B
-  type: chat
-  released_at: '2025-04-28'
-  description: Qwen3 235B with a 40K context window.
-  context_window_tokens: 40960
   max_output_tokens: 8192
   capabilities:
     tools: true
@@ -270,174 +55,112 @@ models:
         rate: 0
         strategy: fixed
         unit: millionTokens
-- id: qwen2.5-vl:72b
-  display_name: Qwen2.5 VL 72B
+- id: qwen3-reranker:8b
+  display_name: Qwen3 Reranker 8B
+  type: reranking
+  released_at: '2025-06-05'
+  description: Qwen3 reranker model with a 32K context window.
+  context_window_tokens: 32768
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: gpt-oss-120b
+  display_name: GPT-OSS-120B
   type: chat
-  released_at: '2025-01-26'
-  description: Qwen2.5 VL 72B multimodal model with a 128K context window.
+  released_at: '2025-08-05'
+  description: OpenAI gpt-oss-120b model with a 128K context window.
+  context_window_tokens: 131072
+  max_output_tokens: 131072
+  capabilities:
+    tools: true
+    structured_output: true
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput_cacheRead
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: bge-reranker-v2-m3
+  display_name: BGE Reranker V2 M3
+  type: reranking
+  released_at: '2024-03-18'
+  description: BGE reranker v2 m3 model.
+  context_window_tokens: 8192
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: qwen3.5
+  display_name: Qwen3.5
+  type: chat
+  released_at: '2026-02-16'
+  description: Qwen3.5 is Qwen's latest general model with a hybrid reasoning architecture
+    and stronger agent capabilities.
+  context_window_tokens: 262144
+  max_output_tokens: 65536
+  capabilities:
+    tools: true
+    structured_output: true
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput_cacheRead
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: bge-large-zh:latest
+  display_name: BGE Large ZH Latest
+  type: embedding
+  released_at: '2023-08-02'
+  description: BGE large zh embedding model.
+  context_window_tokens: 512
+  embedding_dimension: 1024
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: deepseek-v3.2
+  display_name: DeepSeek V3.2
+  type: chat
+  released_at: '2026-04-26'
+  description: DeepSeek V3.2 full release with a 128K context window.
   context_window_tokens: 131072
   max_output_tokens: 8192
   capabilities:
     tools: true
     structured_output: true
-    vision: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: qwq:32b
-  display_name: QwQ 32B
-  type: chat
-  released_at: '2025-03-06'
-  description: QwQ 32B reasoning model with a 128K context window.
-  context_window_tokens: 131072
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: s1-base-lite:s1-8b
-  display_name: S1 Base Lite S1-8B
-  type: chat
-  released_at: '2025-07-25'
-  description: ScienceOne small-scale model with 8B parameters.
-  context_window_tokens: 32768
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: s1-base-pro:s1-32b
-  display_name: S1 Base Pro S1-32B
-  type: chat
-  released_at: '2025-07-25'
-  description: ScienceOne mid-scale model with 32B parameters.
-  context_window_tokens: 32768
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: s1-base-ultra:s1-671b
-  display_name: S1 Base Ultra S1-671B
-  type: chat
-  released_at: '2025-07-25'
-  description: ScienceOne large-scale model with 671B parameters.
-  context_window_tokens: 32768
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: s1-citationcalculate
-  display_name: S1 Citation Calculate
-  type: chat
-  released_at: '2025-07-25'
-  description: Citation calculation service for model outputs.
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: CNY
-      units:
-      - name: textInput_cacheRead
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0
-        strategy: fixed
-        unit: millionTokens
-- id: spark-x1:70b
-  display_name: Spark X1 70B
-  type: chat
-  released_at: '2025-04-22'
-  description: Spark X1 70B reasoning model with a 32K context window.
-  context_window_tokens: 32768
-  max_output_tokens: 8192
-  capabilities:
-    tools: true
-    structured_output: true
-    reasoning: true
   metadata:
     pricing:
       currency: CNY
@@ -481,13 +204,13 @@ models:
         rate: 0
         strategy: fixed
         unit: millionTokens
-- id: deepseek-v4-pro
-  display_name: DeepSeek V4 Pro
+- id: minimax-m27
+  display_name: MiniMax M2.7
   type: chat
-  released_at: '2026-04-24'
-  description: DeepSeek V4 Pro with a 1M context window.
-  context_window_tokens: 1000000
-  max_output_tokens: 384000
+  released_at: '2026-01-20'
+  description: MiniMax M2.7 with a 204.8K context window.
+  context_window_tokens: 204800
+  max_output_tokens: 204800
   capabilities:
     tools: true
     structured_output: true
@@ -508,17 +231,109 @@ models:
         rate: 0
         strategy: fixed
         unit: millionTokens
-- id: minimax-m27
-  display_name: MiniMax M2.7
+- id: gte-qwen2:7b
+  display_name: GTE Qwen2 7B
+  type: embedding
+  released_at: '2024-06-16'
+  description: GTE Qwen2 7B embedding model with 3584-dim embeddings and a 32K context
+    window.
+  context_window_tokens: 32768
+  embedding_dimension: 3584
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: S1-Base-Lite
+  display_name: S1 Base Lite S1-8B
   type: chat
-  released_at: '2026-01-20'
-  description: MiniMax M2.7 with a 204.8K context window.
-  context_window_tokens: 204800
-  max_output_tokens: 204800
+  released_at: '2025-07-25'
+  description: ScienceOne small-scale model with 8B parameters.
+  context_window_tokens: 32768
+  max_output_tokens: 8192
   capabilities:
     tools: true
     structured_output: true
-    reasoning: true
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput_cacheRead
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: S1-Base-Pro
+  display_name: S1 Base Pro S1-32B
+  type: chat
+  released_at: '2025-07-25'
+  description: ScienceOne mid-scale model with 32B parameters.
+  context_window_tokens: 32768
+  max_output_tokens: 8192
+  capabilities:
+    tools: true
+    structured_output: true
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput_cacheRead
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: S1-Base-Ultra
+  display_name: S1 Base Ultra S1-671B
+  type: chat
+  released_at: '2025-07-25'
+  description: ScienceOne large-scale model with 671B parameters.
+  context_window_tokens: 32768
+  max_output_tokens: 8192
+  capabilities:
+    tools: true
+    structured_output: true
+  metadata:
+    pricing:
+      currency: CNY
+      units:
+      - name: textInput_cacheRead
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textInput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+      - name: textOutput
+        rate: 0
+        strategy: fixed
+        unit: millionTokens
+- id: S1-CitationCalculate
+  display_name: S1 Citation Calculate
+  type: chat
+  released_at: '2025-07-25'
+  description: Citation calculation service for model outputs.
+  max_output_tokens: 8192
+  capabilities:
+    tools: true
+    structured_output: true
   metadata:
     pricing:
       currency: CNY
