@@ -9,6 +9,8 @@ are always listed under **Changed** with a migration note.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-24
+
 ### Added
 
 - `Registry.candidates()` returns every available deployment for a reference in
