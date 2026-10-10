@@ -74,6 +74,10 @@ are always listed under **Changed** with a migration note.
 
 ### Fixed
 
+- `ai_registry.__version__` now reports the installed distribution's version
+  rather than the literal `"0.1.0"` it had returned since the first release; the
+  value is read from the package metadata, so it cannot drift from
+  `pyproject.toml` again.
 - Registry errors no longer echo the identifier that failed to resolve: an
   unknown provider, endpoint, account, or model reference is described without
   repeating the offending id, as the documented "Safe errors" guarantee
@@ -82,6 +86,13 @@ are always listed under **Changed** with a migration note.
   from configuration.
 - The models.dev importer no longer rejects partial release dates such as
   `2026-01`; they are ignored instead of failing validation.
+- The test suite runs without the optional SDKs, as its design requires: the
+  "missing dependency" paths are exercised for real and the "installed" paths
+  run against stub modules. CI no longer installs the extras for the test job —
+  a dedicated job proves the extras resolve and every adapter builds a client
+  against the real SDK instead — the core-install check installs into an
+  isolated virtual environment, and `ruff format` skips the keep-verbatim
+  `docs/plans` material.
 
 ## [0.2.0] - 2026-08-24
 
