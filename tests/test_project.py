@@ -1,3 +1,4 @@
+import contextlib
 from pathlib import Path
 
 import pytest
@@ -133,7 +134,12 @@ def test_from_project_invalid_profile_name_is_rejected(tmp_path: Path) -> None:
         "prod✨",
     ):
         if "/" not in bad and "\\" not in bad and "\x00" not in bad:
-            _write_registry(tmp_path, f"registry.{bad}.yaml")
+            # Some names are valid profile strings but not representable as
+            # filenames on every OS (a tab, for one, is rejected by Windows).
+            # The file is only a decoy: the profile is validated before any
+            # lookup, so skipping it on such a platform loses no coverage.
+            with contextlib.suppress(OSError):
+                _write_registry(tmp_path, f"registry.{bad}.yaml")
         with pytest.raises(ConfigurationError):
             Registry.from_project(tmp_path, profile=bad)
 
