@@ -40,10 +40,51 @@ jobs:
           cache-dependency-glob: uv.lock
 
       - name: Install the project
-        run: uv sync --frozen --all-extras
+        # The suite is written to run *without* the optional SDKs: the
+        # "missing dependency" paths are exercised for real, and the "installed"
+        # paths run against stub modules injected into sys.modules. Installing
+        # the extras here would defeat both halves, so they stay out; the
+        # `extras` job below covers the extras themselves.
+        run: uv sync --frozen
 
       - name: Run tests
         run: uv run --frozen pytest -q --cov --cov-report=term-missing
+
+  extras:
+    # The test job runs without the optional SDKs by design. This job proves the
+    # extras still resolve and that every adapter can build a client against the
+    # real SDK — catching renamed symbols and constructor drift.
+    name: optional extras install and build clients
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install every extra
+        run: uv sync --frozen --all-extras
+
+      - name: Build one client per adapter against the installed SDKs
+        run: |
+          .venv/bin/python - <<'PY'
+          from ai_registry.adapters import langchain, openai, pydantic_ai
+          from ai_registry.testing import build_registry, constant_secret_resolver
+
+          registry = build_registry(
+              {"chat": ["test-account/test-model"]},
+              credential="secret_ref:key",
+              secret_resolver=constant_secret_resolver("sk-smoke"),
+          )
+          resolution = registry.resolve("chat")
+          openai.create_client(resolution)
+          langchain.create_chat_model(resolution)
+          pydantic_ai.create_model(resolution)
+          print("all adapters built clients against the installed SDKs")
+          PY
 
   lint:
     name: lint and types
@@ -83,12 +124,17 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
+      - name: Create an isolated environment
+        # The runner's Python is externally managed (PEP 668), so `uv pip
+        # install --system` is refused; use a throwaway venv instead.
+        run: uv venv .venv-minimal
+
       - name: Install only the runtime dependencies
-        run: uv pip install --system .
+        run: uv pip install --python .venv-minimal/bin/python .
 
       - name: Assert the dependency closure stays small
         run: |
-          python - <<'PY'
+          .venv-minimal/bin/python - <<'PY'
           import importlib.metadata as md
           installed = {d.metadata["Name"].lower() for d in md.distributions()}
           unexpected = installed & {"openai", "typer", "litellm", "pydantic-ai-slim"}
