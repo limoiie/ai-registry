@@ -21,6 +21,8 @@ from ai_registry.config import (
     load_deployments_file,
     load_provider_files,
     merge_providers,
+    renamed_model_hint,
+    renamed_provider_hint,
 )
 from ai_registry.errors import ConfigurationError, RegistryError
 from ai_registry.routing import DeploymentRouter, DeploymentTarget
@@ -352,7 +354,10 @@ class Registry:
         """Return one provider by id."""
         provider = self._providers.get(provider_id)
         if provider is None:
-            raise RegistryError("unknown provider; configure the provider")
+            # Provider ids are caller-supplied; echo one only when it matches a
+            # known rename.
+            hint = renamed_provider_hint(provider_id) or "; configure the provider"
+            raise RegistryError(f"unknown provider{hint}")
         return provider.model_copy(deep=True)
 
     def get_account(self, account_id: str) -> Account:
@@ -478,24 +483,30 @@ class Registry:
         for account in self._accounts.values():
             provider = self._providers.get(account.provider_id)
             if provider is None:
+                hint = (
+                    renamed_provider_hint(account.provider_id)
+                    or "; configure the provider"
+                )
                 raise ConfigurationError(
-                    f"account '{account.id}' references unknown provider "
-                    f"'{account.provider_id}'; configure the provider"
+                    f"account '{account.id}' references unknown provider{hint}"
                 )
             for model_id in account.enabled_models:
                 if not _find_model(provider, model_id):
+                    # Model ids are untrusted configuration: echo one only when it
+                    # matches a known rename, never verbatim.
+                    hint = renamed_model_hint(provider.id, model_id) or (
+                        f"; add the model to provider '{provider.id}'"
+                    )
                     raise ConfigurationError(
-                        f"account '{account.id}' enables unknown model; "
-                        f"add the model to provider '{provider.id}'"
+                        f"account '{account.id}' enables unknown model{hint}"
                     )
             if (
                 account.endpoint_ref is not None
                 and account.endpoint_ref not in provider.endpoints
             ):
                 raise ConfigurationError(
-                    f"account '{account.id}' references unknown endpoint "
-                    f"'{account.endpoint_ref}'; add it to provider "
-                    f"'{provider.id}' endpoints"
+                    f"account '{account.id}' references unknown endpoint; "
+                    f"add it to provider '{provider.id}' endpoints"
                 )
         for provider in self._providers.values():
             for model in provider.models:
@@ -504,17 +515,16 @@ class Registry:
                 for endpoint in model.endpoints:
                     if endpoint not in provider.endpoints:
                         raise ConfigurationError(
-                            f"model '{model.id}' references unknown endpoint "
-                            f"'{endpoint}'; add it to provider "
-                            f"'{provider.id}' endpoints"
+                            f"model '{model.id}' references unknown endpoint; "
+                            f"add it to provider '{provider.id}' endpoints"
                         )
         for alias in self._aliases.values():
             for deployment in alias.deployments:
                 alias_account = self._accounts.get(deployment.account_id)
                 if alias_account is None:
                     raise ConfigurationError(
-                        f"alias '{alias.id}' references unknown account "
-                        f"'{deployment.account_id}'; configure the account"
+                        f"alias '{alias.id}' references unknown account; "
+                        "configure the account"
                     )
                 try:
                     self._validate_model_enabled(alias_account, deployment.model_id)
@@ -527,9 +537,12 @@ class Registry:
         provider = self._providers[account.provider_id]
         model = _find_model(provider, model_id)
         if model is None:
-            raise RegistryError(
-                f"unknown model for provider '{provider.id}'; add it to the provider"
+            # Model ids are untrusted configuration: echo one only when it
+            # matches a known rename, never verbatim.
+            hint = (
+                renamed_model_hint(provider.id, model_id) or "; add it to the provider"
             )
+            raise RegistryError(f"unknown model for provider '{provider.id}'{hint}")
         if model_id not in account.enabled_models:
             raise RegistryError(
                 f"model is not enabled by account '{account.id}'; "
@@ -541,9 +554,8 @@ class Registry:
             and account.endpoint_ref not in model.endpoints
         ):
             raise RegistryError(
-                f"model '{model_id}' is not supported by endpoint "
-                f"'{account.endpoint_ref}'; the model declares "
-                f"endpoints {sorted(model.endpoints)}"
+                f"model is not supported by endpoint '{account.endpoint_ref}'; "
+                f"the model declares endpoints {sorted(model.endpoints)}"
             )
 
 

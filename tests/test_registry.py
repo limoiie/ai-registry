@@ -483,13 +483,15 @@ def test_aggregate_validation_reports_invalid_alias_deployment() -> None:
 
 
 def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
-    with pytest.raises(
-        ConfigurationError, match=r"account 'orphan'.*provider 'missing'"
-    ):
+    with pytest.raises(ConfigurationError) as provider_error:
         Registry.from_data(
             providers=[provider()],
             accounts=[Account(id="orphan", provider_id="missing")],
         )
+    # The identifier that failed to resolve is never echoed.
+    assert str(provider_error.value) == (
+        "account 'orphan' references unknown provider; configure the provider"
+    )
 
     with pytest.raises(ConfigurationError, match=r"account 'primary'.*unknown model"):
         Registry.from_data(
@@ -505,9 +507,7 @@ def test_aggregate_validation_reports_unknown_provider_and_model() -> None:
 
 
 def test_aggregate_validation_reports_unknown_endpoint_ref() -> None:
-    with pytest.raises(
-        ConfigurationError, match=r"account 'orphan'.*unknown endpoint.*'bogus'"
-    ):
+    with pytest.raises(ConfigurationError) as caught:
         Registry.from_data(
             providers=[
                 Provider.model_validate(
@@ -521,12 +521,15 @@ def test_aggregate_validation_reports_unknown_endpoint_ref() -> None:
             accounts=[Account(id="orphan", provider_id="openai", endpoint_ref="bogus")],
         )
 
+    message = str(caught.value)
+    assert "account 'orphan'" in message
+    assert "unknown endpoint" in message
+    assert "provider 'openai' endpoints" in message
+    assert "bogus" not in message
+
 
 def test_aggregate_validation_reports_unknown_model_card_endpoint() -> None:
-    with pytest.raises(
-        ConfigurationError,
-        match=r"model 'chat'.*unknown endpoint.*'bogus'.*provider 'openai'",
-    ):
+    with pytest.raises(ConfigurationError) as caught:
         Registry.from_data(
             providers=[
                 Provider.model_validate(
@@ -542,6 +545,31 @@ def test_aggregate_validation_reports_unknown_model_card_endpoint() -> None:
             ],
             accounts=[],
         )
+
+    message = str(caught.value)
+    assert "model 'chat'" in message
+    assert "unknown endpoint" in message
+    assert "bogus" not in message
+
+
+def test_aggregate_validation_reports_unknown_alias_account() -> None:
+    with pytest.raises(ConfigurationError) as caught:
+        Registry.from_data(
+            providers=[provider()],
+            accounts=[account()],
+            aliases=[
+                Alias(
+                    id="fast",
+                    deployments=[
+                        Deployment(account_id="sk-live-secret", model_id="chat")
+                    ],
+                )
+            ],
+        )
+
+    message = str(caught.value)
+    assert message == "alias 'fast' references unknown account; configure the account"
+    assert "sk-live-secret" not in message
 
 
 def test_validation_redacts_untrusted_model_id() -> None:
@@ -816,6 +844,94 @@ def test_registry_lookups_report_unknown_identifiers_safely() -> None:
         registry.get_account("nope")
 
 
+def test_unknown_provider_errors_point_at_a_renamed_id() -> None:
+    registry = catalog_registry()
+
+    with pytest.raises(RegistryError, match=r"'qwen' was renamed to 'alibaba'"):
+        registry.get_provider("qwen")
+    # An id that was never renamed keeps the generic guidance, and untrusted ids
+    # are never echoed back.
+    with pytest.raises(RegistryError) as caught:
+        registry.get_provider("sk-live-secret")
+    assert str(caught.value) == "unknown provider; configure the provider"
+
+
+def test_accounts_referencing_a_renamed_provider_id_are_guided() -> None:
+    from ai_registry.config import discover_builtin_providers
+
+    with pytest.raises(ConfigurationError, match=r"'gemini' was renamed to 'google'"):
+        Registry.from_data(
+            providers=discover_builtin_providers(),
+            accounts=[Account(id="legacy", provider_id="gemini")],
+        )
+
+
+def test_renamed_model_ids_are_guided_wherever_they_appear() -> None:
+    from ai_registry.config import discover_builtin_providers
+
+    providers = discover_builtin_providers()
+    plan = {
+        "id": "plan",
+        "provider_id": "minimax",
+        "credential": "env:MINIMAX_API_KEY",
+        "enabled_models": ["MiniMax-M2.5-highspeed"],
+    }
+
+    with pytest.raises(
+        ConfigurationError, match=r"renamed to 'MiniMax-M2.5-highspeed'"
+    ):
+        Registry.from_data(
+            providers=providers,
+            accounts=[
+                Account.model_validate(
+                    {**plan, "enabled_models": ["MiniMax-M2.5-Lightning"]}
+                )
+            ],
+        )
+
+    with pytest.raises(
+        ConfigurationError,
+        match=r"deployment is invalid.*renamed to 'MiniMax-M2.5-highspeed'",
+    ):
+        Registry.from_data(
+            providers=providers,
+            accounts=[Account.model_validate(plan)],
+            aliases=[
+                {
+                    "id": "coding",
+                    "deployments": [
+                        {"account_id": "plan", "model_id": "MiniMax-M2.5-Lightning"}
+                    ],
+                }
+            ],
+        )
+
+    registry = Registry.from_data(
+        providers=providers, accounts=[Account.model_validate(plan)]
+    )
+    with pytest.raises(RegistryError, match=r"renamed to 'MiniMax-M2.5-highspeed'"):
+        registry.resolve("plan/MiniMax-M2.5-Lightning")
+    # Renames introduced when provider ids moved to models.dev's lab ids.
+    with pytest.raises(RegistryError, match=r"renamed to 'qwen3-vl-235b-a22b'"):
+        Registry.from_data(
+            providers=providers,
+            accounts=[
+                Account.model_validate(
+                    {
+                        "id": "dashscope",
+                        "provider_id": "alibaba",
+                        "credential": "env:DASHSCOPE_API_KEY",
+                        "enabled_models": ["qwen3-vl-235b-a22b"],
+                    }
+                )
+            ],
+        ).resolve("dashscope/qwen3-vl-235b-a22b-instruct")
+    # An id that was never renamed is not echoed back verbatim.
+    with pytest.raises(RegistryError) as caught:
+        registry.resolve("plan/sk-live-secret")
+    assert "sk-live-secret" not in str(caught.value)
+
+
 def test_candidates_list_every_deployment_in_routing_order() -> None:
     registry = Registry.from_data(
         providers=[provider()],
@@ -1071,5 +1187,8 @@ def test_model_not_supported_by_endpoint_is_rejected() -> None:
         }
     )
     registry = Registry.from_data(providers=[provider], accounts=[account])
-    with pytest.raises(RegistryError):
+    with pytest.raises(
+        RegistryError, match=r"not supported by endpoint 'responses'"
+    ) as caught:
         registry.resolve("a/m")
+    assert "'m'" not in str(caught.value)
