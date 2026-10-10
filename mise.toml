@@ -1,0 +1,31 @@
+# Optional developer tooling for ai-registry.
+#
+# Nothing here is required: `uv` alone builds, tests, and releases the package,
+# and docs/development.md documents every command. mise is a convenience that
+# pins the tools uv does not — Python stays uv's, read from .python-version —
+# and re-exposes the `justfile` recipes as `mise run <task>`; `just --list` is
+# the source of truth for what they do.
+
+[tools]
+uv = "0.9"
+just = "1"
+
+[tasks]
+sync = "just sync"
+sync-all = "just sync-all"
+lint = "just lint"
+fmt-check = "just fmt-check"
+fmt = "just fmt"
+typecheck = "just typecheck"
+lock-check = "just lock-check"
+test = "just test"
+test-cov = "just test-cov"
+check = "just check"
+bump = "just bump"
+release-check = "just release-check"
+build = "just build"
+docs = "just docs"
+docs-check = "just docs-check"
+catalog-diff = "just catalog-diff"
+catalog-sync = "just catalog-sync"
+clean = "just clean"

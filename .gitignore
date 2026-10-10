@@ -20,3 +20,16 @@ site/
 
 # Local registry configuration should never be committed by accident
 .ai-registry/registry.local.yaml
+
+# Optional maintainer tooling: mise.toml/justfile are tracked, local overrides are not
+mise.local.toml
+.mise.local.toml
+.mise/
+
+# Local environment overrides (never commit secrets)
+.env
+.env.local
+
+# Docs entry points staged by the Docs workflow and `just docs-check`
+docs/index.md
+docs/changelog.md
