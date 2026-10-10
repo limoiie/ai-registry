@@ -100,9 +100,12 @@ registry.resolve("uniapi-primary/deepseek-v4-flash")  # explicit fallback
 Providers come from two scopes, merged by provider `id`:
 
 - **Built-in** — the catalog shipped with the package at
-  `ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
-  `openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
-  `qwen`, `xai`). It is available in every project with no configuration.
+  `ai_registry/data/providers/*.yml` (`alibaba`, `anthropic`, `deepseek`,
+  `google`, `minimax`, `moonshotai`, `openai`, `uniapi`, `xai`,
+  `zhipuai`). It is available in every project with no configuration. The model
+  set and its metadata come from a models.dev snapshot vendored at
+  `ai_registry/data/models_dev/api.json`, so the files themselves carry only
+  endpoints, settings, and deltas.
 - **Project** — optional files under `<project-root>/.ai-registry/providers/`
   (`.yaml`, `.yml`, or `.json`). A project provider with the same `id`
   replaces the built-in provider **entirely**; unique ids add to the catalog.
@@ -208,7 +211,7 @@ The core modules are:
 | `ai_registry.registry` | `Registry` construction and alias/direct resolution. |
 | `ai_registry.routing` | Priority/weight/health-aware deployment selection. |
 | `ai_registry.errors` | Stable, actionable exception types. |
-| `ai_registry.catalog` | Import third-party catalogs (models.dev) into the provider schema. |
+| `ai_registry.catalog` | Import third-party catalogs (models.dev) and hydrate the built-in catalog from a vendored snapshot. |
 | `ai_registry.testing` | Supported test doubles for consumers. |
 | `ai_registry.cli` | Optional command line interface (`cli` extra). |
 | `ai_registry.adapters.*` | Optional framework adapters (`openai`, `pydantic-ai`, `langchain` extras). |
@@ -219,7 +222,8 @@ The core modules are:
   secret references, resolution, deployment selection with time-based recovery,
   the built-in catalog, and project scopes with profiles.
 - OpenAI SDK, Pydantic AI, and LangChain adapters ship as optional extras,
-  alongside an optional CLI and a models.dev catalog importer.
+  alongside an optional CLI and the models.dev catalog refresh tools
+  (`ai-registry catalog diff|sync`).
 - The focus is OpenAI-compatible providers (`sdk_type: openai`, including
   UniAPI, vLLM, and gateways) plus native Anthropic. Cohere, Gemini, and others
   can be added without changing the registry, account, alias, or credential

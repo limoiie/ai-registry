@@ -169,7 +169,9 @@ value.
 - **Secret-safe by construction**: literal keys rejected; `repr`, dumps, and
   errors redacted; credential-bearing URLs refused.
 - **Bring your own catalog**: `ai_registry.catalog.load_models_dev()` imports a
-  models.dev `api.json` so you need not hand-maintain context windows or pricing.
+  models.dev `api.json`, and the built-in catalog takes its whole model set from
+  a vendored snapshot — provider files carry only endpoints, settings, and
+  deltas. Maintainers refresh it with `ai-registry catalog diff|sync`.
 - **Observability built in**: `Resolution.otel_attributes()` emits OpenTelemetry
   GenAI attributes plus which alias and account were selected.
 - **Testable**: `ai_registry.testing` ships supported fakes.

@@ -531,13 +531,65 @@ models_dev_provider(
 Converts a [models.dev](https://models.dev) `api.json` document into providers.
 `limit.context` and `limit.output` become the context and output token fields;
 `tool_call`, `reasoning` and `structured_output` become capabilities; an `image`
-input modality implies `vision`; an `embedding` output modality selects
-`ModelType.EMBEDDING`; and `cost`, `modalities`, `knowledge` and related keys are
-preserved under the card's `metadata`.
+input modality implies `vision`; and `cost`, `modalities`, `knowledge` and
+related keys are preserved under the card's `metadata`. Models outside the
+schema are skipped rather than mistyped: image, audio and video generators have
+no `ModelType`, and native embeddings and rerankers are classified by name
+because models.dev reports their output modality as text.
 
 No network access is performed. Vendor the document and refresh it deliberately —
 a resolution layer should not change behavior because an upstream file changed
 under it.
+
+```python
+load_models_dev_snapshot(source: PathSource) -> dict[str, Any]
+builtin_models_dev_snapshot() -> dict[str, Any]
+
+hydrate_models_dev_models(
+    models: Sequence[Mapping[str, Any]],
+    *,
+    upstream_provider_id: str,
+    source_name: str = "provider configuration",
+    snapshot: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]
+
+models_dev_provider_ids(providers: Sequence[Provider]) -> list[str]
+models_dev_provider_ids_from_documents(
+    documents: Sequence[Mapping[str, Any]],
+) -> list[str]
+
+diff_models_dev(
+    provider_ids: Sequence[str],
+    upstream: Mapping[str, Any],
+    *,
+    snapshot: Mapping[str, Any] | None = None,
+) -> dict[str, Any]
+
+sync_models_dev_snapshot(
+    provider_ids: Sequence[str], upstream: Mapping[str, Any]
+) -> dict[str, Any]
+
+models_dev_snapshot_json(document: Mapping[str, Any]) -> str
+models_dev_snapshot_readme(
+    *, source: str, generated_at: str, document: Mapping[str, Any]
+) -> str
+```
+
+Hydration is how the built-in catalog avoids hand-maintained model lists. A
+provider file declares `source: models.dev` (or
+`source: {models.dev: <provider id>}`), and `hydrate_models_dev_models` turns
+every representable model in the snapshot into a card, overlaying the file's
+`models` entries as deltas — endpoint availability, vector dimensions, local
+overrides. See [Configuration](configuration.md#model-metadata-from-modelsdev).
+
+`models_dev_provider_ids*` lists the models.dev provider ids a catalog sources
+from. `diff_models_dev` reports models added or removed upstream and changed
+fields, `sync_models_dev_snapshot` copies those provider entries into a snapshot,
+and `models_dev_snapshot_json` / `models_dev_snapshot_readme` render the
+committed artifacts deterministically. The `ai-registry catalog diff|sync`
+commands wrap all three; `ai_registry.config.discover_builtin_provider_documents()`
+returns the unnormalized provider files, so the tools keep working when the
+snapshot itself is missing or stale.
 
 ## Adapters (`ai_registry.adapters`)
 

@@ -97,9 +97,15 @@ rather than being rejected.
 
 Providers come from two scopes and are merged by `id`:
 
-- **Built-in** — `deepseek`, `uniapi`, `minimax`, `openai`,
-  `anthropic`, `gemini`, `moonshot`, `zhipu`, `qwen`, `xai` ship with
+- **Built-in** — `alibaba`, `anthropic`, `deepseek`, `google`, `minimax`,
+  `moonshotai`, `openai`, `uniapi`, `xai`, `zhipuai` ship with
   the package as package data at `ai_registry/data/providers/*.yml`.
+
+Provider ids follow models.dev's lab ids. Four were renamed — `gemini` →
+`google`, `moonshot` → `moonshotai`, `qwen` → `alibaba`, `zhipu` → `zhipuai` —
+and references to the old ids, or to renamed model ids such as
+`MiniMax-M2.5-Lightning` (now `MiniMax-M2.5-highspeed`), fail with an error that
+names the replacement.
 - **Project** — files under `.ai-registry/providers/`.
 
 A project provider with the same `id` **replaces the built-in provider
@@ -228,7 +234,10 @@ so adapters can be chosen later:
 
 ### Models
 
-A model describes one model independently of any deployment.
+A model describes one model independently of any deployment. In a provider that
+declares a `source:`, the model *set* and its metadata come from models.dev and
+only the deltas are declared here — see
+[Model metadata from models.dev](#model-metadata-from-modelsdev).
 
 ```yaml
 models:
@@ -251,7 +260,7 @@ models:
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `id` | model id | yes | The canonical model identifier. May contain `- _ . : /`, no whitespace (e.g. `bge-large-zh:latest`, `Qwen/Qwen3-32B`). |
-| `type` | enum | yes | `chat`, `embedding`, or `reranking`. |
+| `type` | enum | yes¹ | `chat`, `embedding`, or `reranking`. |
 | `display_name` | string | no | Human-friendly name. |
 | `description` | string | no | Free text. |
 | `released_at` | date | no | ISO `YYYY-MM-DD`. |
@@ -264,6 +273,63 @@ models:
 
 `capabilities` supports the keys `tools`, `structured_output`, `vision`, and
 `reasoning` (all optional booleans, default `false`).
+
+¹ A provider that declares a `source:` takes its model set and metadata from
+models.dev; its `models` entries are deltas. See
+[Model metadata from models.dev](#model-metadata-from-modelsdev).
+
+### Model metadata from models.dev
+
+Maintaining context windows, pricing, capability flags — and the model list
+itself — does not scale, so a provider can delegate all of it to a
+[models.dev](https://models.dev) snapshot:
+
+```yaml
+id: google
+name: Google Gemini
+source: models.dev
+endpoints:
+  google:
+    sdk_type: google
+    base_url: https://generativelanguage.googleapis.com
+models:                          # optional deltas only
+  - id: gemini-embedding-001     # models.dev reports no vector dimension
+    embedding_dimension: 3072
+  - id: gateway-only-model       # absent upstream: a complete local card
+    type: chat
+    context_window_tokens: 32768
+```
+
+Rules:
+
+- The model set comes from the snapshot, not the file: every model models.dev
+  carries for that provider becomes a card. Entries under `models` are *deltas* —
+  they override fields on a matching `id`, and ids models.dev does not carry are
+  added as local cards. A provider that needs no deltas omits `models` entirely.
+- Model ids are models.dev's. There is no id mapping: either rename the
+  reference, or declare the local id as a complete card.
+- `source: models.dev` looks up a models.dev provider with the same `id`; the
+  mapping form (`source: {models.dev: <provider id>}`) is for a local id that
+  differs upstream, e.g. `id: kimi` with `source: {models.dev: moonshotai}`. The
+  built-in catalog uses models.dev's own ids throughout, so the plain shorthand
+  covers it.
+- Models the registry cannot resolve are skipped rather than mistyped. Image,
+  audio and video generators have no `type` here, and native embeddings and
+  rerankers are recognised by name because models.dev reports their output
+  modality as text.
+- `embedding_dimension` is not reported upstream, so embedding cards declare it.
+- An unknown *provider* is an error: it means the vendored snapshot is out of
+  date and must be refreshed with `ai-registry catalog sync`.
+
+The built-in catalog uses this: `ai_registry/data/providers/*.yml` carry
+endpoints, settings, and deltas, while `ai_registry/data/models_dev/api.json`
+carries the model set itself. Both ship as package data, so loading stays
+offline and deterministic; maintainers refresh the snapshot with
+`ai-registry catalog diff|sync` (see [Development](development.md)).
+
+Specs, capabilities, `released_at`, and `metadata.cost` on a card come from
+models.dev. Local cards keep the catalog's own metadata, including
+`metadata.pricing` (`currency` plus `units`) where a price is known.
 
 ## Registry file
 
@@ -457,9 +523,10 @@ instead of at request time.
 
 ## Legacy compatibility format
 
-The built-in provider catalog (`ai_registry/data/providers/*.yml`) and legacy
-account documents use an older shape. The loader normalizes it to the schema
-above automatically. **New configuration should prefer the normalized shape.**
+The loader also accepts an older provider shape, still used by provider files
+that predate the catalog sources above and by legacy account documents. The
+loader normalizes it to the schema automatically. **New configuration should
+prefer the normalized shape.**
 
 ### Provider catalog compatibility
 

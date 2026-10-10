@@ -62,18 +62,50 @@ promise, because the dev group installs Typer.
 │   ├── secrets.py              # credential resolution
 │   ├── registry.py             # Registry + Resolution + CatalogEntry
 │   ├── routing.py              # health-aware deployment selection
-│   ├── catalog.py              # third-party catalog import (models.dev)
+│   ├── catalog.py              # models.dev import + built-in hydration
 │   ├── testing.py              # supported test doubles for consumers
 │   ├── cli.py                  # optional CLI (cli extra)
 │   ├── adapters/               # optional framework adapters
 │   ├── errors.py               # public exceptions
-│   └── data/providers/         # built-in provider catalog (package data)
+│   └── data/
+│       ├── providers/          # built-in provider catalog (package data)
+│       └── models_dev/         # vendored, trimmed models.dev snapshot
 ├── tests/
 │   ├── fixtures/               # provider/account/alias examples
 │   └── test_*.py               # one module per source module
 ├── examples/                   # config templates (registry.example.yaml)
 └── docs/                       # this documentation set
 ```
+
+## Refreshing the built-in model catalog
+
+The built-in provider files declare only endpoints, settings, and deltas; the
+model set and metadata for every provider that declares a `source:` come from
+`src/ai_registry/data/models_dev/api.json`. Adding a provider model, or following
+one upstream, is therefore a snapshot refresh — not a catalog edit:
+
+```sh
+curl -o /tmp/models-dev-api.json https://models.dev/api.json
+uv run ai-registry catalog diff /tmp/models-dev-api.json   # exits 1 on drift
+uv run ai-registry catalog sync /tmp/models-dev-api.json   # rewrites the snapshot
+```
+
+`diff` reports, per models.dev provider, models added or removed upstream and any
+changed field, plus provider-level metadata changes (informational). `sync`
+rewrites the snapshot and its provenance README, both of which are reviewed like
+source. Models the registry cannot represent — image, audio and video
+generators — are omitted from the snapshot; native embeddings and rerankers are
+kept and typed by name, and the embedding cards that need a vector dimension
+keep it as a local delta.
+
+Provider files still need attention when curation is genuinely local:
+
+- a model models.dev does not carry (a gateway id such as `uniapi`, or an
+  embedding whose dimension is unknown) is a complete local card;
+- deployment facts models.dev has no concept of — which protocol surfaces serve
+  a model, which region a key targets — are deltas on the matching id;
+- a provider models.dev does not carry at all is simply not `source:`d, and its
+  models stay fully local.
 
 ## Public API discipline
 

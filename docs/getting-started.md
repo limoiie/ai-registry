@@ -246,12 +246,15 @@ account picks one by name with `endpoint_ref` instead of quoting a URL. See
 ## Built-in provider catalog
 
 The package ships a built-in provider catalog at
-`ai_registry/data/providers/*.yml` (`deepseek`, `uniapi`, `minimax`,
-`openai`, `anthropic`, `gemini`, `moonshot`, `zhipu`,
-`qwen`, `xai`). These use the normalized provider-catalog format
-(`default_base_url`, `capabilities`, and `metadata.pricing` on models);
-the loader also accepts the legacy format (`url`, `settings.sdk_type`, and
-`abilities` and `model_cards` on models) and normalizes it automatically.
+`ai_registry/data/providers/*.yml` (`alibaba`, `anthropic`, `deepseek`,
+`google`, `minimax`, `moonshotai`, `openai`, `uniapi`, `xai`,
+`zhipuai`). Those files declare endpoints, settings, and deltas only; the model
+set and its metadata come from a [models.dev](https://models.dev) snapshot
+vendored at `ai_registry/data/models_dev/api.json`. Both are package data, so
+loading stays offline and deterministic; see
+[Configuration](configuration.md#model-metadata-from-modelsdev).
+The loader also accepts the legacy format (`url`, `settings.sdk_type`,
+`abilities`, `model_cards`) and normalizes it automatically.
 
 `Registry.from_project` loads the built-ins automatically and lets project
 providers override them by id, so most projects never list a provider file:
