@@ -22,6 +22,30 @@ from ai_registry.schemas import (
 
 PathSource = str | Path | TextIO
 
+#: The only supported third-party catalog source for model metadata.
+MODELS_DEV_SOURCE = "models.dev"
+
+#: Provider setting naming the models.dev provider whose data hydrates this
+#: provider's model cards. Set by the ``source:`` shorthand in a provider file.
+MODELS_DEV_SETTING = "models_dev"
+
+#: Provider ids renamed to models.dev's lab ids, kept so an unknown-provider
+#: error can point at the replacement instead of failing bare.
+RENAMED_PROVIDER_IDS: dict[str, str] = {
+    "gemini": "google",
+    "moonshot": "moonshotai",
+    "qwen": "alibaba",
+    "zhipu": "zhipuai",
+}
+
+#: Model ids renamed to their models.dev ids, for the same purpose. Removed
+#: models that models.dev never carried do not appear here: pointing at a
+#: replacement that is not in the catalog would only produce a second error.
+RENAMED_MODEL_IDS: dict[str, dict[str, str]] = {
+    "minimax": {"MiniMax-M2.5-Lightning": "MiniMax-M2.5-highspeed"},
+    "alibaba": {"qwen3-vl-235b-a22b-instruct": "qwen3-vl-235b-a22b"},
+}
+
 
 def load_document(source: PathSource) -> dict[str, Any]:
     """Load one YAML or JSON mapping without resolving any secrets."""
@@ -78,6 +102,32 @@ def discover_builtin_providers() -> list[Provider]:
     return providers
 
 
+def discover_builtin_provider_documents() -> list[dict[str, Any]]:
+    """Load the built-in provider files without normalizing or hydrating them.
+
+    The catalog refresh tools read documents rather than providers: they must
+    work even when the vendored models.dev snapshot hydration depends on is
+    missing or stale.
+    """
+    base = resources.files("ai_registry") / "data" / "providers"
+    try:
+        entries = list(base.iterdir())
+    except FileNotFoundError as error:
+        raise ConfigurationError(
+            f"Unable to read built-in provider data '{base}': {error}"
+        ) from None
+    return [
+        _parse_document_text(
+            entry.read_text(encoding="utf-8"),
+            Path(entry.name).suffix.lower(),
+            entry.name,
+            kind="provider",
+        )
+        for entry in sorted(entries, key=lambda entry: entry.name)
+        if entry.is_file() and entry.name.lower().endswith((".yaml", ".yml", ".json"))
+    ]
+
+
 def _provider_from_text(name: str, text: str) -> Provider:
     suffix = Path(name).suffix.lower()
     document = _parse_document_text(text, suffix, name, kind="provider")
@@ -118,6 +168,26 @@ def merge_providers(
     for provider in project_providers:
         merged[provider.id] = provider
     return list(merged.values())
+
+
+def renamed_provider_hint(provider_id: str) -> str:
+    """Explain a renamed provider id, or return ``""`` when nothing was renamed.
+
+    The result is a clause that reads correctly appended to an "unknown
+    provider" message, so migration mistakes are self-correcting.
+    """
+    replacement = RENAMED_PROVIDER_IDS.get(provider_id)
+    if replacement is None:
+        return ""
+    return f"; '{provider_id}' was renamed to '{replacement}' — update the reference"
+
+
+def renamed_model_hint(provider_id: str, model_id: str) -> str:
+    """Explain a renamed model id within ``provider_id``, else return ``""``."""
+    replacement = RENAMED_MODEL_IDS.get(provider_id, {}).get(model_id)
+    if replacement is None:
+        return ""
+    return f"; '{model_id}' was renamed to '{replacement}' — update the reference"
 
 
 def load_account_file(source: PathSource) -> list[Account]:
@@ -228,6 +298,10 @@ def normalize_provider(
         if key in value:
             settings[key] = value[key]
             value.pop(key)
+    if "source" in value:
+        settings[MODELS_DEV_SETTING] = _models_dev_source(
+            value.pop("source"), value, source_name
+        )
     value["settings"] = settings
     if value.get("default_base_url") is None:
         # The catalog format carries the provider's base URL under
@@ -293,6 +367,15 @@ def normalize_provider(
             model_value["context_window_tokens"] = None
         model_value["metadata"] = metadata
         models.append(model_value)
+    upstream_provider_id = settings.get(MODELS_DEV_SETTING)
+    if isinstance(upstream_provider_id, str) and upstream_provider_id:
+        from ai_registry.catalog import hydrate_models_dev_models
+
+        models = hydrate_models_dev_models(
+            models,
+            upstream_provider_id=upstream_provider_id,
+            source_name=source_name,
+        )
     value["models"] = models
     value.pop("model_cards", None)
     try:
@@ -310,6 +393,34 @@ def normalize_provider(
             f"duplicate model id '{duplicates[0]}' in provider '{provider.id}'"
         )
     return provider
+
+
+def _models_dev_source(source: Any, value: Mapping[str, Any], source_name: str) -> str:
+    """Resolve a provider file's ``source:`` shorthand to a models.dev provider id."""
+    if isinstance(source, Mapping):
+        upstream_id = source.get(MODELS_DEV_SOURCE)
+        if (
+            set(source) != {MODELS_DEV_SOURCE}
+            or not isinstance(upstream_id, str)
+            or not upstream_id
+        ):
+            raise ConfigurationError(
+                f"Invalid 'source' in '{source_name}': expected 'models.dev' or "
+                "{models.dev: <provider id>}"
+            )
+        return upstream_id
+    if source == MODELS_DEV_SOURCE:
+        provider_id = value.get("id")
+        if not isinstance(provider_id, str) or not provider_id:
+            raise ConfigurationError(
+                f"Provider '{source_name}' uses 'source: models.dev' but declares "
+                "no id to look up; use '{models.dev: <provider id>}'"
+            )
+        return provider_id
+    raise ConfigurationError(
+        f"Unknown catalog source {source!r} in '{source_name}'; "
+        f"only '{MODELS_DEV_SOURCE}' is supported"
+    )
 
 
 def _proxy_url_placeholder(settings: Mapping[str, Any]) -> str | None:

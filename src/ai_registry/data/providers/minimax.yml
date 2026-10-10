@@ -2,11 +2,34 @@ id: minimax
 name: MiniMax
 description: Founded in 2021, MiniMax builds general-purpose AI models and products
   spanning text, speech, and vision.
+# Model specs, pricing and capabilities come from the vendored models.dev
+# snapshot (`ai-registry catalog sync`); these cards keep only deployment facts.
+source: models.dev
 endpoints:
-  openai:
+  # MiniMax runs two deployments of the same API: the CN deployment on
+  # api.minimax.cn and the international one on api.minimax.io. Each is reachable
+  # over both compatibility protocols. The CN deployment also accepts
+  # subscription keys from the CN Token Plan / M Plan (`sk-cp-...`, see
+  # https://platform.minimax.cn/console/plan), which are not interchangeable with
+  # pay-as-you-go API keys — an account picks the deployment with `endpoint_ref`
+  # and supplies whichever key it has.
+  cn-openai:
     sdk_type: openai
-    base_url: https://api.minimaxi.com/v1
+    base_url: https://api.minimax.cn/v1
     mode: chat
+  cn-anthropic:
+    sdk_type: anthropic
+    base_url: https://api.minimax.cn/anthropic
+    mode: chat
+  intl-openai:
+    sdk_type: openai
+    base_url: https://api.minimax.io/v1
+    mode: chat
+  intl-anthropic:
+    sdk_type: anthropic
+    base_url: https://api.minimax.io/anthropic
+    mode: chat
+default_endpoint: cn-openai
 settings:
   url: https://www.minimaxi.com
   check_model: MiniMax-M3
@@ -17,214 +40,4 @@ settings:
     speed: 2
     text: smooth
 
-models:
-- id: MiniMax-M3
-  display_name: MiniMax M3
-  type: chat
-  released_at: '2026-06-01'
-  description: MiniMax's latest flagship model with 1M context, strong reasoning,
-    coding, and agentic tool use.
-  context_window_tokens: 1000000
-  max_output_tokens: 512000
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.5
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 1.0
-        strategy: fixed
-        unit: millionTokens
-- id: MiniMax-M2.7
-  display_name: MiniMax M2.7
-  type: chat
-  released_at: '2026-03-18'
-  description: Self-evolving M2-series model for real-world software engineering (56.22% SWE-Pro),
-    office suite delivery, and long-horizon agent harnesses with tool use; 204k context.
-  context_window_tokens: 204800
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.3
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheWrite
-        rate: 0.375
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheRead
-        rate: 0.03
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 1.2
-        strategy: fixed
-        unit: millionTokens
-- id: MiniMax-M2.5
-  display_name: MiniMax M2.5
-  type: chat
-  released_at: '2026-02-12'
-  description: SOTA model for coding, agentic tool use, and search with 230B parameters
-    (10B active). Achieves 80.2% on SWE-Bench Verified, 51.3% on Multi-SWE-Bench, 76.3%
-    on BrowseComp.
-  context_window_tokens: 204800
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.3
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheWrite
-        rate: 0.375
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheRead
-        rate: 0.03
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 1.2
-        strategy: fixed
-        unit: millionTokens
-- id: MiniMax-M2.5-Lightning
-  display_name: MiniMax M2.5 Lightning
-  type: chat
-  released_at: '2026-02-12'
-  description: Faster, more efficient variant of MiniMax M2.5 for high-throughput
-    coding and agent workloads.
-  context_window_tokens: 204800
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.3
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheWrite
-        rate: 0.375
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheRead
-        rate: 0.03
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 2.4
-        strategy: fixed
-        unit: millionTokens
-- id: MiniMax-M2.1
-  display_name: MiniMax M2.1
-  type: chat
-  released_at: '2025-12-23'
-  description: Powerful multilingual programming capabilities, comprehensively upgraded
-    programming experience.
-  context_window_tokens: 204800
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.3
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheWrite
-        rate: 0.375
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheRead
-        rate: 0.03
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 1.2
-        strategy: fixed
-        unit: millionTokens
-- id: MiniMax-M2.1-Lightning
-  display_name: MiniMax M2.1 Lightning
-  type: chat
-  released_at: '2025-12-23'
-  description: Powerful multilingual programming capabilities with faster and more
-    efficient inference.
-  context_window_tokens: 204800
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.3
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheWrite
-        rate: 0.375
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheRead
-        rate: 0.03
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 2.4
-        strategy: fixed
-        unit: millionTokens
-- id: MiniMax-M2
-  display_name: MiniMax M2
-  type: chat
-  deprecated: true
-  released_at: '2025-10-27'
-  description: Built for efficient coding and agent workflows.
-  context_window_tokens: 204800
-  max_output_tokens: 131072
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput
-        rate: 0.3
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheWrite
-        rate: 0.375
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput_cacheRead
-        rate: 0.03
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 1.2
-        strategy: fixed
-        unit: millionTokens
+# No model list: models.dev supplies the set, and both deployments serve it.

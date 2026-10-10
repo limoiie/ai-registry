@@ -22,7 +22,7 @@ accounts:
   - id: deepseek-primary
     provider_id: deepseek
     credential: env:DEEPSEEK_API_KEY
-    enabled_models: [deepseek-chat, deepseek-reasoner]
+    enabled_models: [deepseek-v4-flash, deepseek-v4-pro]
 
   - id: uniapi-chat
     provider_id: uniapi
@@ -39,13 +39,23 @@ accounts:
     credential: env:UNIAPI_API_KEY
     enabled_models: [bge-reranker-v2-m3, "qwen3-reranker:8b"]
 
+  # MiniMax CN deployment with a Token Plan / M Plan subscription key
+  # (`sk-cp-...`), which is not interchangeable with a pay-as-you-go API key.
+  # MiniMax runs a separate international deployment: use `intl-anthropic` or
+  # `intl-openai` there instead.
+  - id: minimax-cn-plan
+    provider_id: minimax
+    endpoint_ref: cn-anthropic
+    credential: env:MINIMAX_PLAN_API_KEY
+    enabled_models: [MiniMax-M3, MiniMax-M2.7]
+
 aliases:
   # Application code refers to these names, never to a provider or model id.
   - id: chat-default
     deployments:
       # Lower priority wins. Same priority splits traffic by weight.
       - account_id: deepseek-primary
-        model_id: deepseek-chat
+        model_id: deepseek-v4-flash
       - account_id: uniapi-chat
         model_id: deepseek-v4-flash
         routing: {priority: 1}
@@ -59,3 +69,12 @@ aliases:
     deployments:
       - account_id: uniapi-rerank
         model_id: bge-reranker-v2-m3
+
+  - id: coding-default
+    deployments:
+      # MiniMax-M3 is the default choice; MiniMax-M2.7 is the fallback.
+      - account_id: minimax-cn-plan
+        model_id: MiniMax-M3
+      - account_id: minimax-cn-plan
+        model_id: MiniMax-M2.7
+        routing: {priority: 1}

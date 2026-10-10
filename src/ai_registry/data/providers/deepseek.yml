@@ -1,6 +1,9 @@
 id: deepseek
 name: DeepSeek
 description: DeepSeek focuses on AI research and applications.
+# Model specs, pricing and capabilities come from the vendored models.dev
+# snapshot (`ai-registry catalog sync`); these cards keep only deployment facts.
+source: models.dev
 endpoints:
   openai-chat:
     sdk_type: openai
@@ -22,122 +25,9 @@ settings:
   show_model_fetcher: true
 
 models:
+# Deployment facts models.dev does not carry: which protocol surfaces serve each
+# model. Models without an entry are reachable on every endpoint.
 - id: deepseek-v4-flash
-  display_name: DeepSeek V4 Flash
-  type: chat
-  released_at: '2026-07-31'
-  description: DeepSeek V4 Flash is a fast, cost-effective 284B MoE model with 1M
-    context, optional thinking mode, and strong agentic performance for high-volume
-    workloads. The 0731 update adds multimodal (image) input.
-  context_window_tokens: 1000000
-  max_output_tokens: 384000
   endpoints: [openai-chat, openai-responses, anthropic]
-  capabilities:
-    tools: true
-    reasoning: true
-    structured_output: true
-    vision: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput_cacheRead
-        rate: 0.0028
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0.14
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0.28
-        strategy: fixed
-        unit: millionTokens
 - id: deepseek-v4-pro
-  display_name: DeepSeek V4 Pro
-  type: chat
-  released_at: '2026-08-13'
-  description: DeepSeek V4 Pro is a frontier 1.6T MoE model with 1M context, optional
-    thinking mode, and top-tier agentic coding, reasoning, and world-knowledge
-    performance. Version 0813 is the GA release.
-  context_window_tokens: 1000000
-  max_output_tokens: 384000
   endpoints: [openai-chat, anthropic]
-  capabilities:
-    tools: true
-    reasoning: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput_cacheRead
-        rate: 0.003625
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0.435
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0.87
-        strategy: fixed
-        unit: millionTokens
-- id: deepseek-chat
-  display_name: DeepSeek V3.2
-  type: chat
-  deprecated: true
-  released_at: '2025-12-01'
-  description: DeepSeek V3.2 is DeepSeek's latest general model with a hybrid reasoning
-    architecture and stronger agent capabilities.
-  context_window_tokens: 131072
-  max_output_tokens: 8192
-  endpoints: [openai-chat, anthropic]
-  capabilities:
-    tools: true
-    structured_output: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput_cacheRead
-        rate: 0.028
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0.28
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0.42
-        strategy: fixed
-        unit: millionTokens
-- id: deepseek-reasoner
-  display_name: DeepSeek V3.2 Thinking
-  type: chat
-  deprecated: true
-  released_at: '2025-12-01'
-  description: DeepSeek V3.2 thinking mode outputs a chain-of-thought before the final
-    answer to improve accuracy.
-  context_window_tokens: 131072
-  max_output_tokens: 65536
-  endpoints: [openai-chat, anthropic]
-  capabilities:
-    tools: true
-    reasoning: true
-  metadata:
-    pricing:
-      currency: USD
-      units:
-      - name: textInput_cacheRead
-        rate: 0.028
-        strategy: fixed
-        unit: millionTokens
-      - name: textInput
-        rate: 0.28
-        strategy: fixed
-        unit: millionTokens
-      - name: textOutput
-        rate: 0.42
-        strategy: fixed
-        unit: millionTokens

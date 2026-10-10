@@ -12,9 +12,24 @@ name or value.
 from __future__ import annotations
 
 import json
+from datetime import date
+from pathlib import Path
 from typing import Any
 
-from ai_registry.errors import MissingDependencyError, RegistryError
+from ai_registry.catalog import (
+    diff_models_dev,
+    load_models_dev_snapshot,
+    models_dev_provider_ids_from_documents,
+    models_dev_snapshot_json,
+    models_dev_snapshot_readme,
+    sync_models_dev_snapshot,
+)
+from ai_registry.config import discover_builtin_provider_documents
+from ai_registry.errors import (
+    ConfigurationError,
+    MissingDependencyError,
+    RegistryError,
+)
 from ai_registry.registry import Registry, Resolution
 
 try:  # pragma: no cover - exercised by environment, not by tests
@@ -195,7 +210,122 @@ def _build_app() -> Any:
                 f"-> {row['endpoint']} (credential: {row['credential']})"
             )
 
+    catalog_app = typer.Typer(
+        add_completion=False,
+        no_args_is_help=True,
+        help="Refresh the bundled catalog from a models.dev api.json.",
+    )
+
+    @catalog_app.command()
+    def diff(
+        source: str = typer.Argument(
+            ..., help="Path to a downloaded models.dev api.json."
+        ),
+        as_json: bool = json_option,
+    ) -> None:
+        """Report drift between the vendored models.dev snapshot and api.json."""
+        upstream = _load_upstream(source)
+        provider_ids = _catalog_provider_ids()
+        report = diff_models_dev(provider_ids, upstream)
+        if as_json:
+            typer.echo(json.dumps(report, indent=2))
+        else:
+            _echo_catalog_diff(report)
+        if report["drift"]:
+            raise typer.Exit(code=1)
+
+    @catalog_app.command()
+    def sync(
+        source: str = typer.Argument(
+            ..., help="Path to a downloaded models.dev api.json."
+        ),
+        output: str | None = typer.Option(
+            None,
+            "--output",
+            "-o",
+            help="Snapshot path to write; defaults to the packaged snapshot.",
+        ),
+        as_json: bool = json_option,
+    ) -> None:
+        """Rewrite the vendored models.dev snapshot, trimmed to the catalog."""
+        upstream = _load_upstream(source)
+        provider_ids = _catalog_provider_ids()
+        report = diff_models_dev(provider_ids, upstream)
+        try:
+            document = sync_models_dev_snapshot(provider_ids, upstream)
+        except ConfigurationError as error:
+            typer.echo(f"error: {error}", err=True)
+            raise typer.Exit(code=2) from None
+        destination = (
+            Path(output)
+            if output
+            else Path(__file__).resolve().parent / "data" / "models_dev" / "api.json"
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(models_dev_snapshot_json(document), encoding="utf-8")
+        readme = destination.parent / "README.md"
+        readme.write_text(
+            models_dev_snapshot_readme(
+                source=source,
+                generated_at=date.today().isoformat(),
+                document=document,
+            ),
+            encoding="utf-8",
+        )
+        if as_json:
+            typer.echo(json.dumps(report, indent=2))
+        else:
+            _echo_catalog_diff(report)
+        typer.echo(f"wrote {destination} and {readme.name}")
+
+    app.add_typer(catalog_app, name="catalog")
+
     return app
+
+
+def _load_upstream(source: str) -> dict[str, Any]:
+    """Parse a downloaded models.dev document, or exit with an actionable error."""
+    try:
+        return load_models_dev_snapshot(source)
+    except ConfigurationError as error:
+        typer.echo(f"error: {error}", err=True)
+        raise typer.Exit(code=2) from None
+
+
+def _catalog_provider_ids() -> list[str]:
+    """Read the built-in provider files without hydrating them."""
+    return models_dev_provider_ids_from_documents(discover_builtin_provider_documents())
+
+
+def _echo_catalog_diff(report: dict[str, Any]) -> None:
+    for provider_id, entry in sorted(report["providers"].items()):
+        notes: list[str] = []
+        if entry["provider_missing_upstream"]:
+            notes.append("provider no longer in models.dev")
+        for model_id, changes in sorted(entry["changed"].items()):
+            fields = ", ".join(_changed_fields(changes))
+            notes.append(f"{model_id} changed ({fields})")
+        notes.extend(f"{item} added upstream" for item in entry["added_upstream"])
+        gone = entry["missing_upstream"]
+        notes.extend(f"{item} is no longer upstream" for item in gone)
+        if entry["provider_changed"]:
+            fields = ", ".join(sorted(entry["provider_changed"]))
+            notes.append(f"provider metadata changed ({fields})")
+        typer.echo(f"{provider_id}: {'; '.join(notes) if notes else 'ok'}")
+    if report["drift"]:
+        typer.echo("drift detected; refresh with 'ai-registry catalog sync <api.json>'")
+    else:
+        typer.echo("no drift: the vendored snapshot matches the supplied api.json")
+
+
+def _changed_fields(changes: dict[str, Any]) -> list[str]:
+    fields: list[str] = []
+    for name, value in sorted(changes.items()):
+        if name == "metadata" and isinstance(value, dict):
+            fields.extend(f"metadata.{nested}" for nested in sorted(value))
+        else:
+            fields.append(name)
+    return fields
 
 
 def _describe(resolution: Resolution) -> dict[str, Any]:

@@ -1,0 +1,19 @@
+id: moonshotai
+name: Moonshot (Kimi)
+description: Moonshot AI develops the Kimi family of large language models with long
+  context windows and strong agentic tool use.
+# Model specs, pricing and capabilities come from the vendored models.dev
+# snapshot (`ai-registry catalog sync`); these cards keep only deployment facts.
+source: models.dev
+endpoints:
+  openai:
+    sdk_type: openai
+    base_url: https://api.moonshot.ai/v1
+    mode: chat
+settings:
+  url: https://www.moonshot.ai
+  check_model: kimi-k3
+  models_url: https://platform.moonshot.ai/docs/pricing
+  show_model_fetcher: true
+
+# No model list: models.dev supplies the set.

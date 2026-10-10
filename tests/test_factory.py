@@ -214,18 +214,18 @@ def test_from_project_builds_a_registry_from_a_project_directory(
         "  - id: primary\n"
         "    provider_id: deepseek\n"
         "    credential: {env: DEEPSEEK_API_KEY}\n"
-        "    enabled_models: [deepseek-chat]\n"
+        "    enabled_models: [deepseek-v4-flash]\n"
         "aliases:\n"
         "  - id: chat-default\n"
         "    deployments:\n"
         "      - account_id: primary\n"
-        "        model_id: deepseek-chat\n",
+        "        model_id: deepseek-v4-flash\n",
         encoding="utf-8",
     )
 
     factory = ClientFactory.from_project(tmp_path)
 
-    assert factory.registry.resolve("chat-default").model_id == "deepseek-chat"
+    assert factory.registry.resolve("chat-default").model_id == "deepseek-v4-flash"
 
 
 def test_pydantic_ai_model_forwards_overrides(

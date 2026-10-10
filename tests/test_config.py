@@ -7,6 +7,7 @@ from ai_registry import Registry
 from ai_registry.config import (
     _ensure_unique_provider_ids,
     _provider_from_text,
+    discover_builtin_provider_documents,
     discover_builtin_providers,
     discover_project_providers,
     load_account_file,
@@ -19,6 +20,7 @@ from ai_registry.config import (
     normalize_provider,
 )
 from ai_registry.errors import ConfigurationError
+from ai_registry.schemas import Account
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DATA = Path(__file__).parents[1] / "src" / "ai_registry" / "data" / "providers"
@@ -35,28 +37,93 @@ def test_builtin_provider_data_is_package_data() -> None:
         "minimax.yml",
         "openai.yml",
         "anthropic.yml",
-        "gemini.yml",
-        "moonshot.yml",
-        "zhipu.yml",
-        "qwen.yml",
+        "google.yml",
+        "moonshotai.yml",
+        "zhipuai.yml",
+        "alibaba.yml",
         "xai.yml",
     } <= names
+
+    snapshot = resources.files("ai_registry") / "data" / "models_dev"
+    assert {"api.json", "README.md"} <= {entry.name for entry in snapshot.iterdir()}
+
+
+def test_provider_source_shorthand_names_the_upstream_provider() -> None:
+    assert (
+        normalize_provider(
+            {"id": "minimax", "name": "MiniMax", "source": "models.dev"}
+        ).settings["models_dev"]
+        == "minimax"
+    )
+
+    gemini = normalize_provider(
+        {"id": "gemini", "name": "Gemini", "source": {"models.dev": "google"}}
+    )
+    assert gemini.settings["models_dev"] == "google"
+
+
+def test_provider_source_hydrates_the_models_dev_set() -> None:
+    provider = normalize_provider(
+        {
+            "id": "minimax",
+            "name": "MiniMax",
+            "source": "models.dev",
+        }
+    )
+
+    # No model list: the set comes from the snapshot, and local entries would
+    # only be deltas.
+    ids = {card.id for card in provider.models}
+    assert {"MiniMax-M3", "MiniMax-M2.5-highspeed"} <= ids
+    m3 = next(card for card in provider.models if card.id == "MiniMax-M3")
+    assert m3.context_window_tokens == 1000000
+
+
+def test_provider_source_rejects_unknown_and_unusable_sources() -> None:
+    with pytest.raises(ConfigurationError, match="Unknown catalog source"):
+        normalize_provider({"id": "p", "name": "P", "source": "somewhere"})
+
+    with pytest.raises(ConfigurationError, match="Invalid 'source'"):
+        normalize_provider({"id": "p", "name": "P", "source": {"models.dev": ""}})
+
+    with pytest.raises(ConfigurationError, match="declares no id"):
+        normalize_provider({"name": "P", "source": "models.dev"})
+
+    with pytest.raises(ConfigurationError, match="catalog sync"):
+        normalize_provider({"id": "mistral", "name": "Mistral", "source": "models.dev"})
+
+
+def test_builtin_provider_documents_are_unnormalized() -> None:
+    documents = discover_builtin_provider_documents()
+
+    assert {document["id"] for document in documents} == {
+        provider.id for provider in discover_builtin_providers()
+    }
+    by_id = {document["id"]: document for document in documents}
+    # Sourced providers declare no model list: models.dev supplies the set.
+    assert "models" not in by_id["minimax"]
+    assert "models" not in by_id["anthropic"]
+    # Deltas models.dev cannot report stay local: vector dimensions here.
+    assert by_id["openai"]["models"] == [
+        {"id": "text-embedding-3-large", "embedding_dimension": 3072},
+        {"id": "text-embedding-3-small", "embedding_dimension": 1536},
+    ]
 
 
 def test_discovers_builtin_providers_from_package_data() -> None:
     providers = discover_builtin_providers()
 
     assert {provider.id for provider in providers} == {
-        "deepseek",
-        "uniapi",
-        "minimax",
-        "openai",
+        "alibaba",
         "anthropic",
-        "gemini",
-        "moonshot",
-        "zhipu",
-        "qwen",
+        "deepseek",
+        "google",
+        "minimax",
+        "moonshotai",
+        "openai",
+        "uniapi",
         "xai",
+        "zhipuai",
     }
 
 
@@ -370,17 +437,23 @@ def test_duplicate_model_ids_are_rejected(tmp_path: Path) -> None:
 
 def test_loads_actual_catalog_normalized_model_fields() -> None:
     uniapi = load_provider_file(DATA / "uniapi.yml")
-    minimax = load_provider_file(DATA / "minimax.yml")
+    openai = load_provider_file(DATA / "openai.yml")
+    deepseek = load_provider_file(DATA / "deepseek.yml")
 
     embedding = next(card for card in uniapi.models if card.id == "bge-large-zh:latest")
     reranker = next(card for card in uniapi.models if card.id == "qwen3-reranker:8b")
     reasoning = next(card for card in uniapi.models if card.id == "deepseek-v4-flash")
-    deprecated = next(card for card in minimax.models if card.id == "MiniMax-M2")
+    upstream = next(card for card in openai.models if card.id == "gpt-5.6")
+    deprecated = next(
+        card for card in deepseek.models if card.id == "deepseek-v4-flash"
+    )
 
     assert embedding.embedding_dimension == 1024
     assert reranker.type.value == "reranking"
     assert reasoning.context_window_tokens == 1000000
     assert reasoning.capabilities.reasoning is True
+    # Hydrated cards carry models.dev's specs and status.
+    assert upstream.context_window_tokens == 1050000
     assert deprecated.metadata["deprecated"] is True
 
 
@@ -390,6 +463,73 @@ def test_actual_uniapi_catalog_covers_reranking_models() -> None:
     rerankers = [card.id for card in uniapi.models if card.type.value == "reranking"]
 
     assert rerankers == ["qwen3-reranker:8b", "bge-reranker-v2-m3"]
+
+
+def test_actual_minimax_catalog_declares_cn_and_international_endpoints() -> None:
+    minimax = load_provider_file(DATA / "minimax.yml")
+
+    assert minimax.default_endpoint == "cn-openai"
+    expected = {
+        "cn-openai": ("openai", "https://api.minimax.cn/v1"),
+        "cn-anthropic": ("anthropic", "https://api.minimax.cn/anthropic"),
+        "intl-openai": ("openai", "https://api.minimax.io/v1"),
+        "intl-anthropic": ("anthropic", "https://api.minimax.io/anthropic"),
+    }
+    assert set(minimax.endpoints) == set(expected)
+    for name, (sdk_type, base_url) in expected.items():
+        assert minimax.endpoints[name].sdk_type.value == sdk_type
+        assert minimax.endpoints[name].base_url == base_url
+        assert minimax.endpoints[name].mode.value == "chat"
+    assert minimax.settings["check_model"] == "MiniMax-M3"
+
+    # Both deployments serve the same models, so no per-model endpoint
+    # restrictions are declared.
+    assert {card.endpoints for card in minimax.models} == {None}
+
+
+def test_builtin_minimax_accounts_select_a_deployment() -> None:
+    cn = Account.model_validate(
+        {
+            "id": "minimax-cn-plan",
+            "provider_id": "minimax",
+            "endpoint_ref": "cn-anthropic",
+            "credential": "env:MINIMAX_PLAN_API_KEY",
+            "enabled_models": ["MiniMax-M3", "MiniMax-M2.7"],
+        }
+    )
+    intl = Account.model_validate(
+        {
+            "id": "minimax-intl",
+            "provider_id": "minimax",
+            "endpoint_ref": "intl-openai",
+            "credential": "env:MINIMAX_API_KEY",
+            "enabled_models": ["MiniMax-M3"],
+        }
+    )
+    default = Account.model_validate(
+        {
+            "id": "minimax-default",
+            "provider_id": "minimax",
+            "credential": "env:MINIMAX_API_KEY",
+            "enabled_models": ["MiniMax-M3"],
+        }
+    )
+    registry = Registry.from_data(
+        providers=discover_builtin_providers(), accounts=[cn, intl, default]
+    )
+
+    cn_resolution = registry.resolve("minimax-cn-plan/MiniMax-M3")
+    assert cn_resolution.endpoint == "https://api.minimax.cn/anthropic"
+    assert cn_resolution.sdk_type.value == "anthropic"
+    assert cn_resolution.mode.value == "chat"
+
+    international = registry.resolve("minimax-intl/MiniMax-M3")
+    assert international.endpoint == "https://api.minimax.io/v1"
+    assert international.sdk_type.value == "openai"
+
+    # An account without endpoint_ref takes the provider default.
+    fallback = registry.resolve("minimax-default/MiniMax-M3")
+    assert fallback.endpoint == "https://api.minimax.cn/v1"
 
 
 def test_rejects_unsupported_sdk_type(tmp_path: Path) -> None:
