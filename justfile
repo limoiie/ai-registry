@@ -71,7 +71,7 @@ release-check version:
     branch="$(git rev-parse --abbrev-ref HEAD)"
     [[ "$branch" == "main" ]] || fail "on branch $branch, not main"
 
-    uv lock --check >/dev/null || fail "uv.lock is out of date; run 'uv lock'"
+    uv lock --check >/dev/null 2>&1 || fail "uv.lock is out of date; run 'uv lock'"
 
     if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
         fail "tag $tag already exists locally"
