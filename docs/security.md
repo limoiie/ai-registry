@@ -20,7 +20,9 @@ follow when using the library.
 4. **Safe errors.** Exceptions never contain API keys, resolved values, or raw
    caller input that could be secret-like. Validation errors hide the input
    value; registry errors describe the problem and remediation without echoing
-   the offending identifier.
+   the identifier that failed to resolve, naming only the account, alias,
+   provider, or model being validated. The one exception is a rename hint,
+   whose name comes from the registry's own table, not from configuration.
 5. **Safe endpoints.** Credential-bearing URLs are rejected at load time:
    userinfo (`user:pass@host`), sensitive query/fragment parameters, and empty
    query keys.
