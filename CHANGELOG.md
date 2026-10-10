@@ -9,6 +9,80 @@ are always listed under **Changed** with a migration note.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-10
+
+### Added
+
+- The built-in catalog takes its whole model set from a
+  [models.dev](https://models.dev) snapshot vendored at
+  `ai_registry/data/models_dev/api.json`. Provider files declare `source:` and
+  only *deltas* — endpoint availability, vector dimensions models.dev cannot
+  report, local-only cards such as the `uniapi` gateway — so adding or retiring
+  a model is a snapshot refresh rather than a catalog edit, and no model list is
+  hand-maintained.
+- `ai_registry.catalog` gained `builtin_models_dev_snapshot`,
+  `hydrate_models_dev_models`, `models_dev_provider_ids`,
+  `models_dev_provider_ids_from_documents`, `diff_models_dev`,
+  `sync_models_dev_snapshot`, `models_dev_snapshot_json`, and
+  `models_dev_snapshot_readme`; `ai_registry.config` gained
+  `discover_builtin_provider_documents`.
+- CLI: `ai-registry catalog diff <api.json>` reports models added or removed
+  upstream and any changed field (exit code 1 on drift), and
+  `ai-registry catalog sync <api.json>` rewrites the vendored snapshot and its
+  provenance README.
+- The built-in `minimax` provider distinguishes MiniMax's two deployments: CN
+  (`cn-openai`, `cn-anthropic` on `api.minimax.cn`) and international
+  (`intl-openai`, `intl-anthropic` on `api.minimax.io`). A CN Token Plan / M
+  Plan key (`sk-cp-...`) is an account credential rather than an endpoint, so it
+  is used against the CN endpoints like any other key.
+- Unknown-provider and unknown-model errors name the replacement when an id was
+  renamed to its models.dev id (e.g.
+  `'MiniMax-M2.5-Lightning' was renamed to 'MiniMax-M2.5-highspeed'`).
+
+### Changed
+
+- Breaking: provider ids are models.dev's lab ids — `gemini` → `google`,
+  `moonshot` → `moonshotai`, `qwen` → `alibaba`, `zhipu` → `zhipuai` — with the
+  provider files renamed to match. Update `provider_id` in accounts and any
+  `Registry` lookups.
+- Breaking: model ids and model availability follow models.dev, which replaces
+  the former curated lists:
+  - `qwen3-vl-235b-a22b-instruct` is `qwen3-vl-235b-a22b`.
+  - Models models.dev does not carry are gone, including `deepseek-chat`,
+    `deepseek-reasoner`, `kimi-k2.5`, the retired Kimi previews
+    (`kimi-k2-thinking`, `kimi-k2-turbo-preview`, `kimi-latest`,
+    `kimi-thinking-preview`), `grok-3`, `grok-4`, `grok-4-latest`, and
+    `MiniMax-M2.1-highspeed`. Point `enabled_models` and alias deployments at a
+    current model.
+  - models.dev's `status` decides `deprecated`, so the catalog no longer flags
+    `deepseek-v4-flash` or `MiniMax-M2`; it does flag everything models.dev
+    marks deprecated.
+  - The catalog is now every model models.dev carries for those providers (about
+    190 cards rather than 58), and models.dev's `cost` metadata replaces the
+    catalog's former `pricing.units`.
+- Breaking: the MiniMax endpoint names `token-plan-openai` and
+  `token-plan-anthropic` are now `cn-openai` and `cn-anthropic`, with the
+  international deployment added as `intl-openai` and `intl-anthropic`; the
+  provider default is `cn-openai`. Update `endpoint_ref` in accounts.
+- Breaking: the per-model `source_id` key is gone. A delta card's `id` must be
+  the models.dev id; models outside models.dev stay complete local cards
+  (`uniapi`, and embedding cards that declare `embedding_dimension`).
+- The models.dev importer converts only what the registry can represent: image,
+  audio and video generators are skipped instead of being typed as chat, and
+  native embeddings and rerankers are typed from their name because models.dev
+  reports their output modality as text.
+
+### Fixed
+
+- Registry errors no longer echo the identifier that failed to resolve: an
+  unknown provider, endpoint, account, or model reference is described without
+  repeating the offending id, as the documented "Safe errors" guarantee
+  already promised. Renamed ids still produce a hint naming the replacement,
+  because those names come from the registry's own rename table rather than
+  from configuration.
+- The models.dev importer no longer rejects partial release dates such as
+  `2026-01`; they are ignored instead of failing validation.
+
 ## [0.2.0] - 2026-08-24
 
 ### Added
