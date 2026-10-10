@@ -9,7 +9,10 @@ are always listed under **Changed** with a migration note.
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-10-10
+## [0.3.1] - 2026-10-10
+
+The first release uploaded to PyPI — the earlier tags were never published, so
+these notes also cover what 0.3.0 would have shipped.
 
 ### Added
 
