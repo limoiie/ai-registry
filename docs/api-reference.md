@@ -1,15 +1,16 @@
 # API reference
 
-This page documents every public symbol in `ai-registry` version `0.1.0`.
-Public symbols are stable; anything not listed here is internal and may change
-without notice.
+This page documents every public symbol in `ai-registry`. The version is read
+from the installed distribution metadata, so `ai_registry.__version__` always
+matches the release you installed. Public symbols are stable; anything not
+listed here is internal and may change without notice.
 
 ## Package surface
 
 ```python
 import ai_registry
 
-ai_registry.__version__  # "0.1.0"
+ai_registry.__version__  # e.g. "0.3.0"
 ```
 
 Public names exported from the package root:

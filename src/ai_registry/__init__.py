@@ -10,7 +10,7 @@ Names re-exported here are the supported API surface. Adapters live under
 import cost stays at Pydantic and PyYAML.
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
 
 from ai_registry.errors import (
     AdapterError as AdapterError,
@@ -102,6 +102,13 @@ from ai_registry.secrets import (
 from ai_registry.secrets import (
     SecretResolver as SecretResolver,
 )
+
+# The distribution metadata is the single source of truth for the version; a
+# literal here would silently drift from pyproject.toml (as it had).
+try:
+    __version__ = version("ai-registry")
+except PackageNotFoundError:  # pragma: no cover - a source tree without install
+    __version__ = "0.0.0"
 
 __all__ = [
     "Account",
