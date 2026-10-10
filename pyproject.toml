@@ -92,6 +92,9 @@ exclude_also = [
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+# `docs/plans` is a keep-verbatim record: the formatter would rewrite the
+# illustrative code fences (quotes, wrapping) and alter the historical notes.
+extend-exclude = ["docs/plans"]
 
 [tool.ruff.lint]
 select = [
