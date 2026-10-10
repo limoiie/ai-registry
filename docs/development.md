@@ -48,6 +48,24 @@ CI additionally runs a job that installs the package with **no extras** and
 asserts the dependency closure stayed small. Nothing else proves the core
 promise, because the dev group installs Typer.
 
+### Optional helpers
+
+The commands above are the canonical ones. `just` and `mise` are maintainer
+conveniences and are **not** required — CI, the release workflow, and pre-commit
+all invoke `uv` directly, so a contributor with only `uv` can do everything.
+
+- The `justfile` wraps the same commands (`just --list` lists them; `just check`
+  runs the whole gate the section above describes by hand). It needs only `uv`.
+- `mise.toml` pins `uv` and `just` and re-exposes the recipes as
+  `mise run <task>`. Python is not pinned there — it stays uv's, read from
+  `.python-version`.
+
+```bash
+just check            # lint + format + types + lock + tests
+just docs-check       # build the docs exactly as the Docs workflow does
+mise run test         # same recipes, through mise
+```
+
 ## Repository layout
 
 ```text
@@ -163,6 +181,44 @@ These invariants are enforced and must be preserved by changes:
   **Changed** in `CHANGELOG.md` with a migration note.
 - Releases are tag-driven (`v*`) and published with PyPI Trusted Publishing; the
   release workflow verifies that the tag matches the `pyproject.toml` version.
+
+### Releasing
+
+`pyproject.toml` is the only place the version is written. `ai_registry.__version__`
+reads it back from the installed metadata, so no source file needs editing.
+
+1. Bump the version — this also re-locks, so `uv.lock` stays in step:
+
+   ```bash
+   uv version 0.4.0        # or: just bump 0.4.0 / mise run bump 0.4.0
+   ```
+
+2. Move the `[Unreleased]` entries in `CHANGELOG.md` under a new
+   `## [0.4.0] - YYYY-MM-DD` heading and leave `[Unreleased]` empty.
+3. Run the gate; the commands in [Running checks](#running-checks) are canonical.
+   `just check` runs them all at once.
+4. Commit (`chore: release 0.4.0`) and push `main`; wait for CI and Docs to pass.
+5. Check the release is safe to cut, then tag — the tag is what publishes:
+
+   ```bash
+   just release-check 0.4.0
+   git tag -a v0.4.0 -m "ai-registry 0.4.0"
+   git push origin v0.4.0
+   ```
+
+   `release-check` fails if the version, the changelog heading, the lockfile, the
+   working tree, or the tag slot disagree, so a mismatch is caught before PyPI
+   sees it.
+6. The `Release` workflow builds, asserts the tag matches the `pyproject.toml`
+   version, and publishes to PyPI with Trusted Publishing. That needs a Trusted
+   Publisher configured on PyPI for this repository (project `ai-registry`,
+   workflow `release.yml`, environment `pypi`) — see
+   [PyPI's publishing docs](https://docs.pypi.org/trusted-publishers/). The
+   workflow does not create a GitHub Release; add one with
+   `gh release create v0.4.0 --generate-notes` if you want it.
+
+There is deliberately no recipe that commits, tags, or pushes: those steps are
+irreversible and are the release itself, so they stay explicit.
 
 ## Documentation
 
