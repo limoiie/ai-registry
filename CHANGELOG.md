@@ -9,6 +9,8 @@ are always listed under **Changed** with a migration note.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-30
+
 ### Added
 
 - `Model.reasoning_options` carries typed `ReasoningOption` entries — a
