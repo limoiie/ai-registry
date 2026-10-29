@@ -71,7 +71,6 @@ _MODELS_DEV_METADATA = (
     "last_updated",
     "modalities",
     "open_weights",
-    "reasoning_options",
     "status",
     "experimental",
 )
@@ -437,7 +436,17 @@ def _models_dev_model_raw(model_id: str, entry: Any) -> dict[str, Any] | None:
     if entry is None:
         return None
     card = _representable_model(model_id, entry)
-    return None if card is None else card.safe_dump()
+    if card is None:
+        return None
+    raw = card.safe_dump()
+    # Empty defaults would otherwise be written into the snapshot for every
+    # model, making refreshes noisier than the upstream document.
+    if not raw.get("reasoning_options"):
+        raw.pop("reasoning_options", None)
+    for option in raw.get("reasoning_options", []):
+        if not option.get("values"):
+            option.pop("values", None)
+    return raw
 
 
 def _representable_model(model_id: str, entry: Any) -> Model | None:
@@ -463,6 +472,12 @@ def _representable_model(model_id: str, entry: Any) -> Model | None:
     if entry.get("status") == "deprecated":
         metadata["deprecated"] = True
 
+    reasoning_options = [
+        option
+        for option in _sequence(entry.get("reasoning_options"))
+        if isinstance(option, Mapping)
+    ]
+
     return Model(
         id=str(entry.get("id") or model_id),
         type=model_type,
@@ -472,6 +487,7 @@ def _representable_model(model_id: str, entry: Any) -> Model | None:
         context_window_tokens=_positive_int(limit.get("context")),
         max_output_tokens=_positive_int(limit.get("output")),
         capabilities=capabilities,  # type: ignore[arg-type]
+        reasoning_options=reasoning_options,  # type: ignore[arg-type]
         metadata=metadata,
     )
 

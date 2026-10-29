@@ -15,6 +15,8 @@ from ai_registry.schemas import (
     ModelCapabilities,
     ModelType,
     Provider,
+    ReasoningOption,
+    ReasoningOptionType,
     RegistryConfig,
     RoutingMetadata,
     SDKType,
@@ -656,6 +658,75 @@ def test_capability_synonyms_combine_with_or_semantics() -> None:
     assert normalize_capabilities({"tools": False, "function_call": True}) == {
         "tools": True
     }
+
+
+def test_reasoning_options_are_typed_and_enumerable() -> None:
+    model = Model.model_validate(
+        {
+            "id": "reasoner",
+            "type": "chat",
+            "capabilities": {"reasoning": True},
+            "reasoning_options": [
+                {
+                    "type": "toggle",
+                    "parameter": "chat_template_kwargs.thinking",
+                    "default": False,
+                },
+                {"type": "effort", "values": ["low", "medium", "high"]},
+                {"type": "budget_tokens", "min": 1024, "max": 32768},
+            ],
+        }
+    )
+
+    assert [option.type for option in model.reasoning_options] == [
+        ReasoningOptionType.TOGGLE,
+        ReasoningOptionType.EFFORT,
+        ReasoningOptionType.BUDGET_TOKENS,
+    ]
+    assert model.reasoning_options[0].default is False
+    assert model.reasoning_efforts == ["low", "medium", "high"]
+
+
+def test_reasoning_efforts_are_empty_without_an_effort_option() -> None:
+    model = Model.model_validate(
+        {
+            "id": "reasoner",
+            "type": "chat",
+            "capabilities": {"reasoning": True},
+            "reasoning_options": [{"type": "toggle"}],
+        }
+    )
+
+    assert model.reasoning_efforts == []
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        {"type": "effort"},
+        {"type": "toggle", "values": ["high"]},
+        {"type": "budget_tokens", "min": 4096, "max": 1024},
+        {"type": "toggle", "min": 1},
+        {"type": "effort", "values": ["high", "high"]},
+        {"type": "effort", "values": [" "]},
+    ],
+)
+def test_reasoning_options_reject_inconsistent_shapes(
+    option: dict[str, Any],
+) -> None:
+    with pytest.raises(ValidationError):
+        ReasoningOption.model_validate(option)
+
+
+def test_reasoning_options_require_the_reasoning_capability() -> None:
+    with pytest.raises(ValidationError, match=r"capabilities\.reasoning"):
+        Model.model_validate(
+            {
+                "id": "reasoner",
+                "type": "chat",
+                "reasoning_options": [{"type": "toggle"}],
+            }
+        )
 
 
 def test_provider_endpoint_and_mode_parsed() -> None:

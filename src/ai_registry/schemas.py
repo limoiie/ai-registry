@@ -43,6 +43,12 @@ class ModelMode(StrEnum):
     RESPONSES = "responses"
 
 
+class ReasoningOptionType(StrEnum):
+    TOGGLE = "toggle"
+    EFFORT = "effort"
+    BUDGET_TOKENS = "budget_tokens"
+
+
 def canonical_sdk_type(top_sdk_type: Any, nested_sdk_type: Any) -> Any:
     """Validate equivalent SDK declarations and return the canonical value."""
     if top_sdk_type is not None and nested_sdk_type is not None:
@@ -309,6 +315,49 @@ class ModelCapabilities(SafeModel):
     reasoning: bool = False
 
 
+class ReasoningOption(SafeModel):
+    """One way a model exposes control over its reasoning depth.
+
+    Mirrors a models.dev ``reasoning_options`` entry: ``toggle`` turns reasoning
+    on or off, ``effort`` offers a fixed set of levels (for example
+    ``low``/``medium``/``high``), and ``budget_tokens`` caps the reasoning token
+    budget. ``parameter`` names the request field an adapter sets, and ``default``
+    records what a toggle does when it is omitted.
+    """
+
+    type: ReasoningOptionType
+    values: list[StrictStr] = Field(default_factory=list)
+    min: StrictInt | None = Field(default=None, ge=0)
+    max: StrictInt | None = Field(default=None, ge=0)
+    parameter: StrictStr | None = Field(default=None, min_length=1)
+    default: bool | None = None
+
+    @field_validator("values")
+    @classmethod
+    def validate_values(cls, values: list[StrictStr]) -> list[StrictStr]:
+        if any(not value.strip() for value in values):
+            raise ValueError("reasoning effort values must be non-empty")
+        if len(set(values)) != len(values):
+            raise ValueError("reasoning effort values must be unique")
+        return values
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> ReasoningOption:
+        if self.type is ReasoningOptionType.EFFORT:
+            if not self.values:
+                raise ValueError("effort reasoning requires at least one value")
+        elif self.values:
+            raise ValueError("only effort reasoning accepts values")
+        if self.type is not ReasoningOptionType.BUDGET_TOKENS:
+            if self.min is not None or self.max is not None:
+                raise ValueError("only budget_tokens reasoning accepts min or max")
+        elif self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("reasoning budget min must not exceed max")
+        if self.type is not ReasoningOptionType.TOGGLE and self.default is not None:
+            raise ValueError("only toggle reasoning accepts a default")
+        return self
+
+
 #: Catalog spellings accepted for each :class:`ModelCapabilities` field.
 #:
 #: Provider catalogs disagree on names for the same capability: this project's
@@ -365,10 +414,29 @@ class Model(SafeModel):
         default_factory=ModelCapabilities,
         validation_alias=AliasChoices("capabilities", "abilities"),
     )
+    reasoning_options: list[ReasoningOption] = Field(default_factory=list)
     endpoints: list[str] | None = Field(default=None, min_length=1)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     _validate_id = field_validator("id")(_check_model_id)
+
+    @property
+    def reasoning_efforts(self) -> list[str]:
+        """Return the effort levels the model accepts, in catalog order."""
+        return [
+            value
+            for option in self.reasoning_options
+            if option.type is ReasoningOptionType.EFFORT
+            for value in option.values
+        ]
+
+    @model_validator(mode="after")
+    def validate_reasoning_options(self) -> Model:
+        if self.reasoning_options and not self.capabilities.reasoning:
+            raise ValueError(
+                "reasoning_options requires capabilities.reasoning to be true"
+            )
+        return self
 
 
 class ProviderEndpoint(SafeModel):

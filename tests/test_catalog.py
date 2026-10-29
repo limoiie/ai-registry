@@ -35,7 +35,10 @@ MODELS_DEV: dict[str, Any] = {
                 "family": "claude-sonnet",
                 "attachment": True,
                 "reasoning": True,
-                "reasoning_options": [{"type": "toggle"}],
+                "reasoning_options": [
+                    {"type": "toggle"},
+                    {"type": "effort", "values": ["low", "high", "max"]},
+                ],
                 "tool_call": True,
                 "temperature": True,
                 "knowledge": "2025-08-31",
@@ -116,6 +119,18 @@ def test_models_dev_pricing_and_extras_are_preserved_as_metadata() -> None:
     assert card.metadata["knowledge"] == "2025-08-31"
     assert card.metadata["modalities"]["input"] == ["text", "image", "pdf"]
     assert card.metadata["open_weights"] is False
+
+
+def test_models_dev_reasoning_options_become_typed_entries() -> None:
+    card = models_dev_provider("anthropic", MODELS_DEV["anthropic"]).models[0]
+
+    assert [option.type.value for option in card.reasoning_options] == [
+        "toggle",
+        "effort",
+    ]
+    assert card.reasoning_efforts == ["low", "high", "max"]
+    # reasoning_options is a first-class field, not free-form metadata.
+    assert "reasoning_options" not in card.metadata
 
 
 def test_embedding_output_modality_selects_the_embedding_model_type() -> None:
@@ -283,6 +298,10 @@ SNAPSHOT: dict[str, Any] = {
                 "release_date": "2026-06-01",
                 "tool_call": True,
                 "reasoning": True,
+                "reasoning_options": [
+                    {"type": "toggle"},
+                    {"type": "budget_tokens", "max": 8192},
+                ],
                 "modalities": {"input": ["text", "image"], "output": ["text"]},
                 "limit": {"context": 1_000_000, "output": 512_000},
                 "cost": {"input": 0.3, "output": 1.2},
@@ -323,7 +342,13 @@ def test_hydration_builds_the_model_set_from_the_snapshot() -> None:
     assert m3["max_output_tokens"] == 512_000
     assert m3["released_at"] == "2026-06-01"
     assert m3["capabilities"]["vision"] is True
+    assert m3["reasoning_options"] == [
+        {"type": "toggle"},
+        {"type": "budget_tokens", "max": 8192},
+    ]
     assert m3["metadata"]["cost"] == {"input": 0.3, "output": 1.2}
+    # Models without reasoning options keep the snapshot free of empty lists.
+    assert "reasoning_options" not in _by_id(hydrated)["MiniMax-M2"]
 
 
 def test_hydration_keeps_local_declarations_on_top() -> None:
@@ -333,6 +358,7 @@ def test_hydration_keeps_local_declarations_on_top() -> None:
                 "id": "MiniMax-M3",
                 "context_window_tokens": 123,
                 "endpoints": ["cn-openai"],
+                "reasoning_options": [{"type": "toggle", "parameter": "thinking"}],
                 "metadata": {"cost": {"input": 9.0}},
             }
         ],
@@ -345,6 +371,7 @@ def test_hydration_keeps_local_declarations_on_top() -> None:
     assert m3["endpoints"] == ["cn-openai"]
     # A declared field replaces the upstream value outright.
     assert m3["metadata"]["cost"] == {"input": 9.0}
+    assert m3["reasoning_options"] == [{"type": "toggle", "parameter": "thinking"}]
     assert m3["max_output_tokens"] == 512_000
     # Models without a local entry still come from the snapshot.
     assert hydrated and "MiniMax-M2" in _by_id(hydrated)

@@ -9,6 +9,23 @@ are always listed under **Changed** with a migration note.
 
 ## [Unreleased]
 
+### Added
+
+- `Model.reasoning_options` carries typed `ReasoningOption` entries — a
+  `toggle`, enumerated `effort` values, or a `budget_tokens` bound — so callers
+  can enumerate the levels a model accepts via `Model.reasoning_efforts`. The
+  catalog imports models.dev's `reasoning_options` into the field, `parameter`
+  names the request knob for gateways, and `default` records a toggle's default
+  state; `ReasoningOption` and `ReasoningOptionType` are exported. The built-in
+  `uniapi` catalog declares the documented toggles for `deepseek-v4-flash`
+  (`chat_template_kwargs.thinking`, off by default) and `qwen3.5`
+  (`chat_template_kwargs.enable_thinking`, on by default).
+
+### Changed
+
+- Breaking: models.dev's `reasoning_options` is no longer copied into
+  `Model.metadata`; read `Model.reasoning_options` instead.
+
 ## [0.3.1] - 2026-10-10
 
 The first release uploaded to PyPI — the earlier tags were never published, so

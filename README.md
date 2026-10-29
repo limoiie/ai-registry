@@ -32,6 +32,7 @@ resolution = registry.resolve("chat-default")
 | `resolution.account_id` | `'deepseek-primary'` | **Which key** was chosen. |
 | `resolution.endpoint` | `'https://api.deepseek.com/anthropic'` | Where to send it. |
 | `resolution.model.capabilities` | `tools=True, reasoning=False, …` | What the model can do. |
+| `resolution.model.reasoning_options` | `[toggle]`, `[effort: low, high]` | How reasoning can be turned on or tuned. |
 | `resolution.resolve_credential()` | `'sk-…'` | Resolved lazily, only at the adapter boundary. |
 
 The model, provider, account, or endpoint behind `"chat-default"` can change in

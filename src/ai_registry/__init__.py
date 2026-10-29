@@ -85,6 +85,12 @@ from ai_registry.schemas import (
     Provider as Provider,
 )
 from ai_registry.schemas import (
+    ReasoningOption as ReasoningOption,
+)
+from ai_registry.schemas import (
+    ReasoningOptionType as ReasoningOptionType,
+)
+from ai_registry.schemas import (
     RegistryConfig as RegistryConfig,
 )
 from ai_registry.schemas import (
@@ -130,6 +136,8 @@ __all__ = [
     "ModelType",
     "NoAvailableDeploymentError",
     "Provider",
+    "ReasoningOption",
+    "ReasoningOptionType",
     "Registry",
     "RegistryConfig",
     "RegistryError",

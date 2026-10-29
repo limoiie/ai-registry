@@ -120,6 +120,11 @@ models:
   capabilities:
     tools: true
     structured_output: true
+    reasoning: true
+  reasoning_options:
+  - type: toggle
+    parameter: chat_template_kwargs.enable_thinking
+    default: true
   metadata:
     pricing:
       currency: CNY
@@ -188,6 +193,10 @@ models:
     tools: true
     structured_output: true
     reasoning: true
+  reasoning_options:
+  - type: toggle
+    parameter: chat_template_kwargs.thinking
+    default: false
   metadata:
     pricing:
       currency: CNY

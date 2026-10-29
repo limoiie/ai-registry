@@ -253,6 +253,10 @@ models:
       structured_output: true
       reasoning: true
       vision: false
+    reasoning_options:
+      - type: effort
+        values: [low, medium, high]
+        parameter: reasoning_effort
     metadata:
       notes: internal
 ```
@@ -269,10 +273,23 @@ models:
 | `embedding_dimension` | positive int | no | For embedding models. |
 | `endpoints` | list of endpoint ids | no | Endpoint names on which this model is available; resolution rejects endpoint selections not listed here. |
 | `capabilities` | mapping | no | Also accepted as `abilities` (see [legacy compatibility](#provider-catalog-compatibility)). |
+| `reasoning_options` | list of mappings | no | How reasoning can be controlled, not just whether it exists — see below. |
 | `metadata` | mapping | no | Arbitrary adapter metadata. |
 
 `capabilities` supports the keys `tools`, `structured_output`, `vision`, and
 `reasoning` (all optional booleans, default `false`).
+
+`reasoning_options` mirrors models.dev's field and describes the knobs the
+provider exposes: a `toggle` turns reasoning on or off (with `default` recording
+what happens when the request omits it), an `effort` option lists the accepted
+levels in `values`, and `budget_tokens` accepts a token budget, optionally
+bounded by `min` and `max`. `parameter` names the request field an adapter sets,
+for gateways whose knob is not OpenAI's `reasoning_effort`. UniAPI's
+`deepseek-v4-flash` card, for example, declares
+`parameter: chat_template_kwargs.thinking` with `default: false`, and `qwen3.5`
+declares `parameter: chat_template_kwargs.enable_thinking` with `default: true`.
+The list also feeds `Model.reasoning_efforts`, which returns the effort levels
+in one call.
 
 ¹ A provider that declares a `source:` takes its model set and metadata from
 models.dev; its `models` entries are deltas. See
@@ -327,9 +344,9 @@ carries the model set itself. Both ship as package data, so loading stays
 offline and deterministic; maintainers refresh the snapshot with
 `ai-registry catalog diff|sync` (see [Development](development.md)).
 
-Specs, capabilities, `released_at`, and `metadata.cost` on a card come from
-models.dev. Local cards keep the catalog's own metadata, including
-`metadata.pricing` (`currency` plus `units`) where a price is known.
+Specs, capabilities, `released_at`, `reasoning_options`, and `metadata.cost` on
+a card come from models.dev. Local cards keep the catalog's own metadata,
+including `metadata.pricing` (`currency` plus `units`) where a price is known.
 
 ## Registry file
 

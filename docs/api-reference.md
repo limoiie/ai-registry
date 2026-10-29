@@ -192,6 +192,12 @@ class SDKType(StrEnum):
 class ModelMode(StrEnum):
     CHAT = "chat"
     RESPONSES = "responses"
+
+
+class ReasoningOptionType(StrEnum):
+    TOGGLE = "toggle"
+    EFFORT = "effort"
+    BUDGET_TOKENS = "budget_tokens"
 ```
 
 ### `ModelCapabilities`
@@ -202,6 +208,20 @@ class ModelMode(StrEnum):
 | `structured_output` | bool | `False` |
 | `vision` | bool | `False` |
 | `reasoning` | bool | `False` |
+
+### `ReasoningOption`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `type` | `ReasoningOptionType` | `toggle`, `effort`, or `budget_tokens`. |
+| `values` | `list[str]` | Accepted levels for `effort`; empty otherwise. |
+| `min` | `int | None` | Minimum token budget for `budget_tokens`. |
+| `max` | `int | None` | Maximum token budget for `budget_tokens`. |
+| `parameter` | `str | None` | Request field an adapter sets, e.g. `chat_template_kwargs.thinking`. |
+| `default` | `bool | None` | Toggle state when the request omits the knob. |
+
+`Model.reasoning_efforts` returns the `values` of the `effort` option, so
+`model.reasoning_efforts` is the one-call way to enumerate effort levels.
 
 ### `Model`
 
@@ -217,6 +237,7 @@ class ModelMode(StrEnum):
 | `embedding_dimension` | `int | None` | Must be `>= 1`. |
 | `endpoints` | `list[str] | None` | Endpoint names supporting this model. |
 | `capabilities` | `ModelCapabilities` | Accepts alias `abilities`. |
+| `reasoning_options` | `list[ReasoningOption]` | How reasoning can be toggled, tuned by effort, or budgeted. |
 | `metadata` | `dict[str, Any]` | |
 
 ### `ProviderEndpoint`
@@ -531,9 +552,10 @@ models_dev_provider(
 
 Converts a [models.dev](https://models.dev) `api.json` document into providers.
 `limit.context` and `limit.output` become the context and output token fields;
-`tool_call`, `reasoning` and `structured_output` become capabilities; an `image`
-input modality implies `vision`; and `cost`, `modalities`, `knowledge` and
-related keys are preserved under the card's `metadata`. Models outside the
+`tool_call`, `reasoning` and `structured_output` become capabilities;
+`reasoning_options` becomes the typed `Model.reasoning_options` field; an
+`image` input modality implies `vision`; and `cost`, `modalities`, `knowledge`
+and related keys are preserved under the card's `metadata`. Models outside the
 schema are skipped rather than mistyped: image, audio and video generators have
 no `ModelType`, and native embeddings and rerankers are classified by name
 because models.dev reports their output modality as text.

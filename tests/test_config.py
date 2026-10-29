@@ -457,6 +457,24 @@ def test_loads_actual_catalog_normalized_model_fields() -> None:
     assert deprecated.metadata["deprecated"] is True
 
 
+def test_actual_uniapi_catalog_declares_documented_reasoning_toggles() -> None:
+    uniapi = load_provider_file(DATA / "uniapi.yml")
+    cards = {card.id: card for card in uniapi.models}
+
+    expected = {
+        "deepseek-v4-flash": ("chat_template_kwargs.thinking", False),
+        "qwen3.5": ("chat_template_kwargs.enable_thinking", True),
+    }
+    for model_id, (parameter, default) in expected.items():
+        card = cards[model_id]
+        assert card.capabilities.reasoning is True
+        assert len(card.reasoning_options) == 1
+        option = card.reasoning_options[0]
+        assert option.type.value == "toggle"
+        assert option.parameter == parameter
+        assert option.default is default
+
+
 def test_actual_uniapi_catalog_covers_reranking_models() -> None:
     uniapi = load_provider_file(DATA / "uniapi.yml")
 
