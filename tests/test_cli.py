@@ -106,6 +106,53 @@ def test_catalog_sync_writes_the_snapshot_and_its_readme(tmp_path: Path) -> None
     assert "Vendored models.dev snapshot" in readme.read_text(encoding="utf-8")
 
 
+def test_catalog_sync_records_the_upstream_url_as_provenance(
+    tmp_path: Path,
+) -> None:
+    upstream = tmp_path / "api.json"
+    upstream.write_text(
+        models_dev_snapshot_json(builtin_models_dev_snapshot()), encoding="utf-8"
+    )
+    destination = tmp_path / "out" / "api.json"
+
+    result = runner.invoke(
+        _build_app(),
+        ["catalog", "sync", str(upstream), "--output", str(destination)],
+    )
+
+    assert result.exit_code == 0
+    readme = (destination.parent / "README.md").read_text(encoding="utf-8")
+    # The download path is machine state; the provenance line names the
+    # upstream document, so the committed README stays stable across refreshes.
+    assert "- Source: `https://models.dev/api.json`" in readme
+    assert str(upstream) not in readme
+
+
+def test_catalog_sync_records_a_supplied_mirror_url(tmp_path: Path) -> None:
+    upstream = tmp_path / "api.json"
+    upstream.write_text(
+        models_dev_snapshot_json(builtin_models_dev_snapshot()), encoding="utf-8"
+    )
+    destination = tmp_path / "out" / "api.json"
+
+    result = runner.invoke(
+        _build_app(),
+        [
+            "catalog",
+            "sync",
+            str(upstream),
+            "--output",
+            str(destination),
+            "--source-url",
+            "https://mirror.example/api.json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    readme = (destination.parent / "README.md").read_text(encoding="utf-8")
+    assert "- Source: `https://mirror.example/api.json`" in readme
+
+
 def test_aliases_lists_deployments_in_routing_order(project: Path) -> None:
     result = invoke(project, "aliases")
 

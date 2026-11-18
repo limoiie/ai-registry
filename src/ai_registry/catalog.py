@@ -46,6 +46,7 @@ from ai_registry.errors import ConfigurationError
 from ai_registry.schemas import Model, ModelType, Provider, normalize_capabilities
 
 __all__ = [
+    "MODELS_DEV_SOURCE_URL",
     "builtin_models_dev_snapshot",
     "diff_models_dev",
     "hydrate_models_dev_models",
@@ -58,6 +59,11 @@ __all__ = [
     "models_dev_snapshot_readme",
     "sync_models_dev_snapshot",
 ]
+
+#: The upstream document the vendored snapshot is taken from. It is recorded as
+#: the snapshot's provenance rather than the local path it was downloaded to, so
+#: a refresh does not churn the committed README with machine state.
+MODELS_DEV_SOURCE_URL = "https://models.dev/api.json"
 
 #: models.dev capability keys, mapped onto ``ModelCapabilities`` fields by
 #: :func:`~ai_registry.schemas.normalize_capabilities`.

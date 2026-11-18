@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ai_registry.catalog import (
+    MODELS_DEV_SOURCE_URL,
     diff_models_dev,
     load_models_dev_snapshot,
     models_dev_provider_ids_from_documents,
@@ -245,6 +246,14 @@ def _build_app() -> Any:
             "-o",
             help="Snapshot path to write; defaults to the packaged snapshot.",
         ),
+        source_url: str = typer.Option(
+            MODELS_DEV_SOURCE_URL,
+            "--source-url",
+            help=(
+                "Upstream URL recorded as the snapshot's provenance; set it when "
+                "syncing from a mirror."
+            ),
+        ),
         as_json: bool = json_option,
     ) -> None:
         """Rewrite the vendored models.dev snapshot, trimmed to the catalog."""
@@ -266,7 +275,7 @@ def _build_app() -> Any:
         readme = destination.parent / "README.md"
         readme.write_text(
             models_dev_snapshot_readme(
-                source=source,
+                source=source_url,
                 generated_at=date.today().isoformat(),
                 document=document,
             ),

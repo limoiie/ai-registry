@@ -568,6 +568,8 @@ under it.
 load_models_dev_snapshot(source: PathSource) -> dict[str, Any]
 builtin_models_dev_snapshot() -> dict[str, Any]
 
+MODELS_DEV_SOURCE_URL: str
+
 hydrate_models_dev_models(
     models: Sequence[Mapping[str, Any]],
     *,
@@ -609,7 +611,9 @@ overrides. See [Configuration](configuration.md#model-metadata-from-modelsdev).
 from. `diff_models_dev` reports models added or removed upstream and changed
 fields, `sync_models_dev_snapshot` copies those provider entries into a snapshot,
 and `models_dev_snapshot_json` / `models_dev_snapshot_readme` render the
-committed artifacts deterministically. The `ai-registry catalog diff|sync`
+committed artifacts deterministically. `MODELS_DEV_SOURCE_URL` is the upstream
+document the snapshot is taken from, and is what `ai-registry catalog sync`
+records as the snapshot's provenance. The `ai-registry catalog diff|sync`
 commands wrap all three; `ai_registry.config.discover_builtin_provider_documents()`
 returns the unnormalized provider files, so the tools keep working when the
 snapshot itself is missing or stale.

@@ -111,10 +111,12 @@ uv run ai-registry catalog sync /tmp/models-dev-api.json   # rewrites the snapsh
 `diff` reports, per models.dev provider, models added or removed upstream and any
 changed field, plus provider-level metadata changes (informational). `sync`
 rewrites the snapshot and its provenance README, both of which are reviewed like
-source. Models the registry cannot represent — image, audio and video
-generators — are omitted from the snapshot; native embeddings and rerankers are
-kept and typed by name, and the embedding cards that need a vector dimension
-keep it as a local delta.
+source. The README records the upstream URL rather than the local path the
+document was downloaded to, so a refresh does not churn it with machine state;
+pass `--source-url` when syncing from a mirror. Models the registry cannot
+represent — image, audio and video generators — are omitted from the snapshot;
+native embeddings and rerankers are kept and typed by name, and the embedding
+cards that need a vector dimension keep it as a local delta.
 
 Provider files still need attention when curation is genuinely local:
 
