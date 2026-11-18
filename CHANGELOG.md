@@ -9,6 +9,26 @@ are always listed under **Changed** with a migration note.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-18
+
+### Added
+
+- `ai-registry catalog sync` accepts `--source-url`, so the snapshot's
+  provenance README can name a mirror instead of the upstream default
+  (`https://models.dev/api.json`).
+
+### Changed
+
+- The vendored models.dev snapshot was refreshed against the upstream document
+  of 2026-11-18. New models include `claude-fable-5-2`, the `gemini-4-*`
+  family, `gpt-6.1-terra`, `gpt-6.2-astra`, `gpt-6.2-sol`,
+  `MiniMax-M3.1-Flash`, and the `kimi-k3.1-*` models. Models upstream has
+  retired — `qwen2-5-*`, `qwen3-asr-flash`, `gpt-5.2-chat-latest` and
+  `gpt-5.3-chat-latest` — are gone from the built-in catalog.
+- `ai-registry catalog sync` now records the upstream URL in the snapshot's
+  provenance README rather than the local path the document was downloaded to,
+  so a refresh no longer churns the committed file with machine state.
+
 ## [0.4.0] - 2026-10-30
 
 ### Added
